@@ -22,9 +22,12 @@ const MUTED = "#6E7178";
 const CARD = "#FFFFFF";
 const BUBBLE_A = "#F0EEEE"; // assistant bubble
 const BUBBLE_U = "#FDECEC"; // candidate bubble (soft red tint)
-const FIELD_BG = "#F4F2F2"; // composer / input surface
+const FIELD_BG = "#F4F2F2"; // composer surface
 const HAIRLINE = "rgba(22,24,29,0.06)";
-const BORDER = "rgba(22,24,29,0.08)";
+const COMPOSER_BORDER = "rgba(22,24,29,0.08)";
+const CARD_BORDER = "rgba(22,24,29,0.1)";
+const INPUT_BORDER = "rgba(22,24,29,0.12)";
+const DASH_BORDER = "rgba(22,24,29,0.18)";
 const DOT_SEP = "#C9C6C6";
 
 const PRIVACY_URL = "https://www.miton.cz/zasady-zpracovani-osobnich-udaju"; // TODO: confirm final URL
@@ -41,41 +44,39 @@ const T = {
     subtitle: "Pojď si s námi popovídat o možnostech v našem portfoliu.",
     labels: { area: "Oblast", level: "Úroveň", workMode: "Forma", status: "Stav" },
     placeholder: "Napiš, co tě zajímá…",
-    contactTitle: "Nech nám na sebe kontakt a spojíme se s tebou.",
+    contactTitle: "Nech nám na sebe kontakt",
     name: "Jméno",
     email: "E-mail",
     linkedin: "LinkedIn",
-    noteLabel: "Chceš dodat něco dalšího?",
-    notePlaceholder: "Nepovinné",
+    notePlaceholder: "Chceš dodat něco dalšího?",
     cvLabel: "Životopis (nepovinné)",
-    uploadBtn: "Nahrát soubor",
     cvTooBig: `Soubor je moc velký (max ${MAX_CV_MB} MB).`,
     consent: "Souhlasím se zpracováním osobních údajů za účelem oslovení s pracovní nabídkou.",
-    privacy: "Více v zásadách zpracování osobních údajů.",
+    privacy: "Zásady zpracování.",
     submit: "Odeslat",
     errFields: "Vyplň prosím e-mail a potvrď souhlas.",
     errConn: "Spojení se serverem se nepovedlo. Zkus to prosím poslat znovu.",
-    thanks: (e) => `Díky, máme to! Projdeme si to a spojíme se s tebou na ${e}. Když něco sedne, domluvíme krátký call. A i kdybychom teď zrovna nic neměli, dáme ti vědět.`,
+    thanksTitle: "Díky, máme to!",
+    thanks: "Projdeme si to a spojíme se s tebou e-mailem. Když něco sedne, domluvíme krátký call. A i kdybychom teď zrovna nic neměli, dáme ti vědět.",
   },
   en: {
     subtitle: "Let's talk through the opportunities across our portfolio.",
     labels: { area: "Area", level: "Level", workMode: "Work", status: "Status" },
     placeholder: "Type your message…",
-    contactTitle: "Leave us your contact and we'll get in touch.",
+    contactTitle: "Leave us your contact",
     name: "Name",
     email: "Email",
     linkedin: "LinkedIn",
-    noteLabel: "Anything else you'd like to add?",
-    notePlaceholder: "Optional",
+    notePlaceholder: "Anything else you'd like to add?",
     cvLabel: "CV (optional)",
-    uploadBtn: "Upload file",
     cvTooBig: `File is too large (max ${MAX_CV_MB} MB).`,
     consent: "I agree to the processing of my personal data so that I can be contacted about job opportunities.",
-    privacy: "Read our privacy notice.",
+    privacy: "Privacy notice.",
     submit: "Submit",
     errFields: "Please fill in your email and confirm consent.",
     errConn: "Couldn't reach the server. Please send it again.",
-    thanks: (e) => `Thanks, we've got it! We'll review it and get back to you at ${e}. If something fits, we'll set up a short call. And even if we have nothing right now, we'll let you know.`,
+    thanksTitle: "Thanks, we've got it!",
+    thanks: "We'll review it and get back to you by email. If something fits, we'll set up a short call. And even if we have nothing right now, we'll let you know.",
   },
 };
 
@@ -232,6 +233,10 @@ export default function MitonTalentChat({
     { key: "status", label: t.labels.status, value: profile.status },
   ].filter((r) => r.value);
 
+  const collectingContact = stage === "collect_contact" && !submitted;
+  const showChips = profileRows.length > 0 && !collectingContact && !submitted;
+  const showSubtitle = !showChips && !collectingContact && !submitted;
+
   const S = styles;
   const canSend = !loading && input.trim().length > 0;
 
@@ -246,9 +251,8 @@ export default function MitonTalentChat({
             <span style={S.langDot}>·</span>
             <button onClick={() => switchLang("en")} style={{ ...S.langBtn, ...(lang === "en" ? S.langActive : S.langIdle) }}>EN</button>
           </div>
-          <p style={S.subtitle}>{t.subtitle}</p>
-
-          {profileRows.length > 0 && (
+          {showSubtitle && <p style={S.subtitle}>{t.subtitle}</p>}
+          {showChips && (
             <div style={S.chips}>
               {profileRows.map((r) => (
                 <span key={r.key} style={S.chip}>
@@ -260,57 +264,63 @@ export default function MitonTalentChat({
           )}
         </div>
 
-        {/* Conversation */}
-        <div ref={scrollRef} className="mtc-scroll" style={S.scroll}>
-          {messages.map((m, i) => (
-            <div key={i} style={m.role === "user" ? S.rowRight : S.rowLeft}>
-              {m.role === "assistant" && <div style={S.avatar}>m</div>}
-              <div style={m.role === "user" ? S.bubbleUser : S.bubbleAssistant}>{m.content}</div>
+        {/* Body */}
+        <div ref={scrollRef} className="mtc-scroll" style={submitted ? S.scrollCenter : S.scroll}>
+          {submitted ? (
+            <div style={S.thanksWrap}>
+              <div style={S.checkCircle}><CheckBig /></div>
+              <div style={S.thanksTitle}>{t.thanksTitle}</div>
+              <div style={S.thanksText}>{t.thanks}</div>
             </div>
-          ))}
+          ) : (
+            <>
+              {messages.map((m, i) => (
+                <div key={i} style={m.role === "user" ? S.rowRight : S.rowLeft}>
+                  {m.role === "assistant" && <div style={S.avatar}>m</div>}
+                  <div style={m.role === "user" ? S.bubbleUser : S.bubbleAssistant}>{m.content}</div>
+                </div>
+              ))}
 
-          {loading && (
-            <div style={S.rowLeft}>
-              <div style={S.avatar}>m</div>
-              <div style={S.typing}>
-                <span className="mtc-dot" style={{ ...S.dot, animationDelay: "0s" }} />
-                <span className="mtc-dot" style={{ ...S.dot, animationDelay: ".2s" }} />
-                <span className="mtc-dot" style={{ ...S.dot, animationDelay: ".4s" }} />
-              </div>
-            </div>
+              {loading && (
+                <div style={S.rowLeft}>
+                  <div style={S.avatar}>m</div>
+                  <div style={S.typing}>
+                    <span className="mtc-dot" style={{ ...S.dot, animationDelay: "0s" }} />
+                    <span className="mtc-dot" style={{ ...S.dot, animationDelay: ".2s" }} />
+                    <span className="mtc-dot" style={{ ...S.dot, animationDelay: ".4s" }} />
+                  </div>
+                </div>
+              )}
+
+              {collectingContact && (
+                <div style={S.formCard}>
+                  <div style={S.formTitle}>{t.contactTitle}</div>
+                  <input className="mtc-in" value={contact.name} onChange={(e) => setContact({ ...contact, name: e.target.value })} placeholder={t.name} style={S.input} />
+                  <input className="mtc-in" value={contact.email} onChange={(e) => setContact({ ...contact, email: e.target.value })} placeholder={t.email} style={S.input} />
+                  <input className="mtc-in" value={contact.linkedin} onChange={(e) => setContact({ ...contact, linkedin: e.target.value })} placeholder={t.linkedin} style={S.input} />
+                  <input className="mtc-in" value={contact.note} onChange={(e) => setContact({ ...contact, note: e.target.value })} placeholder={t.notePlaceholder} style={S.input} />
+
+                  <button onClick={() => fileRef.current && fileRef.current.click()} style={S.cvBox}>
+                    <UploadIcon />
+                    <span>{cvFile ? cvFile.name : t.cvLabel}</span>
+                  </button>
+                  <input ref={fileRef} type="file" accept=".pdf,.doc,.docx" style={{ display: "none" }} onChange={pickFile} />
+
+                  <div style={S.consentRow} onClick={() => setConsent(!consent)}>
+                    <div style={S.checkbox}>{consent && <CheckSmall />}</div>
+                    <div style={S.consentText}>
+                      {t.consent}{" "}
+                      <a href={PRIVACY_URL} target="_blank" rel="noopener noreferrer" className="mtc-a" onClick={(e) => e.stopPropagation()}>{t.privacy}</a>
+                    </div>
+                  </div>
+
+                  <button onClick={submitContact} style={S.submitBtn}>{t.submit}</button>
+                </div>
+              )}
+
+              {error && <p style={S.error}>{error}</p>}
+            </>
           )}
-
-          {stage === "collect_contact" && !submitted && (
-            <div style={S.form}>
-              <p style={S.formTitle}>{t.contactTitle}</p>
-              <Field label={t.name} value={contact.name} onChange={(v) => setContact({ ...contact, name: v })} placeholder={lang === "cs" ? "Jan Novák" : "Jane Doe"} />
-              <Field label={t.email} value={contact.email} onChange={(v) => setContact({ ...contact, email: v })} placeholder="jan@email.cz" />
-              <Field label={t.linkedin} value={contact.linkedin} onChange={(v) => setContact({ ...contact, linkedin: v })} placeholder="https://linkedin.com/in/..." />
-              <Field label={t.noteLabel} value={contact.note} onChange={(v) => setContact({ ...contact, note: v })} placeholder={t.notePlaceholder} />
-
-              <div>
-                <label style={S.fieldLabel}>{t.cvLabel}</label>
-                <button onClick={() => fileRef.current && fileRef.current.click()} style={S.uploadBtn}>
-                  {cvFile ? cvFile.name : t.uploadBtn}
-                </button>
-                <input ref={fileRef} type="file" accept=".pdf,.doc,.docx" style={{ display: "none" }} onChange={pickFile} />
-              </div>
-
-              <label style={S.consentRow}>
-                <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} style={{ marginTop: 2 }} />
-                <span>
-                  {t.consent}{" "}
-                  <a href={PRIVACY_URL} target="_blank" rel="noopener noreferrer" className="mtc-a">{t.privacy}</a>
-                </span>
-              </label>
-
-              <button onClick={submitContact} style={S.submitBtn}>{t.submit}</button>
-            </div>
-          )}
-
-          {submitted && <div style={S.thanks}>{t.thanks(contact.email)}</div>}
-
-          {error && <p style={S.error}>{error}</p>}
         </div>
 
         {/* Composer */}
@@ -342,19 +352,34 @@ export default function MitonTalentChat({
   );
 }
 
-function Field({ label, value, onChange, placeholder }) {
-  return (
-    <div>
-      <label style={styles.fieldLabel}>{label}</label>
-      <input className="mtc-in" value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} style={styles.input} />
-    </div>
-  );
-}
-
 function ArrowUp() {
   return (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
       <path d="M12 19V5M12 5l-6 6M12 5l6 6" stroke="#fff" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function UploadIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" style={{ flex: "none" }}>
+      <path d="M12 16V4M12 4l-4 4M12 4l4 4M5 20h14" stroke={MUTED} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function CheckSmall() {
+  return (
+    <svg width="10" height="10" viewBox="0 0 24 24" fill="none">
+      <path d="M5 12l5 5L20 6" stroke={ACCENT} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function CheckBig() {
+  return (
+    <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+      <path d="M5 12l5 5L20 6" stroke={ACCENT} strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
@@ -388,6 +413,7 @@ const styles = {
   chipLabel: { color: ACCENT, opacity: 0.62 },
   chipValue: { color: ACCENT, fontWeight: 600 },
   scroll: { flex: 1, overflowY: "auto", padding: "20px 22px", display: "flex", flexDirection: "column", gap: 14 },
+  scrollCenter: { flex: 1, overflowY: "auto", padding: "22px", display: "flex", flexDirection: "column" },
   rowLeft: { display: "flex", justifyContent: "flex-start", alignItems: "flex-end", gap: 10 },
   rowRight: { display: "flex", justifyContent: "flex-end" },
   avatar: {
@@ -404,19 +430,30 @@ const styles = {
   },
   typing: { background: BUBBLE_A, borderRadius: 16, borderBottomLeftRadius: 6, padding: "15px 16px", display: "flex", gap: 5, alignItems: "center" },
   dot: { width: 7, height: 7, borderRadius: "50%", background: MUTED, display: "inline-block" },
-  form: { marginTop: 4, border: `1px solid ${BORDER}`, borderRadius: 14, padding: 16, display: "flex", flexDirection: "column", gap: 12 },
-  formTitle: { fontSize: 14, fontWeight: 600, margin: 0 },
-  fieldLabel: { fontSize: 12, color: MUTED, display: "block", marginBottom: 4 },
-  input: { width: "100%", boxSizing: "border-box", fontSize: 14, padding: "9px 12px", borderRadius: 10, border: `1px solid ${BORDER}`, outline: "none", fontFamily: "inherit", color: INK },
-  uploadBtn: { fontSize: 14, padding: "9px 14px", borderRadius: 10, border: `1px solid ${BORDER}`, background: "#fff", cursor: "pointer", fontFamily: "inherit", color: INK },
-  consentRow: { display: "flex", alignItems: "flex-start", gap: 8, fontSize: 12, color: MUTED, lineHeight: 1.45, cursor: "pointer" },
-  submitBtn: { width: "100%", fontSize: 14, fontWeight: 600, color: "#fff", padding: "12px", borderRadius: 10, border: "none", background: ACCENT, cursor: "pointer", fontFamily: "inherit" },
-  thanks: { marginTop: 4, border: `1px solid ${BORDER}`, borderRadius: 14, padding: 16, fontSize: 14, lineHeight: 1.55 },
+
+  // contact card
+  formCard: { background: "#fff", border: `1px solid ${CARD_BORDER}`, borderRadius: 14, padding: 16, display: "flex", flexDirection: "column", gap: 11 },
+  formTitle: { fontSize: 14, fontWeight: 600 },
+  input: { width: "100%", boxSizing: "border-box", fontSize: 13, padding: "9px 12px", borderRadius: 12, border: `1px solid ${INPUT_BORDER}`, outline: "none", fontFamily: "inherit", color: INK, background: "#fff" },
+  cvBox: { display: "flex", alignItems: "center", gap: 8, width: "100%", boxSizing: "border-box", border: `1px dashed ${DASH_BORDER}`, borderRadius: 12, padding: "9px 12px", color: MUTED, fontSize: 13, background: "transparent", cursor: "pointer", fontFamily: "inherit", textAlign: "left" },
+  consentRow: { display: "flex", alignItems: "flex-start", gap: 9, cursor: "pointer" },
+  checkbox: { width: 16, height: 16, border: `1.5px solid ${ACCENT}`, borderRadius: 4, flex: "none", marginTop: 1, display: "flex", alignItems: "center", justifyContent: "center", background: "#fff" },
+  consentText: { fontSize: 11, color: MUTED, lineHeight: 1.4 },
+  submitBtn: { width: "100%", background: ACCENT, color: "#fff", borderRadius: 12, padding: 11, textAlign: "center", fontSize: 14, fontWeight: 500, border: "none", cursor: "pointer", fontFamily: "inherit" },
+
+  // thank you
+  thanksWrap: { flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", gap: 16, padding: "24px 8px" },
+  checkCircle: { width: 52, height: 52, borderRadius: "50%", background: BUBBLE_U, display: "flex", alignItems: "center", justifyContent: "center" },
+  thanksTitle: { fontSize: 18, fontWeight: 600 },
+  thanksText: { fontSize: 14, color: MUTED, lineHeight: 1.55, maxWidth: 320 },
+
   error: { fontSize: 12, color: ACCENT, margin: 0 },
+
+  // composer
   composerWrap: { padding: "14px 18px 18px", borderTop: `1px solid ${HAIRLINE}` },
   composerPill: {
     display: "flex", alignItems: "flex-end", gap: 10,
-    background: FIELD_BG, border: `1px solid ${BORDER}`, borderRadius: 12, padding: "11px 11px 11px 14px",
+    background: FIELD_BG, border: `1px solid ${COMPOSER_BORDER}`, borderRadius: 12, padding: "11px 11px 11px 14px",
   },
   textarea: {
     flex: 1, resize: "none", fontSize: 14, lineHeight: 1.5, border: "none", background: "transparent",

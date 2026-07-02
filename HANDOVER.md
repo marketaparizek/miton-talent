@@ -53,9 +53,13 @@ CV email is skipped. Everything else still works in both cases.
 
 ### Secrets
 
-Three values are secret and come from Markéta through a one-time secure link, not
-in this repo and not by plain email: `ANTHROPIC_API_KEY`, `NOTION_TOKEN`,
-`SMTP_PASS`. The rest of the variables above are not secret.
+Three values are secret: `ANTHROPIC_API_KEY`, `NOTION_TOKEN` and `SMTP_PASS`. The
+rest of the variables above are not secret.
+
+If you (the developer) deploy the backend, Markéta will send these three via a
+onetimesecret.com link (one-time, self-deleting), never in this repo or by plain
+email. If Markéta deploys the backend herself, she sets them directly on the host
+and you do not need them at all.
 
 ## Part 2: build and embed the widget
 

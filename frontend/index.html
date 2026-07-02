@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="cs">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Miton talent chat - preview</title>
+    <style>
+      body { margin: 0; background: #F6F5F5; font-family: system-ui, sans-serif; }
+      .wrap { max-width: 640px; margin: 40px auto; padding: 0 16px; }
+    </style>
+  </head>
+  <body>
+    <!--
+      Dev preview: run `npm run dev`.
+      For the real embed on miton.cz, set data-backend to the deployed backend URL
+      and include the built file dist/miton-talent-chat.js instead of src/main.jsx.
+    -->
+    <div class="wrap">
+      <div
+        id="miton-talent-chat"
+        data-backend="http://localhost:8000"
+        data-lang="cs"
+        data-height="600px"
+      ></div>
+    </div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>

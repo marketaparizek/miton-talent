@@ -101,10 +101,15 @@ import MitonTalentChat from "./MitonTalentChat.jsx";
 
 ## Placement on the career page
 
-Hero section as the dominant element. On desktop: headline and reasons on the
-left, the chat on the right. On mobile: full width below the headline. The
-widget renders as a single white card and fills its container; the surrounding
-hero (headline, brand shapes) is handled by the page, not the widget.
+Hero section as the dominant element. On desktop: headline and reasons above,
+the chat centered below. On mobile: full width below the headline. The widget
+renders as a single white card and fills its container; the surrounding hero
+(headline, brand shapes) is handled by the page, not the widget.
+
+Hero copy (reference from the design, this text lives on the page, not in the widget):
+- Headline: "Zvažujete práci pro startup? Pojďme to probrat."
+- Subtitle: "Jsme úspěšná česká investiční skupina s desítkami startupů v portfoliu a pro naše projekty neustále hledáme zvědavé a chytré lidi."
+- Three reasons: "Žádný formulář, jen krátká konverzace", "Řekni nám, co tě baví a jakou roli hledáš", "Zkusíme rozhodit síť napříč portfoliem"
 
 ## What the widget does
 

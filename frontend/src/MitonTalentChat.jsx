@@ -1,11 +1,17 @@
 import React, { useState, useRef, useEffect } from "react";
+import LOGO from "./logo.js";
 
 /*
  * Miton talent chat widget.
  *
  * Self-contained: no Tailwind, no external CSS. All styling is inline plus one
  * small scoped <style> block, so the widget can be dropped into any page without
- * clashing with the host site's styles. Visual design matches the Miton mockup.
+ * clashing with the host site's styles.
+ *
+ * Layout: an "LLM window", not a messenger. The empty state shows the Miton mark,
+ * a big headline and a centered composer with starter suggestions (like Claude).
+ * Once the conversation starts, assistant replies render as plain text with the
+ * Miton logo, user messages as soft right-aligned bubbles, composer docked below.
  *
  * Props:
  *   backendUrl  - base URL of the FastAPI backend (default http://localhost:8000)
@@ -20,11 +26,11 @@ const ACCENT = "#E32726";
 const INK = "#16181D";
 const MUTED = "#6E7178";
 const CARD = "#FFFFFF";
-const BUBBLE_A = "#F0EEEE"; // assistant bubble
 const BUBBLE_U = "#FDECEC"; // candidate bubble (soft red tint)
-const FIELD_BG = "#F4F2F2"; // composer surface
+const CHIP_BG = "#FDECEC";
+const FIELD_BG = "#F7F6F5"; // composer surface
 const HAIRLINE = "rgba(22,24,29,0.06)";
-const COMPOSER_BORDER = "rgba(22,24,29,0.08)";
+const COMPOSER_BORDER = "rgba(22,24,29,0.1)";
 const CARD_BORDER = "rgba(22,24,29,0.1)";
 const INPUT_BORDER = "rgba(22,24,29,0.12)";
 const DASH_BORDER = "rgba(22,24,29,0.18)";
@@ -34,16 +40,13 @@ const PRIVACY_URL = "https://www.miton.cz/zasady-zpracovani-osobnich-udaju"; // 
 
 const MAX_CV_MB = 8;
 
-const GREETING = {
-  cs: "Ahoj! V Mitonu se rádi spojíme se zvědavými a chytrými lidmi a o možnostech si moc rádi popovídáme. Co by tě bavilo dělat nebo jaká role tě láká?",
-  en: "Hi! At Miton we love connecting with curious, smart people, and we're always happy to talk through the options. What would you enjoy doing, or what role are you drawn to?",
-};
-
 const T = {
   cs: {
-    subtitle: "Pojď si s námi popovídat o možnostech v našem portfoliu.",
+    heroTitle: "Zvažuješ práci ve startupu?",
+    heroSub: "V Mitonu se rádi spojíme se zvědavými a chytrými lidmi. Napiš, co by tě bavilo dělat nebo jaká role tě láká.",
+    starters: ["Chci být founder", "Hledám práci ve startupu", "Zajímá mě práce v Mitonu", "Jen si mapuju možnosti"],
     labels: { area: "Oblast", level: "Úroveň", workMode: "Forma", status: "Stav" },
-    placeholder: "Napiš, co tě zajímá…",
+    placeholder: "Napiš, jakou roli hledáš…",
     contactTitle: "Nech nám na sebe kontakt",
     name: "Jméno",
     email: "E-mail",
@@ -57,12 +60,14 @@ const T = {
     errFields: "Vyplň prosím e-mail a potvrď souhlas.",
     errConn: "Spojení se serverem se nepovedlo. Zkus to prosím poslat znovu.",
     thanksTitle: "Díky, máme to!",
-    thanks: "Projdeme si to a spojíme se s tebou e-mailem. Když něco sedne, domluvíme krátký call. A i kdybychom teď zrovna nic neměli, dáme ti vědět.",
+    thanks: "Rozhodíme sítě napříč naším portfoliem, jestli je něco, co by ti mohlo sedět, a spojíme se s tebou e-mailem. Kdyby cokoliv, napiš naší kolegyni Markétě Pařízek na marketa.parizek@miton.cz.",
   },
   en: {
-    subtitle: "Let's talk through the opportunities across our portfolio.",
+    heroTitle: "Considering a startup job?",
+    heroSub: "At Miton we love connecting with curious, smart people. Tell us what you would enjoy doing or what role you are drawn to.",
+    starters: ["I want to be a founder", "I'm looking for a startup job", "I'm interested in working at Miton", "Just mapping my options"],
     labels: { area: "Area", level: "Level", workMode: "Work", status: "Status" },
-    placeholder: "Type your message…",
+    placeholder: "Tell us what role you're looking for…",
     contactTitle: "Leave us your contact",
     name: "Name",
     email: "Email",
@@ -76,7 +81,7 @@ const T = {
     errFields: "Please fill in your email and confirm consent.",
     errConn: "Couldn't reach the server. Please send it again.",
     thanksTitle: "Thanks, we've got it!",
-    thanks: "We'll review it and get back to you by email. If something fits, we'll set up a short call. And even if we have nothing right now, we'll let you know.",
+    thanks: "We'll cast the net across our portfolio to see if there is something that could fit you, and we'll get in touch by email. If you need anything, write to our colleague Markéta Pařízek at marketa.parizek@miton.cz.",
   },
 };
 
@@ -105,7 +110,7 @@ export default function MitonTalentChat({
 }) {
   const initialLang = defaultLang === "en" ? "en" : "cs";
   const [lang, setLang] = useState(initialLang);
-  const [messages, setMessages] = useState([{ role: "assistant", content: GREETING[initialLang] }]);
+  const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -121,6 +126,8 @@ export default function MitonTalentChat({
   const scrollRef = useRef(null);
   const fileRef = useRef(null);
 
+  const hero = messages.length === 0 && !submitted;
+
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
   }, [messages, loading, stage, submitted]);
@@ -128,7 +135,7 @@ export default function MitonTalentChat({
   function switchLang(next) {
     if (next === lang) return;
     setLang(next);
-    setMessages([{ role: "assistant", content: GREETING[next] }]);
+    setMessages([]);
     setProfile({ area: "", level: "", workMode: "", status: "" });
     setSummary("");
     setStage("exploring");
@@ -140,8 +147,8 @@ export default function MitonTalentChat({
     setError("");
   }
 
-  async function send() {
-    const text = input.trim();
+  async function send(textOverride) {
+    const text = (textOverride != null ? textOverride : input).trim();
     if (!text || loading) return;
     const next = [...messages, { role: "user", content: text }];
     setMessages(next);
@@ -149,7 +156,7 @@ export default function MitonTalentChat({
     setLoading(true);
     setError("");
 
-    const payloadMessages = next.slice(1).map((m) => ({ role: m.role, content: m.content }));
+    const payloadMessages = next.map((m) => ({ role: m.role, content: m.content }));
 
     try {
       const res = await fetch(`${backendUrl}/chat`, {
@@ -239,121 +246,156 @@ export default function MitonTalentChat({
   ].filter((r) => r.value);
 
   const collectingContact = stage === "collect_contact" && !submitted;
-  const showChips = profileRows.length > 0 && !collectingContact && !submitted;
-  const showSubtitle = !showChips && !collectingContact && !submitted;
+  const showChips = profileRows.length > 0 && !collectingContact && !submitted && !hero;
 
   const S = styles;
   const canSend = !loading && input.trim().length > 0;
+
+  const composer = (
+    <div style={S.composerPill}>
+      <textarea
+        className="mtc-ta"
+        rows={hero ? 2 : 1}
+        value={input}
+        onChange={(e) => setInput(e.target.value)}
+        onKeyDown={onKey}
+        placeholder={t.placeholder}
+        style={S.textarea}
+        autoFocus={hero}
+      />
+      <button
+        onClick={() => send()}
+        disabled={!canSend}
+        style={{ ...S.sendBtn, opacity: canSend ? 1 : 0.4, cursor: canSend ? "pointer" : "default" }}
+        aria-label="Send"
+      >
+        <ArrowUp />
+      </button>
+    </div>
+  );
 
   return (
     <div style={{ ...S.root, height }}>
       <style>{CSS}</style>
       <div style={S.card}>
-        {/* Header */}
-        <div style={S.header}>
-          <div style={S.langWrap}>
-            <button onClick={() => switchLang("cs")} style={{ ...S.langBtn, ...(lang === "cs" ? S.langActive : S.langIdle) }}>CS</button>
-            <span style={S.langDot}>·</span>
-            <button onClick={() => switchLang("en")} style={{ ...S.langBtn, ...(lang === "en" ? S.langActive : S.langIdle) }}>EN</button>
-          </div>
-          {showSubtitle && <p style={S.subtitle}>{t.subtitle}</p>}
-          {showChips && (
-            <div style={S.chips}>
-              {profileRows.map((r) => (
+        {/* Top bar: profile chips left, language toggle right */}
+        <div style={{ ...S.topbar, borderBottom: hero ? "none" : `1px solid ${HAIRLINE}` }}>
+          <div style={S.chips}>
+            {showChips &&
+              profileRows.map((r) => (
                 <span key={r.key} style={S.chip}>
                   <span style={S.chipLabel}>{r.label}:&nbsp;</span>
                   <span style={S.chipValue}>{r.value}</span>
                 </span>
               ))}
-            </div>
-          )}
+          </div>
+          <div style={S.langWrap}>
+            <button onClick={() => switchLang("cs")} style={{ ...S.langBtn, ...(lang === "cs" ? S.langActive : S.langIdle) }}>CS</button>
+            <span style={S.langDot}>·</span>
+            <button onClick={() => switchLang("en")} style={{ ...S.langBtn, ...(lang === "en" ? S.langActive : S.langIdle) }}>EN</button>
+          </div>
         </div>
 
-        {/* Body */}
-        <div ref={scrollRef} className="mtc-scroll" style={submitted ? S.scrollCenter : S.scroll}>
-          {submitted ? (
-            <div style={S.thanksWrap}>
-              <div style={S.checkCircle}><CheckBig /></div>
-              <div style={S.thanksTitle}>{t.thanksTitle}</div>
-              <div style={S.thanksText}>{t.thanks}</div>
-            </div>
-          ) : (
-            <>
-              {messages.map((m, i) => (
-                <div key={i} style={m.role === "user" ? S.rowRight : S.rowLeft}>
-                  {m.role === "assistant" && <div style={S.avatar}>m</div>}
-                  <div style={m.role === "user" ? S.bubbleUser : S.bubbleAssistant}>{m.content}</div>
-                </div>
+        {/* Hero: centered logo, headline, composer, starter chips */}
+        {hero && (
+          <div style={S.hero}>
+            <img src={LOGO} alt="Miton" width={52} height={52} style={S.heroLogo} />
+            <div style={S.heroTitle}>{t.heroTitle}</div>
+            <p style={S.heroSub}>{t.heroSub}</p>
+            <div style={S.heroComposer}>{composer}</div>
+            <div style={S.starters}>
+              {t.starters.map((s) => (
+                <button key={s} style={S.starter} onClick={() => send(s)}>{s}</button>
               ))}
-
-              {loading && (
-                <div style={S.rowLeft}>
-                  <div style={S.avatar}>m</div>
-                  <div style={S.typing}>
-                    <span className="mtc-dot" style={{ ...S.dot, animationDelay: "0s" }} />
-                    <span className="mtc-dot" style={{ ...S.dot, animationDelay: ".2s" }} />
-                    <span className="mtc-dot" style={{ ...S.dot, animationDelay: ".4s" }} />
-                  </div>
-                </div>
-              )}
-
-              {collectingContact && (
-                <div style={S.formCard}>
-                  <div style={S.formTitle}>{t.contactTitle}</div>
-                  <input className="mtc-in" value={contact.name} onChange={(e) => setContact({ ...contact, name: e.target.value })} placeholder={t.name} style={S.input} />
-                  <input className="mtc-in" value={contact.email} onChange={(e) => setContact({ ...contact, email: e.target.value })} placeholder={t.email} style={S.input} />
-                  <input className="mtc-in" value={contact.linkedin} onChange={(e) => setContact({ ...contact, linkedin: e.target.value })} placeholder={t.linkedin} style={S.input} />
-                  <input className="mtc-in" value={contact.note} onChange={(e) => setContact({ ...contact, note: e.target.value })} placeholder={t.notePlaceholder} style={S.input} />
-
-                  <button onClick={() => fileRef.current && fileRef.current.click()} style={S.cvBox}>
-                    <UploadIcon />
-                    <span>{cvFile ? cvFile.name : t.cvLabel}</span>
-                  </button>
-                  <input ref={fileRef} type="file" accept=".pdf,.doc,.docx" style={{ display: "none" }} onChange={pickFile} />
-
-                  <div style={S.consentRow} onClick={() => setConsent(!consent)}>
-                    <div style={S.checkbox}>{consent && <CheckSmall />}</div>
-                    <div style={S.consentText}>
-                      {t.consent}{" "}
-                      <a href={PRIVACY_URL} target="_blank" rel="noopener noreferrer" className="mtc-a" onClick={(e) => e.stopPropagation()}>{t.privacy}</a>
-                    </div>
-                  </div>
-
-                  <button onClick={submitContact} style={S.submitBtn}>{t.submit}</button>
-                </div>
-              )}
-
-              {error && <p style={S.error}>{error}</p>}
-            </>
-          )}
-        </div>
-
-        {/* Composer */}
-        {!submitted && (
-          <div style={S.composerWrap}>
-            <div style={S.composerPill}>
-              <textarea
-                className="mtc-ta"
-                rows={1}
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={onKey}
-                placeholder={t.placeholder}
-                style={S.textarea}
-              />
-              <button
-                onClick={send}
-                disabled={!canSend}
-                style={{ ...S.sendBtn, opacity: canSend ? 1 : 0.4, cursor: canSend ? "pointer" : "default" }}
-                aria-label="Send"
-              >
-                <ArrowUp />
-              </button>
             </div>
+            {error && <p style={S.error}>{error}</p>}
           </div>
         )}
+
+        {/* Conversation */}
+        {!hero && (
+          <div ref={scrollRef} className="mtc-scroll" style={submitted ? S.scrollCenter : S.scroll}>
+            {submitted ? (
+              <div style={S.thanksWrap}>
+                <div style={S.checkCircle}><CheckBig /></div>
+                <div style={S.thanksTitle}>{t.thanksTitle}</div>
+                <div style={S.thanksText}>{t.thanks}</div>
+              </div>
+            ) : (
+              <>
+                {messages.map((m, i) =>
+                  m.role === "user" ? (
+                    <div key={i} style={S.rowRight}>
+                      <div style={S.bubbleUser}>{m.content}</div>
+                    </div>
+                  ) : (
+                    <div key={i} style={S.rowAssistant}>
+                      <img src={LOGO} alt="" width={26} height={26} style={S.avatar} />
+                      <div style={S.assistantText}>{m.content}</div>
+                    </div>
+                  )
+                )}
+
+                {loading && (
+                  <div style={S.rowAssistant}>
+                    <img src={LOGO} alt="" width={26} height={26} style={S.avatar} />
+                    <div style={S.typing}>
+                      <span className="mtc-dot" style={{ ...S.dot, animationDelay: "0s" }} />
+                      <span className="mtc-dot" style={{ ...S.dot, animationDelay: ".2s" }} />
+                      <span className="mtc-dot" style={{ ...S.dot, animationDelay: ".4s" }} />
+                    </div>
+                  </div>
+                )}
+
+                {collectingContact && (
+                  <div style={S.formCard}>
+                    <div style={S.formTitle}>{t.contactTitle}</div>
+                    <Field label={t.name} value={contact.name} onChange={(v) => setContact({ ...contact, name: v })} placeholder={t.name} />
+                    <Field label={t.email} value={contact.email} onChange={(v) => setContact({ ...contact, email: v })} placeholder={t.email} />
+                    <Field label={t.linkedin} value={contact.linkedin} onChange={(v) => setContact({ ...contact, linkedin: v })} placeholder={t.linkedin} />
+                    <Field label={t.notePlaceholder} value={contact.note} onChange={(v) => setContact({ ...contact, note: v })} placeholder={t.notePlaceholder} />
+
+                    <button onClick={() => fileRef.current && fileRef.current.click()} style={S.cvBox}>
+                      <UploadIcon />
+                      <span>{cvFile ? cvFile.name : t.cvLabel}</span>
+                    </button>
+                    <input ref={fileRef} type="file" accept=".pdf,.doc,.docx" style={{ display: "none" }} onChange={pickFile} />
+
+                    <div style={S.consentRow} onClick={() => setConsent(!consent)}>
+                      <div style={S.checkbox}>{consent && <CheckSmall />}</div>
+                      <div style={S.consentText}>
+                        {t.consent}{" "}
+                        <a href={PRIVACY_URL} target="_blank" rel="noopener noreferrer" className="mtc-a" onClick={(e) => e.stopPropagation()}>{t.privacy}</a>
+                      </div>
+                    </div>
+
+                    <button onClick={submitContact} style={S.submitBtn}>{t.submit}</button>
+                  </div>
+                )}
+
+                {error && <p style={S.error}>{error}</p>}
+              </>
+            )}
+          </div>
+        )}
+
+        {/* Docked composer (conversation mode only) */}
+        {!hero && !submitted && <div style={S.composerWrap}>{composer}</div>}
       </div>
     </div>
+  );
+}
+
+function Field({ label, value, onChange, placeholder }) {
+  return (
+    <input
+      className="mtc-in"
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      placeholder={placeholder}
+      aria-label={label}
+      style={styles.input}
+    />
   );
 }
 
@@ -406,34 +448,64 @@ const styles = {
     display: "flex",
     flexDirection: "column",
   },
-  header: { padding: "20px 22px 14px", borderBottom: `1px solid ${HAIRLINE}` },
-  langWrap: { display: "flex", alignItems: "center", gap: 10, fontSize: 12, fontWeight: 600 },
+
+  topbar: {
+    padding: "12px 18px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+    minHeight: 22,
+  },
+  langWrap: { display: "flex", alignItems: "center", gap: 10, fontSize: 12, fontWeight: 600, flex: "none" },
   langBtn: { padding: 0, background: "transparent", border: "none", cursor: "pointer", fontSize: 12, fontWeight: 600, fontFamily: "inherit" },
   langActive: { color: ACCENT },
   langIdle: { color: MUTED, fontWeight: 500 },
   langDot: { color: DOT_SEP },
-  subtitle: { color: MUTED, fontSize: 13, lineHeight: 1.4, margin: "10px 0 0" },
-  chips: { marginTop: 12, display: "flex", flexWrap: "wrap", gap: 8 },
-  chip: { display: "inline-flex", fontSize: 12, background: BUBBLE_U, padding: "5px 11px", borderRadius: 999 },
+  chips: { display: "flex", flexWrap: "wrap", gap: 8, minHeight: 1 },
+  chip: { display: "inline-flex", fontSize: 12, background: CHIP_BG, padding: "5px 11px", borderRadius: 999 },
   chipLabel: { color: ACCENT, opacity: 0.62 },
   chipValue: { color: ACCENT, fontWeight: 600 },
-  scroll: { flex: 1, overflowY: "auto", padding: "20px 22px", display: "flex", flexDirection: "column", gap: 14 },
+
+  // hero (empty state)
+  hero: {
+    flex: 1,
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    justifyContent: "center",
+    textAlign: "center",
+    padding: "12px 24px 40px",
+    gap: 0,
+  },
+  heroLogo: { display: "block", marginBottom: 18 },
+  heroTitle: { fontSize: 26, fontWeight: 600, letterSpacing: "-0.02em", lineHeight: 1.2 },
+  heroSub: { color: MUTED, fontSize: 14, lineHeight: 1.55, maxWidth: 420, margin: "10px 0 24px" },
+  heroComposer: { width: "100%", maxWidth: 560 },
+  starters: { display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 8, marginTop: 14 },
+  starter: {
+    fontSize: 13,
+    color: INK,
+    background: "#fff",
+    border: `1px solid ${INPUT_BORDER}`,
+    borderRadius: 999,
+    padding: "7px 14px",
+    cursor: "pointer",
+    fontFamily: "inherit",
+  },
+
+  // conversation
+  scroll: { flex: 1, overflowY: "auto", padding: "20px 22px", display: "flex", flexDirection: "column", gap: 18, maxWidth: 640, width: "100%", margin: "0 auto", boxSizing: "border-box" },
   scrollCenter: { flex: 1, overflowY: "auto", padding: "22px", display: "flex", flexDirection: "column" },
-  rowLeft: { display: "flex", justifyContent: "flex-start", alignItems: "flex-end", gap: 10 },
+  rowAssistant: { display: "flex", justifyContent: "flex-start", alignItems: "flex-start", gap: 10 },
   rowRight: { display: "flex", justifyContent: "flex-end" },
-  avatar: {
-    flex: "0 0 auto", width: 28, height: 28, borderRadius: "50%", background: ACCENT, color: "#fff",
-    fontSize: 13, fontWeight: 600, display: "flex", alignItems: "center", justifyContent: "center", lineHeight: 1,
-  },
-  bubbleAssistant: {
-    maxWidth: "82%", padding: "12px 14px", borderRadius: 16, borderBottomLeftRadius: 6,
-    background: BUBBLE_A, color: INK, fontSize: 14, lineHeight: 1.5, whiteSpace: "pre-wrap",
-  },
+  avatar: { flex: "0 0 auto", display: "block", marginTop: 1 },
+  assistantText: { fontSize: 14.5, lineHeight: 1.6, whiteSpace: "pre-wrap", color: INK, paddingTop: 2 },
   bubbleUser: {
-    maxWidth: "82%", padding: "12px 14px", borderRadius: 16, borderBottomRightRadius: 6,
+    maxWidth: "78%", padding: "10px 14px", borderRadius: 16, borderBottomRightRadius: 6,
     background: BUBBLE_U, color: INK, fontSize: 14, lineHeight: 1.5, whiteSpace: "pre-wrap",
   },
-  typing: { background: BUBBLE_A, borderRadius: 16, borderBottomLeftRadius: 6, padding: "15px 16px", display: "flex", gap: 5, alignItems: "center" },
+  typing: { padding: "8px 2px", display: "flex", gap: 5, alignItems: "center" },
   dot: { width: 7, height: 7, borderRadius: "50%", background: MUTED, display: "inline-block" },
 
   // contact card
@@ -450,22 +522,28 @@ const styles = {
   thanksWrap: { flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", gap: 16, padding: "24px 8px" },
   checkCircle: { width: 52, height: 52, borderRadius: "50%", background: BUBBLE_U, display: "flex", alignItems: "center", justifyContent: "center" },
   thanksTitle: { fontSize: 18, fontWeight: 600 },
-  thanksText: { fontSize: 14, color: MUTED, lineHeight: 1.55, maxWidth: 320 },
+  thanksText: { fontSize: 14, color: MUTED, lineHeight: 1.55, maxWidth: 360 },
 
-  error: { fontSize: 12, color: ACCENT, margin: 0 },
+  error: { fontSize: 12, color: ACCENT, margin: "10px 0 0" },
 
   // composer
-  composerWrap: { padding: "14px 18px 18px", borderTop: `1px solid ${HAIRLINE}` },
+  composerWrap: { padding: "14px 18px 18px", maxWidth: 640, width: "100%", margin: "0 auto", boxSizing: "border-box" },
   composerPill: {
-    display: "flex", alignItems: "flex-end", gap: 10,
-    background: FIELD_BG, border: `1px solid ${COMPOSER_BORDER}`, borderRadius: 12, padding: "11px 11px 11px 14px",
+    display: "flex",
+    alignItems: "flex-end",
+    gap: 10,
+    background: FIELD_BG,
+    border: `1px solid ${COMPOSER_BORDER}`,
+    borderRadius: 18,
+    padding: "12px 12px 12px 16px",
+    boxShadow: "0 2px 10px -6px rgba(22,24,29,0.12)",
   },
   textarea: {
     flex: 1, resize: "none", fontSize: 14, lineHeight: 1.5, border: "none", background: "transparent",
     outline: "none", maxHeight: 120, fontFamily: "inherit", color: INK, padding: 0, margin: 0,
   },
   sendBtn: {
-    flex: "0 0 auto", width: 36, height: 36, borderRadius: "50%", background: ACCENT, border: "none",
+    flex: "0 0 auto", width: 34, height: 34, borderRadius: "50%", background: ACCENT, border: "none",
     display: "flex", alignItems: "center", justifyContent: "center",
   },
 };

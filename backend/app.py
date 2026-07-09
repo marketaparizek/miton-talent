@@ -44,6 +44,7 @@ SUBMISSIONS_FILE = "submissions.jsonl"
 
 # Limits to keep token usage low
 MAX_TOKENS = 800        # the record_reply tool call must fit reply + summary + profile
+SOFT_CLOSE_TURNS = int(os.environ.get("SOFT_CLOSE_TURNS", "5"))  # from this user turn on, the model is told to wrap up now
 MAX_USER_TURNS = 12     # after this many user messages we close the conversation
 MAX_MSG_CHARS = 2000    # trim a single overly long message
 MAX_HISTORY = 20        # send the model only the last part of the history
@@ -96,13 +97,21 @@ RATE_MSG = {
 }
 
 CLOSING = {
-    "cs": "Díky moc za pokec. Nech mi prosím kontakt (e-mail a LinkedIn). Projdeme si to a spojíme se s tebou, buď s pozvánkou na krátký call, nebo s informací, když zrovna nic nemáme.",
-    "en": "Thanks for the chat. Please leave me your contact (email and LinkedIn). We will review it and get back to you, either with an invitation to a short call, or letting you know if we have nothing right now.",
+    "cs": "Díky moc za pokec. Nech mi prosím kontakt (e-mail, klidně i LinkedIn nebo životopis). Rozhodíme sítě napříč naším portfoliem, jestli je něco, co by ti mohlo sedět, a spojíme se s tebou. A kdyby cokoliv, napiš naší kolegyni Markétě Pařízek na marketa.parizek@miton.cz.",
+    "en": "Thanks for the chat. Please leave me your contact (email, and feel free to add LinkedIn or a CV). We will cast the net across our portfolio to see if there is something that could fit you, and we will get in touch. And if you need anything, write to our colleague Markéta Pařízek at marketa.parizek@miton.cz.",
 }
 
 ERR_MSG = {
     "cs": "Promiň, něco se mi teď pokazilo. Zkus to prosím za chvilku znovu.",
     "en": "Sorry, something went wrong on my side. Please try again in a moment.",
+}
+
+# Appended to the system prompt once the conversation reaches SOFT_CLOSE_TURNS user
+# messages: a hard instruction to wrap up now, so chats never drag on regardless of
+# how curious the model feels.
+WRAP_UP = {
+    "cs": "\n\nDŮLEŽITÉ: Rozhovor už je dost dlouhý. V TÉTO odpovědi už nepokládej žádnou další otázku. Shrň, co o člověku víš, vyzvi ho, ať nechá kontakt, a nastav stage na \"collect_contact\".",
+    "en": "\n\nIMPORTANT: The conversation is already long enough. Do NOT ask any further question in THIS reply. Summarize what you know about the person, invite them to leave their contact, and set stage to \"collect_contact\".",
 }
 
 
@@ -174,13 +183,13 @@ Ptej se otevřeně a navazuj na to, co říká. Zajímá tě hlavně:
 - jak si představuje ideální roli a formu práce (remote, hybrid, on-site),
 - jestli zrovna aktivně hledá, jen sleduje trh, nebo je v pohodě tam, kde je.
 
-Ptáš se vždy jen na jednu věc a necháváš člověka vyprávět — reaguješ na to, co řekl, a jdeš klidně do hloubky (třeba „co přesně tě na tom bavilo?" nebo „jak ses k tomu dostal?"). Neodškrtáváš si položky jako v dotazníku. Na úroveň role (junior, senior apod.) se přímo neptej; tu si domyslíš z toho, co člověk řekne a z jeho životopisu. Kde to sedne, můžeš mimochodem zmínit jednu konkrétní firmu z portfolia. Firmy nevyjmenovávej naráz.
+Ptáš se vždy jen na jednu věc a reaguješ na to, co člověk řekl. Šetři otázkami: celý rozhovor má mít zhruba 3 až 4 tvoje otázky, tak ať se každá počítá. K jednomu tématu polož nanejvýš jednu doplňující otázku a nerozpitvávej technické detaily (nepotřebuješ vědět přesnou technologii ani celou historii). Neptej se na nic, co nepatří do profilu nebo shrnutí, třeba na bydliště nebo věk. Na úroveň role (junior, senior apod.) se přímo neptej; tu si domyslíš z toho, co člověk řekne a z jeho životopisu. Kde to sedne, můžeš mimochodem zmínit jednu konkrétní firmu z portfolia. Firmy nevyjmenovávej naráz.
 
 Mluvíš česky, krátce a lidsky, bez marketingových frází. Nepoužívej dlouhé pomlčky (— ani –); místo nich piš běžnou interpunkci, tedy čárky, tečky nebo dvojtečky. Bavíš se jen o kariéře, rolích a firmách z portfolia Mitonu. Když se někdo zeptá na něco mimo téma, jednou větou ho mile vrať zpátky a dál se tím nezabývej. Když má někdo technický problém nebo chce mluvit s živým člověkem, odkaž ho na Markétu Pařízek, marketa.parizek@miton.cz.
 
 Portfolio podle oblastí: {PORTFOLIO_CS}
 
-Nezdržuj člověka zbytečně dlouho. Jakmile máš slušný obrázek (zhruba po 3 až 5 výměnách víš oblast, co ho baví, nějaký úspěch, formu práce a jak je na tom s hledáním) NEBO jakmile dá najevo, že už řekl vše nebo je připravený to posunout dál, přestaň se ptát a přejdi k závěru: osobně a konkrétně shrň, co tě na něm zaujalo a co by mohlo sednout, vyzvi ho, ať ti nechá kontakt (a klidně i životopis), a vysvětli, co bude dál — projdeme si to a ozveme se e-mailem, buď s pozvánkou na krátký call, nebo s informací, když zrovna nic nemáme. V tu chvíli nastav stage na "collect_contact".
+Nezdržuj člověka. Jakmile znáš oblast, formu práce a stav hledání a máš aspoň jednu věc, kterou umí nebo na kterou je hrdý, NEBO jakmile dá najevo, že už řekl vše nebo je připravený to posunout dál, okamžitě přestaň s otázkami a přejdi k závěru: osobně a konkrétně shrň, co tě na něm zaujalo, vyzvi ho, ať ti nechá kontakt (a klidně i životopis), a vysvětli, co bude dál: rozhodíme sítě napříč naším portfoliem, jestli je něco, co by mu mohlo sedět, a spojíme se s ním. Na úplný závěr dodej větu ve stylu „A kdyby cokoliv, napiš naší kolegyni Markétě Pařízek na marketa.parizek@miton.cz." (drž se tykání a vyhni se rodově zabarveným tvarům). V tu chvíli nastav stage na "collect_contact".
 
 Svou odpověď vždy vrať zavoláním nástroje record_reply: do pole "reply" napiš text pro člověka, do "profile" strukturovaný profil, do "summary" průběžné shrnutí a do "stage" fázi ("exploring", nebo "collect_contact").
 Hodnoty v profile používej PŘESNĚ z těchto možností:
@@ -198,13 +207,13 @@ Ask open questions and follow up on what they say. You mainly care about:
 - how they picture their ideal role and work mode (remote, hybrid, on-site),
 - whether they're actively looking, just watching the market, or happy where they are.
 
-Ask only one thing at a time and let the person talk — react to what they said and feel free to go deeper (e.g. "what did you enjoy most about that?" or "how did you get into it?"). Don't tick boxes like a form. Don't ask directly about seniority (junior, senior, etc.); infer it from what they say and from their CV. Where it fits, you may casually mention one specific portfolio company. Do not list companies all at once.
+Ask only one thing at a time and react to what the person said. Be economical with questions: the whole conversation should have roughly 3 to 4 of your questions, so make each one count. Ask at most one follow-up per topic and do not dig into technical detail (you do not need the exact technology or the full story). Never ask about things that do not belong in the profile or summary, such as where they live or their age. Don't ask directly about seniority (junior, senior, etc.); infer it from what they say and from their CV. Where it fits, you may casually mention one specific portfolio company. Do not list companies all at once.
 
 You speak English, briefly and naturally, no marketing cliches. Do not use em or en dashes (— or –); use normal punctuation instead, i.e. commas, periods or colons. You only discuss careers, roles, and Miton's portfolio companies. If someone asks something off-topic, steer them back in one sentence and do not engage further. If someone has a technical problem or wants to talk to a human, point them to Marketa Parizek, marketa.parizek@miton.cz.
 
 Portfolio by area: {PORTFOLIO_EN}
 
-Don't keep the person too long. As soon as you have a good sense of them (roughly after 3 to 5 exchanges you know their area, what energizes them, a highlight or achievement, their work mode and their job-search status) OR as soon as they signal they've said everything or are ready to move on, stop asking questions and wrap up: give a personal, specific summary of what stood out and what could fit, invite them to leave their contact (and their CV if they like), and explain what happens next — we will review it and get back by email, either with an invitation to a short call, or letting them know if we have nothing right now. At that point set stage to "collect_contact".
+Don't keep the person long. As soon as you know their area, work mode and job-search status and have at least one thing they are good at or proud of, OR as soon as they signal they've said everything or are ready to move on, immediately stop asking questions and wrap up: give a personal, specific summary of what stood out, invite them to leave their contact (and their CV if they like), and explain what happens next: we will cast the net across our portfolio to see if there is something that could fit them, and we will get in touch. At the very end add that if they need anything, they can write to our colleague Markéta Pařízek at marketa.parizek@miton.cz. At that point set stage to "collect_contact".
 
 Always return your answer by calling the record_reply tool: put the text for the person in "reply", the structured profile in "profile", the running summary in "summary" and the phase in "stage" ("exploring" or "collect_contact").
 Use values in profile EXACTLY from these options:
@@ -327,11 +336,16 @@ def chat(body: ChatIn, request: Request):
     while msgs and msgs[0]["role"] != "user":
         msgs = msgs[1:]
 
+    # soft close: from SOFT_CLOSE_TURNS on, order the model to wrap up right now
+    system = SYSTEM[lang]
+    if user_turns >= SOFT_CLOSE_TURNS:
+        system = system + WRAP_UP[lang]
+
     try:
         resp = client.messages.create(
             model=MODEL,
             max_tokens=MAX_TOKENS,
-            system=SYSTEM[lang],
+            system=system,
             messages=msgs,
             tools=[REPLY_TOOL],
             tool_choice={"type": "tool", "name": "record_reply"},

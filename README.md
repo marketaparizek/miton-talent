@@ -39,7 +39,10 @@ the CV email is skipped (everything else still works).
 
 1. https://www.notion.so/my-integrations, create an internal integration, copy the token (`ntn_...`).
 2. Open the "Hledáme chytré lidi" database, then (...) -> Connections -> add the integration.
-3. The database id is pre-filled in `.env.example`.
+3. **Rename the text column `Notes` to `Summary`** (keep the type "Text"). The backend
+   writes the AI-generated candidate summary there. If the column is still called
+   `Notes`, the row is created without the summary and a warning is logged.
+4. The database id is pre-filled in `.env.example`.
 
 The chat only writes values that already exist in the Notion options, so it never
 creates new options.
@@ -70,10 +73,20 @@ npm run build     # produces dist/miton-talent-chat.js
 ## Before go-live
 
 - [ ] Deploy the backend and set its URL on the embed div (`data-backend`).
-- [ ] `ALLOWED_ORIGINS` restricted to the Miton domains (default already does this).
+- [ ] `ALLOWED_ORIGINS` restricted to the Miton domains (default already does this;
+      make sure no localhost value from local development leaks into production).
+- [ ] Rename the `Notes` column to `Summary` in the Notion database (see above).
 - [ ] Confirm the privacy policy URL and legal entity name in the consent text
       (`PRIVACY_URL` in `frontend/src/MitonTalentChat.jsx`). Legal review recommended.
 - [ ] Set the recruiter inbox (`MAIL_TO`) and SMTP credentials for CV delivery.
+- [ ] Optionally tune the per-IP rate limits (`CHAT_RATE_LIMIT` etc., see `.env.example`).
+
+## How replies stay well-formed
+
+The model returns its answer through a forced tool call (`record_reply`), so the
+reply text, extracted profile, running summary and conversation stage arrive as a
+validated object. Raw JSON can never leak into the chat bubble, and profile values
+are constrained to the exact Notion option strings.
 
 ## Support
 

@@ -46,10 +46,17 @@ Email / CV delivery (using Resend over SMTP):
 Optional:
 - `MODEL` — the Claude model, defaults to `claude-sonnet-4-6`. Change here if you
   ever need a different model; no code edit required.
+- `CHAT_RATE_LIMIT` / `CHAT_RATE_WINDOW` — per-IP chat limit, default 30 messages
+  per 600 s. `SUBMIT_RATE_LIMIT` / `SUBMIT_RATE_WINDOW` — per-IP form limit,
+  default 5 submissions per 600 s. Protects against spam burning API tokens.
 
 Notes on graceful degradation: without `NOTION_TOKEN` the backend stores
 submissions in a local `submissions.jsonl` only. Without the SMTP variables the
 CV email is skipped. Everything else still works in both cases.
+
+One-time Notion step (Markéta): in the "Hledáme chytré lidi" database, rename the
+text column `Notes` to `Summary`. The backend writes the AI candidate summary
+there; until renamed, rows are created without the summary (a warning is logged).
 
 ### Secrets
 

@@ -110,6 +110,7 @@ export default function MitonTalentChat({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [profile, setProfile] = useState({ area: "", level: "", workMode: "", status: "" });
+  const [summary, setSummary] = useState("");
   const [stage, setStage] = useState("exploring");
   const [contact, setContact] = useState({ name: "", email: "", linkedin: "", note: "" });
   const [cvFile, setCvFile] = useState(null); // { name, type, data }
@@ -129,6 +130,7 @@ export default function MitonTalentChat({
     setLang(next);
     setMessages([{ role: "assistant", content: GREETING[next] }]);
     setProfile({ area: "", level: "", workMode: "", status: "" });
+    setSummary("");
     setStage("exploring");
     setContact({ name: "", email: "", linkedin: "", note: "" });
     setCvFile(null);
@@ -167,6 +169,8 @@ export default function MitonTalentChat({
         workMode: asText(p.workMode) || prev.workMode,
         status: asText(p.status) || prev.status,
       }));
+
+      if (typeof data.summary === "string" && data.summary.trim()) setSummary(data.summary);
 
       if (data.stage === "collect_contact") setStage("collect_contact");
     } catch {
@@ -214,6 +218,7 @@ export default function MitonTalentChat({
         body: JSON.stringify({
           lang,
           profile,
+          summary,
           contact,
           consent,
           consent_text: t.consent,

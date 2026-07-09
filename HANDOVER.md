@@ -68,7 +68,36 @@ onetimesecret.com link (one-time, self-deleting), never in this repo or by plain
 email. If Markéta deploys the backend herself, she sets them directly on the host
 and you do not need them at all.
 
-## Part 2: build and embed the widget
+## Part 2: embed on the site
+
+### Option A (recommended): iframe, one URL
+
+The backend serves the whole widget page itself at `/`. The site only needs:
+
+```html
+<iframe
+  src="https://YOUR-BACKEND-URL"
+  title="Miton talent"
+  style="width:100%;max-width:720px;height:720px;border:0;"
+  loading="lazy"
+></iframe>
+```
+
+- English version: `src="https://YOUR-BACKEND-URL/?lang=en"`.
+- No CORS setup, no files to host, nothing to rebuild on the site. New versions
+  go live by redeploying the backend.
+- The embedded page is `backend/static/embed.html`; the widget bundle is served
+  from `backend/static/miton-talent-chat.js`. After changing the frontend, rebuild
+  and refresh the copy:
+
+```
+cd frontend && npm run build && cp dist/miton-talent-chat.js ../backend/static/
+```
+
+### Option B: native widget embed (no iframe)
+
+Build the bundle and drop it on the page; the widget then blends into the site's
+layout (no iframe border constraints):
 
 ```
 cd frontend
@@ -77,9 +106,6 @@ npm run build
 ```
 
 Output: `frontend/dist/miton-talent-chat.js` (one file, React bundled in).
-
-Add a container div and the script to the page. The widget mounts into the div
-and fills it.
 
 ```html
 <div
@@ -92,9 +118,9 @@ and fills it.
 ```
 
 Notes:
-- `data-backend` is required (or set `VITE_BACKEND_URL` before building).
-- Size and position come from the div. Set the height and width you want.
-- Only one widget per page (the id must be unique).
+- `data-backend` is required here (or set `VITE_BACKEND_URL` before building);
+  with this option, `ALLOWED_ORIGINS` on the backend must include the site's domain.
+- Size and position come from the div. Only one widget per page.
 
 ### If the site already uses React
 

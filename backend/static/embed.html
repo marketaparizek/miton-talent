@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="cs">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Miton talent</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    html, body { height: 100%; margin: 0; background: transparent; }
+    #miton-talent-chat { height: 100%; }
+  </style>
+</head>
+<body>
+  <!-- Served by the FastAPI backend at "/", embedded on miton.cz via <iframe>.
+       data-backend="" = same origin, so the widget calls /chat and /submit
+       on this very server and no CORS is involved. -->
+  <div id="miton-talent-chat" data-backend="" data-lang="cs" data-height="100%"></div>
+  <script>
+    // Optional language via the iframe URL: .../?lang=en
+    (function () {
+      var lang = new URLSearchParams(location.search).get("lang");
+      if (lang === "en") document.getElementById("miton-talent-chat").dataset.lang = "en";
+    })();
+  </script>
+  <script src="/widget.js"></script>
+</body>
+</html>

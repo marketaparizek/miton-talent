@@ -18,7 +18,11 @@ import MitonTalentChat from "./MitonTalentChat.jsx";
 function mount() {
   const el = document.getElementById("miton-talent-chat");
   if (!el) return;
-  const backendUrl = el.dataset.backend || import.meta.env.VITE_BACKEND_URL || "http://localhost:8000";
+  // data-backend="" is meaningful: it means same-origin (the page is served by the
+  // backend itself, as in the iframe embed). Only fall back when the attr is absent.
+  const backendUrl = el.dataset.backend != null
+    ? el.dataset.backend
+    : (import.meta.env.VITE_BACKEND_URL || "http://localhost:8000");
   const defaultLang = el.dataset.lang || "cs";
   const height = el.dataset.height || el.style.height || "600px";
   createRoot(el).render(

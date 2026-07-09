@@ -32,8 +32,12 @@ from typing import List, Optional
 import httpx
 from fastapi import FastAPI, Request, BackgroundTasks, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel
 from anthropic import Anthropic
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+STATIC_DIR = os.path.join(HERE, "static")
 
 # Log failures loudly (Notion, SMTP, model). Never log personal data or message contents.
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
@@ -290,6 +294,27 @@ app.add_middleware(
 @app.get("/health")
 def health():
     return {"ok": True}
+
+
+# --- Iframe embed -------------------------------------------------------------
+# The backend serves the widget page itself, so the website only needs ONE URL:
+#   <iframe src="https://YOUR-BACKEND-URL" ...></iframe>
+# The page calls /chat and /submit same-origin, so no CORS is involved.
+
+@app.get("/")
+def embed_page():
+    page = os.path.join(STATIC_DIR, "embed.html")
+    if os.path.exists(page):
+        return FileResponse(page, media_type="text/html")
+    return JSONResponse({"ok": True, "note": "embed page not found, API only"})
+
+
+@app.get("/widget.js")
+def widget_js():
+    bundle = os.path.join(STATIC_DIR, "miton-talent-chat.js")
+    if os.path.exists(bundle):
+        return FileResponse(bundle, media_type="application/javascript")
+    return JSONResponse({"error": "widget bundle not found"}, status_code=404)
 
 
 def _parse_model_json(raw: str, lang: str) -> dict:

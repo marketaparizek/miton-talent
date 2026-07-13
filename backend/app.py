@@ -296,6 +296,50 @@ def health():
     return {"ok": True}
 
 
+@app.get("/diag")
+def diag():
+    """Config self-check for operations. Reports only booleans and status codes,
+    never secret values, so it is safe to expose."""
+    out = {
+        "anthropic_key_set": bool(os.environ.get("ANTHROPIC_API_KEY")),
+        "model": MODEL,
+        "notion_token_set": bool(NOTION_TOKEN),
+        "smtp_pass_set": bool(SMTP_PASS),
+        "smtp_user_set": bool(SMTP_USER),
+        "mail_from": bool(MAIL_FROM),
+        "mail_to": bool(MAIL_TO),
+    }
+    if NOTION_TOKEN:
+        try:
+            r = httpx.get(
+                f"https://api.notion.com/v1/databases/{NOTION_DATABASE_ID}",
+                headers={"Authorization": f"Bearer {NOTION_TOKEN}", "Notion-Version": NOTION_VERSION},
+                timeout=10,
+            )
+            out["notion_api_status"] = r.status_code
+            if r.status_code == 401:
+                out["notion_hint"] = "token je neplatny (preklep / stary klic)"
+            elif r.status_code == 404:
+                out["notion_hint"] = "token plati, ale integrace neni pripojena k databazi (Notion: ... > Connections) nebo je spatne NOTION_DATABASE_ID"
+            elif r.status_code < 300:
+                out["notion_hint"] = "ok"
+            else:
+                out["notion_hint"] = "necekany stav"
+        except Exception as e:
+            out["notion_api_status"] = "error"
+            out["notion_hint"] = type(e).__name__
+    if SMTP_HOST and SMTP_USER and SMTP_PASS:
+        try:
+            ctx = ssl.create_default_context()
+            with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=10) as server:
+                server.starttls(context=ctx)
+                server.login(SMTP_USER, SMTP_PASS)
+            out["smtp_login"] = "ok"
+        except Exception as e:
+            out["smtp_login"] = f"failed: {type(e).__name__}"
+    return out
+
+
 # --- Iframe embed -------------------------------------------------------------
 # The backend serves the widget page itself, so the website only needs ONE URL:
 #   <iframe src="https://YOUR-BACKEND-URL" ...></iframe>

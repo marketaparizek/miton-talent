@@ -296,6 +296,15 @@ app.add_middleware(
 )
 
 
+@app.middleware("http")
+async def frame_ancestors_header(request: Request, call_next):
+    # The embed page may only be iframed from the Miton domains (and same origin).
+    # Prevents anyone else from embedding the chat on their site and burning tokens.
+    response = await call_next(request)
+    response.headers["Content-Security-Policy"] = "frame-ancestors 'self' " + " ".join(ALLOWED_ORIGINS)
+    return response
+
+
 @app.get("/health")
 def health():
     return {"ok": True}

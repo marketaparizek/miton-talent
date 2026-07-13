@@ -149,6 +149,11 @@ SMTP_PASS = os.environ.get("SMTP_PASS", "")
 MAIL_FROM = os.environ.get("MAIL_FROM", SMTP_USER)
 MAIL_TO = os.environ.get("MAIL_TO", "marketa.parizek@miton.cz")
 
+# Some PaaS providers (Railway trial among them) block outbound SMTP ports entirely.
+# When the configured secret is a Resend API key (re_...), deliver over Resend's
+# HTTPS API on port 443 instead of SMTP. RESEND_API_KEY can also be set explicitly.
+RESEND_API_KEY = os.environ.get("RESEND_API_KEY", "") or (SMTP_PASS if SMTP_PASS.startswith("re_") else "")
+
 # Allowed values so we match existing Notion options and never create new ones.
 # These strings must match the Notion schema exactly, including diacritics.
 ALLOWED_AREA = ["Marketing", "Software engineering", "Accounting & Finance", "People & HR",
@@ -328,7 +333,20 @@ def diag():
         except Exception as e:
             out["notion_api_status"] = "error"
             out["notion_hint"] = type(e).__name__
-    if SMTP_HOST and SMTP_USER and SMTP_PASS:
+    out["resend_key_set"] = bool(RESEND_API_KEY)
+    if RESEND_API_KEY:
+        try:
+            r = httpx.get(
+                "https://api.resend.com/domains",
+                headers={"Authorization": f"Bearer {RESEND_API_KEY}"},
+                timeout=10,
+            )
+            out["resend_api_status"] = r.status_code
+            out["resend_hint"] = "ok" if r.status_code < 300 else ("neplatny klic" if r.status_code == 401 else "necekany stav")
+        except Exception as e:
+            out["resend_api_status"] = "error"
+            out["resend_hint"] = type(e).__name__
+    elif SMTP_HOST and SMTP_USER and SMTP_PASS:
         try:
             ctx = ssl.create_default_context()
             with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=10) as server:
@@ -521,9 +539,37 @@ def _decode_cv(cv: Optional[CVIn]):
     return (cv.name or "cv"), blob, (cv.type or "application/octet-stream")
 
 
+def _send_via_resend(subject, body_text, reply_to, filename, blob) -> bool:
+    """Deliver the email through Resend's HTTPS API (works where SMTP ports are blocked)."""
+    payload = {
+        "from": f"Miton talent <{MAIL_FROM}>",
+        "to": [MAIL_TO],
+        "subject": subject,
+        "text": body_text,
+    }
+    if reply_to:
+        payload["reply_to"] = reply_to
+    if blob:
+        payload["attachments"] = [{"filename": filename or "cv", "content": base64.b64encode(blob).decode()}]
+    try:
+        r = httpx.post(
+            "https://api.resend.com/emails",
+            headers={"Authorization": f"Bearer {RESEND_API_KEY}", "Content-Type": "application/json"},
+            json=payload,
+            timeout=20,
+        )
+        if r.status_code < 300:
+            return True
+        log.error("Resend API failed (%s): %s", r.status_code, r.text[:300])
+        return False
+    except Exception:
+        log.exception("Resend API raised")
+        return False
+
+
 def _send_cv_email(profile, contact, cv: Optional[CVIn], summary, lang) -> bool:
     """Email the submission to the recruiter inbox with the CV attached. In-memory only."""
-    if not (SMTP_HOST and SMTP_USER and SMTP_PASS and MAIL_TO and MAIL_FROM):
+    if not RESEND_API_KEY and not (SMTP_HOST and SMTP_USER and SMTP_PASS and MAIL_TO and MAIL_FROM):
         return False
 
     summary = (summary or "").strip()
@@ -564,6 +610,11 @@ def _send_cv_email(profile, contact, cv: Optional[CVIn], summary, lang) -> bool:
     if summary:
         lines = [f"Shrnutí: {summary}" if lang == "cs" else f"Summary: {summary}", ""] + lines
 
+    body_text = "\n".join(str(x) for x in lines)
+
+    if RESEND_API_KEY:
+        return _send_via_resend(subject, body_text, _hdr(contact.get("email")), filename, blob)
+
     msg = EmailMessage()
     msg["Subject"] = subject
     msg["From"] = MAIL_FROM
@@ -571,7 +622,7 @@ def _send_cv_email(profile, contact, cv: Optional[CVIn], summary, lang) -> bool:
     reply_to = _hdr(contact.get("email"))
     if reply_to:
         msg["Reply-To"] = reply_to
-    msg.set_content("\n".join(str(x) for x in lines))
+    msg.set_content(body_text)
 
     if blob:
         maintype, _, subtype = (mime or "application/octet-stream").partition("/")

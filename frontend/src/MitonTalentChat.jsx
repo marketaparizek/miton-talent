@@ -36,7 +36,9 @@ const INPUT_BORDER = "rgba(22,24,29,0.12)";
 const DASH_BORDER = "rgba(22,24,29,0.18)";
 const DOT_SEP = "#C9C6C6";
 
-const PRIVACY_URL = "https://www.miton.cz/zasady-zpracovani-osobnich-udaju"; // TODO: confirm final URL
+// No privacy policy page exists on miton.cz yet (checked July 2026). Once legal
+// publishes one, put its URL here and the link renders again automatically.
+const PRIVACY_URL = "";
 
 const MAX_CV_MB = 8;
 
@@ -364,8 +366,13 @@ export default function MitonTalentChat({
                     <div style={S.consentRow} onClick={() => setConsent(!consent)}>
                       <div style={S.checkbox}>{consent && <CheckSmall />}</div>
                       <div style={S.consentText}>
-                        {t.consent}{" "}
-                        <a href={PRIVACY_URL} target="_blank" rel="noopener noreferrer" className="mtc-a" onClick={(e) => e.stopPropagation()}>{t.privacy}</a>
+                        {t.consent}
+                        {PRIVACY_URL && (
+                          <>
+                            {" "}
+                            <a href={PRIVACY_URL} target="_blank" rel="noopener noreferrer" className="mtc-a" onClick={(e) => e.stopPropagation()}>{t.privacy}</a>
+                          </>
+                        )}
                       </div>
                     </div>
 

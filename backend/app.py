@@ -284,6 +284,7 @@ class SubmitIn(BaseModel):
     consent: bool = False
     consent_text: str = ""
     cv: Optional[CVIn] = None
+    messages: List[Msg] = []  # chat transcript, stored in the Notion page body
 
 
 app = FastAPI()
@@ -386,6 +387,18 @@ def widget_js():
     if os.path.exists(bundle):
         return FileResponse(bundle, media_type="application/javascript")
     return JSONResponse({"error": "widget bundle not found"}, status_code=404)
+
+
+@app.get("/fonts/{name}")
+def font_file(name: str):
+    # Serve the Miton brand font (DegularDisplay) next to the widget, because the
+    # site's font files have no CORS headers and cannot be loaded cross-origin.
+    if "/" in name or ".." in name or not name.endswith(".woff2"):
+        raise HTTPException(status_code=404)
+    path = os.path.join(STATIC_DIR, "fonts", name)
+    if os.path.exists(path):
+        return FileResponse(path, media_type="font/woff2")
+    raise HTTPException(status_code=404)
 
 
 def _parse_model_json(raw: str, lang: str) -> dict:
@@ -649,7 +662,10 @@ def _send_cv_email(profile, contact, cv: Optional[CVIn], summary, lang) -> bool:
         return False
 
 
-def _post_notion(props: dict):
+def _post_notion(props: dict, children=None):
+    payload = {"parent": {"database_id": NOTION_DATABASE_ID}, "properties": props}
+    if children:
+        payload["children"] = children
     return httpx.post(
         "https://api.notion.com/v1/pages",
         headers={
@@ -657,28 +673,52 @@ def _post_notion(props: dict):
             "Notion-Version": NOTION_VERSION,
             "Content-Type": "application/json",
         },
-        json={"parent": {"database_id": NOTION_DATABASE_ID}, "properties": props},
+        json=payload,
         timeout=15,
     )
 
 
-def _write_notion(profile, contact, consent, cv_name, summary, lang) -> bool:
-    """Create the Notion row. If the write fails (e.g. the 'Summary' column has not
-    been renamed yet), retry once without the Summary property so the contact itself
-    is never lost. Failures are logged, never silent."""
+def _transcript_blocks(messages, lang):
+    """Turn the chat transcript into Notion page-body blocks (one paragraph per turn)."""
+    if not messages:
+        return []
+    heading = "Přepis konverzace" if lang != "en" else "Chat transcript"
+    blocks = [{"object": "block", "type": "heading_2",
+               "heading_2": {"rich_text": [{"text": {"content": heading}}]}}]
+    for m in messages[:60]:  # Notion allows max 100 blocks per create request
+        role = getattr(m, "role", "")
+        if role not in ("user", "assistant"):
+            continue
+        who = ("Kandidát" if lang != "en" else "Candidate") if role == "user" else "Miton"
+        text = (getattr(m, "content", "") or "")[:1900]
+        if not text:
+            continue
+        blocks.append({"object": "block", "type": "paragraph",
+                       "paragraph": {"rich_text": [
+                           {"text": {"content": f"{who}: "}, "annotations": {"bold": True}},
+                           {"text": {"content": text}},
+                       ]}})
+    return blocks
+
+
+def _write_notion(profile, contact, consent, cv_name, summary, lang, messages=None) -> bool:
+    """Create the Notion row with the chat transcript in the page body. If the write
+    fails (e.g. a schema mismatch), retry once without the Summary property so the
+    contact itself is never lost. Failures are logged, never silent."""
     if not NOTION_TOKEN:
         return False
     props = _build_notion_properties(profile, contact, consent, cv_name, summary, lang)
+    children = _transcript_blocks(messages or [], lang)
     try:
-        r = _post_notion(props)
+        r = _post_notion(props, children)
         if r.status_code < 300:
             return True
         log.error("Notion write failed (%s): %s", r.status_code, r.text[:500])
         if "Summary" in props:
             props.pop("Summary")
-            r2 = _post_notion(props)
+            r2 = _post_notion(props, children)
             if r2.status_code < 300:
-                log.warning("Notion row created WITHOUT Summary - rename the 'Notes' column to 'Summary' in Notion")
+                log.warning("Notion row created WITHOUT Summary - check the Summary column in Notion")
                 return True
             log.error("Notion retry without Summary failed (%s): %s", r2.status_code, r2.text[:500])
         return False
@@ -687,10 +727,10 @@ def _write_notion(profile, contact, consent, cv_name, summary, lang) -> bool:
         return False
 
 
-def _deliver_submission(profile, contact, cv: Optional[CVIn], summary, consent, cv_name, lang):
+def _deliver_submission(profile, contact, cv: Optional[CVIn], summary, consent, cv_name, lang, messages=None):
     """Email + Notion delivery, run in the background so the visitor never waits on SMTP."""
     email_ok = _send_cv_email(profile, contact, cv, summary, lang)
-    notion_ok = _write_notion(profile, contact, consent, cv_name, summary, lang)
+    notion_ok = _write_notion(profile, contact, consent, cv_name, summary, lang, messages)
     if not email_ok and not notion_ok:
         log.error("submission delivered NOWHERE (email and Notion both failed/off); check submissions.jsonl")
 
@@ -728,6 +768,6 @@ def submit(body: SubmitIn, request: Request, background: BackgroundTasks):
     background.add_task(
         _deliver_submission,
         body.profile or {}, body.contact or {}, body.cv, body.summary,
-        bool(body.consent), cv_name, body.lang,
+        bool(body.consent), cv_name, body.lang, body.messages or [],
     )
     return {"ok": True, "queued": True}

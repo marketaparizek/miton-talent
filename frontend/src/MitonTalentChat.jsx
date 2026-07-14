@@ -242,6 +242,7 @@ export default function MitonTalentChat({
           consent,
           consent_text: t.consent,
           cv: cvFile,
+          messages: messages.map((m) => ({ role: m.role, content: m.content })),
         }),
       });
     } catch {
@@ -452,7 +453,9 @@ function CheckBig() {
 const styles = {
   root: {
     width: "100%",
-    fontFamily: "'Inter', system-ui, -apple-system, Segoe UI, Roboto, sans-serif",
+    // DegularDisplay = the miton.cz brand font; the embed page provides it via
+    // @font-face, and in the native-embed variant it inherits from the site itself.
+    fontFamily: "'DegularDisplay', 'Inter', system-ui, -apple-system, Segoe UI, Roboto, sans-serif",
     color: INK,
     display: "flex",
   },

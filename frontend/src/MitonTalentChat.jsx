@@ -127,12 +127,22 @@ export default function MitonTalentChat({
   const t = T[lang];
   const scrollRef = useRef(null);
   const fileRef = useRef(null);
+  const taRef = useRef(null);
 
   const hero = messages.length === 0 && !submitted;
 
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
   }, [messages, loading, stage, submitted]);
+
+  // Auto-grow the composer textarea up to its max height while typing,
+  // and shrink it back when the input is cleared after sending.
+  useEffect(() => {
+    const ta = taRef.current;
+    if (!ta) return;
+    ta.style.height = "auto";
+    ta.style.height = Math.min(ta.scrollHeight, 120) + "px";
+  }, [input, hero]);
 
   function switchLang(next) {
     if (next === lang) return;
@@ -256,6 +266,7 @@ export default function MitonTalentChat({
   const composer = (
     <div style={S.composerPill}>
       <textarea
+        ref={taRef}
         className="mtc-ta"
         rows={hero ? 2 : 1}
         value={input}

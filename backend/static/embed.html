@@ -34,9 +34,10 @@
        on this very server and no CORS is involved. -->
   <div id="miton-talent-chat" data-backend="" data-lang="cs" data-height="100%"></div>
   <script>
-    // Optional language via the iframe URL: .../?lang=en
+    // Optional language via the iframe URL: .../?lang=en or .../?locale=en
     (function () {
-      var lang = new URLSearchParams(location.search).get("lang");
+      var p = new URLSearchParams(location.search);
+      var lang = p.get("lang") || p.get("locale");
       if (lang === "en") document.getElementById("miton-talent-chat").dataset.lang = "en";
     })();
   </script>

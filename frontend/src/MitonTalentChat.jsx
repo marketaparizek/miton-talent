@@ -44,8 +44,8 @@ const MAX_CV_MB = 8;
 
 const T = {
   cs: {
-    heroTitle: "Zvažuješ práci ve startupu?",
-    heroSub: "V Mitonu se rádi spojíme se zvědavými a chytrými lidmi. Napiš, co by tě bavilo dělat nebo jaká role tě láká.",
+    heroTitle: "Hledáme chytré lidi.",
+    heroSub: "Zvažuješ práci ve startupu? Napiš, co by tě bavilo dělat nebo jaká role tě láká.",
     starters: ["Chci být founder", "Hledám práci ve startupu", "Zajímá mě práce v Mitonu", "Jen si mapuju možnosti"],
     labels: { area: "Oblast", level: "Úroveň", workMode: "Forma", status: "Stav" },
     placeholder: "Napiš, jakou roli hledáš…",
@@ -65,8 +65,8 @@ const T = {
     thanks: "Rozhodíme sítě napříč naším portfoliem, jestli je něco, co by ti mohlo sedět, a spojíme se s tebou e-mailem. Kdyby cokoliv, napiš naší kolegyni Markétě Pařízek na marketa.parizek@miton.cz.",
   },
   en: {
-    heroTitle: "Considering a startup job?",
-    heroSub: "At Miton we love connecting with curious, smart people. Tell us what you would enjoy doing or what role you are drawn to.",
+    heroTitle: "Scouting bright minds.",
+    heroSub: "Considering a startup job? Tell us what you would enjoy doing or what role you are drawn to.",
     starters: ["I want to be a founder", "I'm looking for a startup job", "I'm interested in working at Miton", "Just mapping my options"],
     labels: { area: "Area", level: "Level", workMode: "Work", status: "Status" },
     placeholder: "Tell us what role you're looking for…",

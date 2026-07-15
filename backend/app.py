@@ -499,36 +499,24 @@ def _build_notion_properties(profile, contact, consent, cv_name, summary, lang):
     name = (contact.get("name") or "").strip()
     note = (contact.get("note") or "").strip()
     summary = (summary or "").strip()
-    title = note or name or ("New contact from chat" if lang == "en" else "Nový kontakt z chatu")
+    # Title now carries the candidate's name (Message -> Name rename). Fall back to
+    # email or a default so the card is never blank when the name was skipped.
+    title = name or (contact.get("email") or "").strip() or ("New candidate from chat" if lang == "en" else "Nový kandidát z chatu")
 
-    # The "Summary" column holds the AI summary plus the candidate's own note,
-    # the CV filename and the GDPR consent stamp, one per line.
-    summary_parts = []
-    if summary:
-        summary_parts.append(summary)
-    if note:
-        summary_parts.append(f"Poznámka: {note}" if lang != "en" else f"Note: {note}")
-    if cv_name:
-        summary_parts.append(f"CV: {cv_name} (odesláno e-mailem)" if lang != "en" else f"CV: {cv_name} (sent by email)")
-    if consent:
-        stamp = _utcnow().strftime("%Y-%m-%d %H:%M UTC")
-        summary_parts.append(f"Souhlas GDPR: ano ({stamp})" if lang != "en" else f"GDPR consent: yes ({stamp})")
-    summary_text = "\n".join(summary_parts)
-
-    # "Message" is the title-type column in this database
     props = {
-        "Message": {"title": [{"text": {"content": title[:1900]}}]},
+        "Name": {"title": [{"text": {"content": title[:1900]}}]},
         "Inzerát": {"select": {"name": "Hledáme chytré lidi"}},
         "Status": {"status": {"name": "Unprocessed"}},
+        "Source": {"select": {"name": "Talent chat"}},
     }
-    if name:
-        props["Jméno"] = {"rich_text": [{"text": {"content": name}}]}
+    if note:
+        props["Application"] = {"rich_text": [{"text": {"content": note[:1900]}}]}
     if contact.get("email"):
         props["E-mail"] = {"email": contact["email"]}
     if contact.get("linkedin"):
         props["LinkedIn"] = {"url": contact["linkedin"]}
-    if summary_text:
-        props["Summary"] = {"rich_text": [{"text": {"content": summary_text[:1900]}}]}
+    # Summary, Score, Doporučení, Fit oblast, Company tier and Education are left
+    # empty on purpose - the evaluation process fills them, not the chat.
 
     area = _multi(profile.get("area"), ALLOWED_AREA)
     level = _multi(profile.get("level"), ALLOWED_LEVEL)
@@ -701,6 +689,17 @@ def _transcript_blocks(messages, lang):
     return blocks
 
 
+def _consent_block(consent, lang):
+    """GDPR consent stamp for the page body (Summary column is reserved for evaluation)."""
+    if not consent:
+        return []
+    stamp = _utcnow().strftime("%Y-%m-%d %H:%M UTC")
+    text = f"Souhlas GDPR: ano ({stamp})" if lang != "en" else f"GDPR consent: yes ({stamp})"
+    return [{"object": "block", "type": "paragraph",
+             "paragraph": {"rich_text": [
+                 {"text": {"content": text}, "annotations": {"italic": True, "color": "gray"}}]}}]
+
+
 def _write_notion(profile, contact, consent, cv_name, summary, lang, messages=None) -> bool:
     """Create the Notion row with the chat transcript in the page body. If the write
     fails (e.g. a schema mismatch), retry once without the Summary property so the
@@ -708,7 +707,7 @@ def _write_notion(profile, contact, consent, cv_name, summary, lang, messages=No
     if not NOTION_TOKEN:
         return False
     props = _build_notion_properties(profile, contact, consent, cv_name, summary, lang)
-    children = _transcript_blocks(messages or [], lang)
+    children = _transcript_blocks(messages or [], lang) + _consent_block(consent, lang)
     try:
         r = _post_notion(props, children)
         if r.status_code < 300:

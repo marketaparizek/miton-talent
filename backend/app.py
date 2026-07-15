@@ -373,11 +373,16 @@ def diag():
 #   <iframe src="https://YOUR-BACKEND-URL" ...></iframe>
 # The page calls /chat and /submit same-origin, so no CORS is involved.
 
+# Revalidate on every load so a new deploy reaches visitors immediately instead of
+# being masked by a stale browser cache. ETag/Last-Modified still allow cheap 304s.
+_NO_CACHE = {"Cache-Control": "no-cache, must-revalidate"}
+
+
 @app.get("/")
 def embed_page():
     page = os.path.join(STATIC_DIR, "embed.html")
     if os.path.exists(page):
-        return FileResponse(page, media_type="text/html")
+        return FileResponse(page, media_type="text/html", headers=_NO_CACHE)
     return JSONResponse({"ok": True, "note": "embed page not found, API only"})
 
 
@@ -385,7 +390,7 @@ def embed_page():
 def widget_js():
     bundle = os.path.join(STATIC_DIR, "miton-talent-chat.js")
     if os.path.exists(bundle):
-        return FileResponse(bundle, media_type="application/javascript")
+        return FileResponse(bundle, media_type="application/javascript", headers=_NO_CACHE)
     return JSONResponse({"error": "widget bundle not found"}, status_code=404)
 
 

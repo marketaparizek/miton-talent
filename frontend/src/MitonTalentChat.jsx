@@ -29,6 +29,11 @@ const CARD = "#FFFFFF";
 const BUBBLE_U = "#FDECEC"; // candidate bubble (soft red tint)
 const CHIP_BG = "#FDECEC";
 const FIELD_BG = "#F7F6F5"; // composer surface
+
+// Starter-chip colours straight from the Miton brand palette (green, orange, yellow).
+// Four chips cycle through the three colours; dark text on all of them.
+const STARTER_TINTS = ["#B4DABF", "#EB5E09", "#FFD300"];
+const SEND_BG = "#33363B"; // dark grey send button
 const HAIRLINE = "rgba(22,24,29,0.06)";
 const COMPOSER_BORDER = "rgba(22,24,29,0.1)";
 const CARD_BORDER = "rgba(22,24,29,0.1)";
@@ -313,13 +318,12 @@ export default function MitonTalentChat({
         {/* Hero: centered logo, headline, composer, starter chips */}
         {hero && (
           <div style={S.hero}>
-            <img src={LOGO} alt="Miton" width={52} height={52} style={S.heroLogo} />
             <div style={S.heroTitle}>{t.heroTitle}</div>
             <p style={S.heroSub}>{t.heroSub}</p>
             <div style={S.heroComposer}>{composer}</div>
             <div style={S.starters}>
-              {t.starters.map((s) => (
-                <button key={s} style={S.starter} onClick={() => send(s)}>{s}</button>
+              {t.starters.map((s, i) => (
+                <button key={s} style={{ ...S.starter, background: STARTER_TINTS[i % STARTER_TINTS.length] }} onClick={() => send(s)}>{s}</button>
               ))}
             </div>
             {error && <p style={S.error}>{error}</p>}
@@ -458,13 +462,19 @@ const styles = {
     fontFamily: "'DegularDisplay', 'Inter', system-ui, -apple-system, Segoe UI, Roboto, sans-serif",
     color: INK,
     display: "flex",
+    alignItems: "center",      // center the panel so it stays compact, not a tall box
+    justifyContent: "center",
+    boxSizing: "border-box",
   },
   card: {
     width: "100%",
-    background: CARD,
-    borderRadius: 16,
-    border: `1px solid rgba(22,24,29,0.05)`,
-    boxShadow: "0 12px 32px -18px rgba(22,24,29,0.2)",
+    maxWidth: 560,
+    maxHeight: "100%",
+    // Gray panel: light-medium gray with enough presence to read as a panel while
+    // keeping dark text legible. The composer inside is white; the panel sits on the
+    // host page's white area, kept compact so it always fits within the page section.
+    background: "#DCDAD8",
+    borderRadius: 22,
     overflow: "hidden",
     display: "flex",
     flexDirection: "column",
@@ -478,8 +488,8 @@ const styles = {
     gap: 12,
     minHeight: 22,
   },
-  langWrap: { display: "flex", alignItems: "center", gap: 10, fontSize: 12, fontWeight: 600, flex: "none" },
-  langBtn: { padding: 0, background: "transparent", border: "none", cursor: "pointer", fontSize: 12, fontWeight: 600, fontFamily: "inherit" },
+  langWrap: { display: "flex", alignItems: "center", gap: 10, fontSize: 13, fontWeight: 600, flex: "none" },
+  langBtn: { padding: 0, background: "transparent", border: "none", cursor: "pointer", fontSize: 13, fontWeight: 600, fontFamily: "inherit" },
   langActive: { color: ACCENT },
   langIdle: { color: MUTED, fontWeight: 500 },
   langDot: { color: DOT_SEP },
@@ -496,21 +506,21 @@ const styles = {
     alignItems: "center",
     justifyContent: "center",
     textAlign: "center",
-    padding: "12px 24px 40px",
+    padding: "30px 26px 26px",
     gap: 0,
   },
-  heroLogo: { display: "block", marginBottom: 18 },
-  heroTitle: { fontSize: 26, fontWeight: 600, letterSpacing: "-0.02em", lineHeight: 1.2 },
-  heroSub: { color: MUTED, fontSize: 14, lineHeight: 1.55, maxWidth: 420, margin: "10px 0 24px" },
+  heroLogo: { display: "block", marginBottom: 20 },
+  heroTitle: { fontSize: 31, fontWeight: 600, letterSpacing: "-0.02em", lineHeight: 1.2 },
+  heroSub: { color: MUTED, fontSize: 16, lineHeight: 1.55, maxWidth: 440, margin: "12px 0 26px" },
   heroComposer: { width: "100%", maxWidth: 560 },
-  starters: { display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 8, marginTop: 14 },
+  starters: { display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 8, marginTop: 16 },
   starter: {
-    fontSize: 13,
+    fontSize: 14.5,
+    fontWeight: 500,
     color: INK,
-    background: "#fff",
-    border: `1px solid ${INPUT_BORDER}`,
+    border: "none",
     borderRadius: 999,
-    padding: "7px 14px",
+    padding: "8px 15px",
     cursor: "pointer",
     fontFamily: "inherit",
   },
@@ -521,10 +531,10 @@ const styles = {
   rowAssistant: { display: "flex", justifyContent: "flex-start", alignItems: "flex-start", gap: 10 },
   rowRight: { display: "flex", justifyContent: "flex-end" },
   avatar: { flex: "0 0 auto", display: "block", marginTop: 1 },
-  assistantText: { fontSize: 14.5, lineHeight: 1.6, whiteSpace: "pre-wrap", color: INK, paddingTop: 2 },
+  assistantText: { fontSize: 15.5, lineHeight: 1.6, whiteSpace: "pre-wrap", color: INK, paddingTop: 2 },
   bubbleUser: {
     maxWidth: "78%", padding: "10px 14px", borderRadius: 16, borderBottomRightRadius: 6,
-    background: BUBBLE_U, color: INK, fontSize: 14, lineHeight: 1.5, whiteSpace: "pre-wrap",
+    background: BUBBLE_U, color: INK, fontSize: 15, lineHeight: 1.5, whiteSpace: "pre-wrap",
   },
   typing: { padding: "8px 2px", display: "flex", gap: 5, alignItems: "center" },
   dot: { width: 7, height: 7, borderRadius: "50%", background: MUTED, display: "inline-block" },
@@ -532,7 +542,7 @@ const styles = {
   // contact card
   formCard: { background: "#fff", border: `1px solid ${CARD_BORDER}`, borderRadius: 14, padding: 16, display: "flex", flexDirection: "column", gap: 11 },
   formTitle: { fontSize: 14, fontWeight: 600 },
-  input: { width: "100%", boxSizing: "border-box", fontSize: 13, padding: "9px 12px", borderRadius: 12, border: `1px solid ${INPUT_BORDER}`, outline: "none", fontFamily: "inherit", color: INK, background: "#fff" },
+  input: { width: "100%", boxSizing: "border-box", fontSize: 14, padding: "10px 12px", borderRadius: 12, border: `1px solid ${INPUT_BORDER}`, outline: "none", fontFamily: "inherit", color: INK, background: "#fff" },
   cvBox: { display: "flex", alignItems: "center", gap: 8, width: "100%", boxSizing: "border-box", border: `1px dashed ${DASH_BORDER}`, borderRadius: 12, padding: "9px 12px", color: MUTED, fontSize: 13, background: "transparent", cursor: "pointer", fontFamily: "inherit", textAlign: "left" },
   consentRow: { display: "flex", alignItems: "flex-start", gap: 9, cursor: "pointer" },
   checkbox: { width: 16, height: 16, border: `1.5px solid ${ACCENT}`, borderRadius: 4, flex: "none", marginTop: 1, display: "flex", alignItems: "center", justifyContent: "center", background: "#fff" },
@@ -553,18 +563,18 @@ const styles = {
     display: "flex",
     alignItems: "flex-end",
     gap: 10,
-    background: FIELD_BG,
+    background: CARD, // white composer on the gray panel (inverted, Claude-style)
     border: `1px solid ${COMPOSER_BORDER}`,
     borderRadius: 18,
     padding: "12px 12px 12px 16px",
     boxShadow: "0 2px 10px -6px rgba(22,24,29,0.12)",
   },
   textarea: {
-    flex: 1, resize: "none", fontSize: 14, lineHeight: 1.5, border: "none", background: "transparent",
+    flex: 1, resize: "none", fontSize: 15.5, lineHeight: 1.5, border: "none", background: "transparent",
     outline: "none", maxHeight: 120, fontFamily: "inherit", color: INK, padding: 0, margin: 0,
   },
   sendBtn: {
-    flex: "0 0 auto", width: 34, height: 34, borderRadius: "50%", background: ACCENT, border: "none",
+    flex: "0 0 auto", width: 34, height: 34, borderRadius: "50%", background: SEND_BG, border: "none",
     display: "flex", alignItems: "center", justifyContent: "center",
   },
 };

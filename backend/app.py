@@ -520,8 +520,10 @@ def _build_notion_properties(profile, contact, consent, cv_name, summary, lang):
         props["E-mail"] = {"email": contact["email"]}
     if contact.get("linkedin"):
         props["LinkedIn"] = {"url": contact["linkedin"]}
-    # Summary, Score, Doporučení, Fit oblast, Company tier and Education are left
-    # empty on purpose - the evaluation process fills them, not the chat.
+    if summary:
+        props["Summary"] = {"rich_text": [{"text": {"content": summary[:1900]}}]}
+    # Score, Doporučení, Fit oblast, Company tier and Education stay empty: they were
+    # the evaluation automation's outputs and are now filled manually, not by the chat.
 
     area = _multi(profile.get("area"), ALLOWED_AREA)
     level = _multi(profile.get("level"), ALLOWED_LEVEL)

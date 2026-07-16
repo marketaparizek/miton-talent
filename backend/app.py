@@ -17,6 +17,7 @@ Without NOTION_TOKEN, contacts are stored only in submissions.jsonl.
 The CV file is kept in memory only. It is emailed as an attachment and never written to disk.
 """
 
+import io
 import os
 import ssl
 import json
@@ -45,6 +46,14 @@ log = logging.getLogger("miton-talent")
 
 MODEL = os.environ.get("MODEL", "claude-sonnet-4-6")
 SUBMISSIONS_FILE = "submissions.jsonl"
+
+# Automatic candidate scoring after submit (best-effort, never blocks the save).
+# Turn on with SCORING_ENABLED=1 once the evaluation prompt is finalised.
+SCORING_ENABLED = os.environ.get("SCORING_ENABLED", "0") == "1"
+SCORE_MODEL = os.environ.get("SCORE_MODEL", MODEL)  # can point to a cheaper/faster model
+SCORE_MAX_TOKENS = 1500       # room for the structured verdict + reasoning
+SCORE_CV_CHARS = 14000        # cap CV text fed to the model
+SCORE_TIMEOUT = 45            # seconds for the scoring model call
 
 # Limits to keep token usage low
 MAX_TOKENS = 800        # the record_reply tool call must fit reply + summary + profile
@@ -163,6 +172,12 @@ ALLOWED_MODE = ["Remote", "Hybrid", "On-site"]
 ALLOWED_STATUS = ["Aktivně hledám", "Pasivně sleduji možnosti na trhu", "Právě nehledám",
                   "Actively seeking a new role", "Just passively interested in market opportunities", "Not seeking a new role"]
 
+# Scoring option sets - must match the Notion select/multi_select options exactly.
+ALLOWED_COMPANY_TIER = ["T1", "T2", "T3", "T4"]
+ALLOWED_EDUCATION = ["T1", "T2", "T3"]
+ALLOWED_FIT = ["AI", "Krypto", "E-commerce", "Gastrotech", "Mental health", "Miton interní"]
+ALLOWED_DOPORUCENI = ["Call", "Poslat founderovi", "Template reply"]
+
 PORTFOLIO_CS = (
     "AI a augmentovaná práce: Equilibre, DeepScout, Pangea AI, Whisper. "
     "Krypto a web3: Coinmate, Confirmo, Firefish, Marinade. "
@@ -260,6 +275,53 @@ REPLY_TOOL = {
 }
 
 
+# --- Candidate scoring ------------------------------------------------------
+# Forced tool call, same pattern as record_reply: the verdict arrives as a
+# validated object with values constrained to the exact Notion option strings.
+SCORE_TOOL = {
+    "name": "record_score",
+    "description": "Record the structured evaluation of a candidate for the recruiter.",
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "score": {"type": "integer", "minimum": 0, "maximum": 100,
+                      "description": "Overall fit score 0-100."},
+            "company_tier": {"type": "string", "enum": ALLOWED_COMPANY_TIER,
+                             "description": "Tier of the candidate's companies. Omit if unknown."},
+            "education": {"type": "string", "enum": ALLOWED_EDUCATION,
+                          "description": "Tier of the candidate's education. Omit if unknown."},
+            "fit_oblast": {"type": "array", "items": {"type": "string", "enum": ALLOWED_FIT},
+                           "description": "Which portfolio areas the candidate fits."},
+            "recommendation": {"type": "string", "enum": ALLOWED_DOPORUCENI,
+                               "description": "Next action for the recruiter."},
+            "reasoning": {"type": "string",
+                          "description": "Short scorecard and justification for the page body (a few short paragraphs)."},
+        },
+        "required": ["score"],
+    },
+}
+
+# NOTE: this is an interim default derived from the previous (Bardeen) scorecard.
+# Replace the body with the final evaluation logic when it is ready; nothing else
+# needs to change - the tool schema above already constrains the outputs.
+SCORE_SYSTEM = """You are an evaluator for the investment group Miton. You score a candidate for fit with Miton's startup portfolio and recommend a next action for the recruiter. You receive the chat profile, the running summary, the chat transcript, and (when available) the text of the candidate's CV. The CV or chat may be in Czech or English; handle either.
+
+Method (0-100 score):
+- Company tier: quality of the companies the candidate has worked at or built. T1 top (well-known scaleups/unicorns, strong brands), T2 solid, T3 average, T4 weak or none.
+- Education tier: T1 strong (top university or highly relevant), T2 average, T3 weak or unclear.
+- Scorecard, rate each 0 to 3: track record, ownership (real owned outcomes, not just participation), depth in field, speed of learning, signal to noise (concrete vs filler).
+- Two must-haves: a real owned outcome, and fit with at least one portfolio area. If a must-have is clearly missing, keep the score low.
+- Combine into an overall 0-100 score. Higher tier companies, stronger education and a stronger scorecard raise it.
+
+Also decide:
+- fit_oblast: which portfolio areas fit (AI, Krypto, E-commerce, Gastrotech, Mental health, Miton interní). Pick only genuinely fitting ones, can be empty.
+- recommendation: "Call" for strong candidates worth a conversation, "Poslat founderovi" when they fit a specific portfolio company, "Template reply" for a polite pass.
+
+reasoning: a short scorecard for the recruiter. A one to two sentence snapshot, the per-criterion notes, and one line on the recommendation. Plain text, no markdown headings. Be concise and specific, no filler.
+
+Only use the allowed option values. Omit company_tier or education if you truly cannot tell. Always return your verdict by calling the record_score tool."""
+
+
 class Msg(BaseModel):
     role: str
     content: str
@@ -318,6 +380,8 @@ def diag():
     out = {
         "anthropic_key_set": bool(os.environ.get("ANTHROPIC_API_KEY")),
         "model": MODEL,
+        "scoring_enabled": SCORING_ENABLED,
+        "score_model": SCORE_MODEL,
         "notion_token_set": bool(NOTION_TOKEN),
         "smtp_pass_set": bool(SMTP_PASS),
         "smtp_user_set": bool(SMTP_USER),
@@ -556,6 +620,31 @@ def _decode_cv(cv: Optional[CVIn]):
     return (cv.name or "cv"), blob, (cv.type or "application/octet-stream")
 
 
+def _cv_to_text(blob, mime, filename) -> str:
+    """Extract readable text from a CV in memory (PDF or DOCX). Best-effort: returns
+    "" on anything unexpected so scoring can degrade to transcript-only. Never raises."""
+    if not blob:
+        return ""
+    name = (filename or "").lower()
+    is_pdf = "pdf" in (mime or "") or name.endswith(".pdf")
+    is_docx = "word" in (mime or "") or name.endswith(".docx")
+    try:
+        if is_pdf:
+            from pypdf import PdfReader
+            reader = PdfReader(io.BytesIO(blob))
+            text = "\n".join((p.extract_text() or "") for p in reader.pages)
+        elif is_docx:
+            import docx  # python-docx
+            doc = docx.Document(io.BytesIO(blob))
+            text = "\n".join(p.text for p in doc.paragraphs)
+        else:
+            return ""  # old .doc or unknown format: skip, scoring falls back to transcript
+    except Exception:
+        log.exception("CV text extraction failed")
+        return ""
+    return " ".join(text.split())[:SCORE_CV_CHARS]
+
+
 def _send_via_resend(subject, body_text, reply_to, filename, blob) -> bool:
     """Deliver the email through Resend's HTTPS API (works where SMTP ports are blocked)."""
     payload = {
@@ -673,6 +762,48 @@ def _post_notion(props: dict, children=None):
     )
 
 
+_NOTION_HEADERS = {
+    "Notion-Version": NOTION_VERSION,
+    "Content-Type": "application/json",
+}
+
+
+def _notion_patch(url: str, payload: dict):
+    """PATCH a Notion resource with one retry on 429 (rate limit). Returns the
+    response, or None if the request itself raised."""
+    headers = {"Authorization": f"Bearer {NOTION_TOKEN}", **_NOTION_HEADERS}
+    for attempt in (1, 2):
+        try:
+            r = httpx.patch(url, headers=headers, json=payload, timeout=15)
+        except Exception:
+            log.exception("Notion PATCH raised (%s)", url)
+            return None
+        if r.status_code != 429:
+            return r
+        time.sleep(float(r.headers.get("Retry-After", "1")))
+    return r
+
+
+def _update_notion_page(page_id: str, props: dict) -> bool:
+    r = _notion_patch(f"https://api.notion.com/v1/pages/{page_id}", {"properties": props})
+    if r is not None and r.status_code < 300:
+        return True
+    if r is not None:
+        log.error("Notion property update failed (%s): %s", r.status_code, r.text[:400])
+    return False
+
+
+def _append_notion_blocks(page_id: str, blocks: list) -> bool:
+    if not blocks:
+        return True
+    r = _notion_patch(f"https://api.notion.com/v1/blocks/{page_id}/children", {"children": blocks})
+    if r is not None and r.status_code < 300:
+        return True
+    if r is not None:
+        log.error("Notion block append failed (%s): %s", r.status_code, r.text[:400])
+    return False
+
+
 def _transcript_blocks(messages, lang):
     """Turn the chat transcript into Notion page-body blocks (one paragraph per turn)."""
     if not messages:
@@ -707,38 +838,121 @@ def _consent_block(consent, lang):
                  {"text": {"content": text}, "annotations": {"italic": True, "color": "gray"}}]}}]
 
 
-def _write_notion(profile, contact, consent, cv_name, summary, lang, messages=None) -> bool:
-    """Create the Notion row with the chat transcript in the page body. If the write
-    fails (e.g. a schema mismatch), retry once without the Summary property so the
-    contact itself is never lost. Failures are logged, never silent."""
+def _write_notion(profile, contact, consent, cv_name, summary, lang, messages=None) -> Optional[str]:
+    """Create the Notion row with the chat transcript in the page body. Returns the new
+    page id on success (needed for scoring), or None. If the write fails (e.g. a schema
+    mismatch), retry once without the Summary property so the contact is never lost."""
     if not NOTION_TOKEN:
-        return False
+        return None
     props = _build_notion_properties(profile, contact, consent, cv_name, summary, lang)
     children = _transcript_blocks(messages or [], lang) + _consent_block(consent, lang)
     try:
         r = _post_notion(props, children)
         if r.status_code < 300:
-            return True
+            return r.json().get("id")
         log.error("Notion write failed (%s): %s", r.status_code, r.text[:500])
         if "Summary" in props:
             props.pop("Summary")
             r2 = _post_notion(props, children)
             if r2.status_code < 300:
                 log.warning("Notion row created WITHOUT Summary - check the Summary column in Notion")
-                return True
+                return r2.json().get("id")
             log.error("Notion retry without Summary failed (%s): %s", r2.status_code, r2.text[:500])
-        return False
+        return None
     except Exception:
         log.exception("Notion write raised")
-        return False
+        return None
+
+
+def _score_candidate(cv_text, profile, summary, messages, lang):
+    """Call Claude to score the candidate. Returns the record_score dict, or None."""
+    transcript = "\n".join(
+        f"{'Kandidát' if getattr(m, 'role', '') == 'user' else 'Miton'}: {getattr(m, 'content', '')}"
+        for m in (messages or []) if getattr(m, "role", "") in ("user", "assistant")
+    )[:8000]
+    user_input = "\n\n".join([
+        f"Profil z chatu: {json.dumps(profile or {}, ensure_ascii=False)}",
+        f"Shrnutí: {summary or ''}",
+        f"Přepis konverzace:\n{transcript or '(žádný)'}",
+        f"Text CV:\n{cv_text or '(kandidát nepřiložil čitelné CV, hodnoť jen z chatu)'}",
+    ])
+    try:
+        resp = client.messages.create(
+            model=SCORE_MODEL,
+            max_tokens=SCORE_MAX_TOKENS,
+            system=SCORE_SYSTEM,
+            messages=[{"role": "user", "content": user_input}],
+            tools=[SCORE_TOOL],
+            tool_choice={"type": "tool", "name": "record_score"},
+            timeout=SCORE_TIMEOUT,
+        )
+    except Exception:
+        log.exception("scoring model call failed")
+        return None
+    for block in resp.content:
+        if block.type == "tool_use" and block.name == "record_score":
+            return block.input or {}
+    return None
+
+
+def _score_props(score) -> dict:
+    """Map the scoring verdict to Notion properties (only allowed option values)."""
+    props = {}
+    s = score.get("score")
+    if isinstance(s, (int, float)):
+        props["Score"] = {"number": int(s)}
+    if score.get("company_tier") in ALLOWED_COMPANY_TIER:
+        props["Company tier"] = {"select": {"name": score["company_tier"]}}
+    if score.get("education") in ALLOWED_EDUCATION:
+        props["Education"] = {"select": {"name": score["education"]}}
+    fit = [{"name": f} for f in (score.get("fit_oblast") or []) if f in ALLOWED_FIT]
+    if fit:
+        props["Fit oblast"] = {"multi_select": fit}
+    if score.get("recommendation") in ALLOWED_DOPORUCENI:
+        props["Doporučení"] = {"select": {"name": score["recommendation"]}}
+    return props
+
+
+def _score_blocks(score, lang) -> list:
+    """The evaluation reasoning as page-body blocks (heading + paragraphs)."""
+    reasoning = (score.get("reasoning") or "").strip()
+    if not reasoning:
+        return []
+    heading = "Evaluace" if lang != "en" else "Evaluation"
+    blocks = [{"object": "block", "type": "heading_2",
+               "heading_2": {"rich_text": [{"text": {"content": heading}}]}}]
+    for para in [p.strip() for p in reasoning.split("\n") if p.strip()][:40]:
+        blocks.append({"object": "block", "type": "paragraph",
+                       "paragraph": {"rich_text": [{"text": {"content": para[:1900]}}]}})
+    return blocks
+
+
+def _run_scoring(page_id, cv: Optional[CVIn], profile, summary, messages, lang):
+    """Best-effort scoring of an already-saved candidate. Never raises to the caller."""
+    filename, blob, mime = _decode_cv(cv)
+    cv_text = _cv_to_text(blob, mime, filename) if blob else ""
+    score = _score_candidate(cv_text, profile, summary, messages, lang)
+    if not score:
+        log.warning("scoring produced no result for page %s", page_id)
+        return
+    props = _score_props(score)
+    if props:
+        _update_notion_page(page_id, props)
+    _append_notion_blocks(page_id, _score_blocks(score, lang))
 
 
 def _deliver_submission(profile, contact, cv: Optional[CVIn], summary, consent, cv_name, lang, messages=None):
-    """Email + Notion delivery, run in the background so the visitor never waits on SMTP."""
+    """Email + Notion delivery, run in the background so the visitor never waits on SMTP.
+    Scoring runs after the candidate is safely written and never affects the save."""
     email_ok = _send_cv_email(profile, contact, cv, summary, lang)
-    notion_ok = _write_notion(profile, contact, consent, cv_name, summary, lang, messages)
-    if not email_ok and not notion_ok:
+    page_id = _write_notion(profile, contact, consent, cv_name, summary, lang, messages)
+    if not email_ok and not page_id:
         log.error("submission delivered NOWHERE (email and Notion both failed/off); check submissions.jsonl")
+    if page_id and SCORING_ENABLED:
+        try:
+            _run_scoring(page_id, cv, profile, summary, messages, lang)
+        except Exception:
+            log.exception("scoring step raised (candidate already saved)")
 
 
 @app.post("/submit")

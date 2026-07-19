@@ -176,7 +176,7 @@ ALLOWED_STATUS = ["Aktivně hledám", "Pasivně sleduji možnosti na trhu", "Pr�
 ALLOWED_COMPANY_TIER = ["T1", "T2", "T3", "T4"]
 ALLOWED_EDUCATION = ["T1", "T2", "T3"]
 ALLOWED_FIT = ["AI", "Krypto", "E-commerce", "Gastrotech", "Mental health", "Miton interní"]
-ALLOWED_DOPORUCENI = ["Call", "Poslat founderovi", "Template reply"]
+ALLOWED_DOPORUCENI = ["Potential fit", "K rozhodnutí", "Low fit"]
 
 # Score weights (tune here). Adapted from the github-sourcing career-quality method:
 # company + education tiers are the backbone, plus a conversation track-record signal.
@@ -185,9 +185,10 @@ EDUCATION_TIER_POINTS = {"T1": 1.0, "T2": 0.50, "T3": 0.20}
 SCORE_W_COMPANY = 0.45
 SCORE_W_EDUCATION = 0.20
 SCORE_W_TRACK = 0.35
-# Score -> recommendation bands
-REC_CALL_MIN = 70       # >= this -> Call
-REC_FOUNDER_MIN = 45    # >= this (and < CALL) -> Poslat founderovi; below -> Template reply
+# Score -> recommendation bands. Narrow middle ("K rozhodnutí") = only genuine
+# borderline cases need a human decision; everyone else is a clear fit or a pass.
+REC_POTENTIAL_MIN = 65   # >= this -> Potential fit
+REC_DECIDE_MIN = 53      # >= this (and < POTENTIAL) -> K rozhodnutí; below -> Weak profile
 
 PORTFOLIO_CS = (
     "AI a augmentovaná práce: Equilibre, DeepScout, Pangea AI, Whisper. "
@@ -936,11 +937,11 @@ def _compute_score(verdict) -> int:
 
 
 def _recommendation_for(score) -> str:
-    if score >= REC_CALL_MIN:
-        return "Call"
-    if score >= REC_FOUNDER_MIN:
-        return "Poslat founderovi"
-    return "Template reply"
+    if score >= REC_POTENTIAL_MIN:
+        return "Potential fit"
+    if score >= REC_DECIDE_MIN:
+        return "K rozhodnutí"
+    return "Low fit"
 
 
 def _score_props(verdict) -> dict:

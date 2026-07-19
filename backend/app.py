@@ -178,6 +178,17 @@ ALLOWED_EDUCATION = ["T1", "T2", "T3"]
 ALLOWED_FIT = ["AI", "Krypto", "E-commerce", "Gastrotech", "Mental health", "Miton interní"]
 ALLOWED_DOPORUCENI = ["Call", "Poslat founderovi", "Template reply"]
 
+# Score weights (tune here). Adapted from the github-sourcing career-quality method:
+# company + education tiers are the backbone, plus a conversation track-record signal.
+COMPANY_TIER_POINTS = {"T1": 1.0, "T2": 0.65, "T3": 0.35, "T4": 0.10}
+EDUCATION_TIER_POINTS = {"T1": 1.0, "T2": 0.50, "T3": 0.20}
+SCORE_W_COMPANY = 0.45
+SCORE_W_EDUCATION = 0.20
+SCORE_W_TRACK = 0.35
+# Score -> recommendation bands
+REC_CALL_MIN = 70       # >= this -> Call
+REC_FOUNDER_MIN = 45    # >= this (and < CALL) -> Poslat founderovi; below -> Template reply
+
 PORTFOLIO_CS = (
     "AI a augmentovaná práce: Equilibre, DeepScout, Pangea AI, Whisper. "
     "Krypto a web3: Coinmate, Confirmo, Firefish, Marinade. "
@@ -280,46 +291,56 @@ REPLY_TOOL = {
 # validated object with values constrained to the exact Notion option strings.
 SCORE_TOOL = {
     "name": "record_score",
-    "description": "Record the structured evaluation of a candidate for the recruiter.",
+    "description": "Classify a candidate. The numeric score and recommendation are computed from these fields, so focus on accurate tiers and scorecard ratings.",
     "input_schema": {
         "type": "object",
         "properties": {
-            "score": {"type": "integer", "minimum": 0, "maximum": 100,
-                      "description": "Overall fit score 0-100."},
             "company_tier": {"type": "string", "enum": ALLOWED_COMPANY_TIER,
-                             "description": "Tier of the candidate's companies. Omit if unknown."},
+                             "description": "Tier of the companies the candidate worked at or built. T4 if none/weak."},
             "education": {"type": "string", "enum": ALLOWED_EDUCATION,
-                          "description": "Tier of the candidate's education. Omit if unknown."},
+                          "description": "Tier of the candidate's education. T3 if weak/unclear/none."},
+            "ownership": {"type": "integer", "minimum": 0, "maximum": 3,
+                          "description": "Real owned outcomes (built/led/shipped/decided), not just participation. 0-3."},
+            "impact": {"type": "integer", "minimum": 0, "maximum": 3,
+                       "description": "Concrete achievements with scale/results (numbers, growth, launches). 0-3."},
+            "depth": {"type": "integer", "minimum": 0, "maximum": 3,
+                      "description": "Depth in their field and level of responsibility/seniority. 0-3."},
             "fit_oblast": {"type": "array", "items": {"type": "string", "enum": ALLOWED_FIT},
-                           "description": "Which portfolio areas the candidate fits."},
-            "recommendation": {"type": "string", "enum": ALLOWED_DOPORUCENI,
-                               "description": "Next action for the recruiter."},
+                           "description": "Which portfolio areas the candidate genuinely fits (can be empty)."},
             "reasoning": {"type": "string",
-                          "description": "Short scorecard and justification for the page body (a few short paragraphs)."},
+                          "description": "Short scorecard for the recruiter: one to two sentence snapshot, then the per-signal notes and why the tiers. Plain text, concise, no filler."},
         },
-        "required": ["score"],
+        "required": ["company_tier", "education", "ownership", "impact", "depth"],
     },
 }
 
-# NOTE: this is an interim default derived from the previous (Bardeen) scorecard.
-# Replace the body with the final evaluation logic when it is ready; nothing else
-# needs to change - the tool schema above already constrains the outputs.
-SCORE_SYSTEM = """You are an evaluator for the investment group Miton. You score a candidate for fit with Miton's startup portfolio and recommend a next action for the recruiter. You receive the chat profile, the running summary, the chat transcript, and (when available) the text of the candidate's CV. The CV or chat may be in Czech or English; handle either.
+# NOTE: interim wording is fine to tweak; the weights live in the constants above and
+# the final score/recommendation are computed in code from the fields below.
+SCORE_SYSTEM = """You are an evaluator for the investment group Miton. You classify a candidate for fit with Miton's startup portfolio so a recruiter can triage them. You receive the chat profile, the running summary, the chat transcript, and (when available) the text of the candidate's CV. The CV or chat may be in Czech or English; handle either. This works for ALL roles (marketing, finance, ops, product, engineering, etc.), not only technical ones.
 
-Method (0-100 score):
-- Company tier: quality of the companies the candidate has worked at or built. T1 top (well-known scaleups/unicorns, strong brands), T2 solid, T3 average, T4 weak or none.
-- Education tier: T1 strong (top university or highly relevant), T2 average, T3 weak or unclear.
-- Scorecard, rate each 0 to 3: track record, ownership (real owned outcomes, not just participation), depth in field, speed of learning, signal to noise (concrete vs filler).
-- Two must-haves: a real owned outcome, and fit with at least one portfolio area. If a must-have is clearly missing, keep the score low.
-- Combine into an overall 0-100 score. Higher tier companies, stronger education and a stronger scorecard raise it.
+Assign these, weighting recent and notable experience most:
 
-Also decide:
-- fit_oblast: which portfolio areas fit (AI, Krypto, E-commerce, Gastrotech, Mental health, Miton interní). Pick only genuinely fitting ones, can be empty.
-- recommendation: "Call" for strong candidates worth a conversation, "Poslat founderovi" when they fit a specific portfolio company, "Template reply" for a polite pass.
+Company tier - quality and prestige of the companies the candidate worked at or built:
+- T1: top global innovators, well-known scaleups or unicorns, big tech, AI-frontier labs, or Czech companies with real global reach (the calibre of Rohlik, Productboard, Mews, SentinelOne). A founder of a real, funded, notable company is also T1.
+- T2: established and respected companies, strong enterprises, solid scaleups, recognisable brands.
+- T3: average or smaller local firms, an unremarkable employer, or unclear.
+- T4: weak or none - no meaningful company history, very junior.
 
-reasoning: a short scorecard for the recruiter. A one to two sentence snapshot, the per-criterion notes, and one line on the recommendation. Plain text, no markdown headings. Be concise and specific, no filler.
+Education tier:
+- T1: a top university (roughly QS top 100, or a top, highly relevant Czech programme).
+- T2: a solid university degree, average to good school.
+- T3: weak, unclear, or no higher education.
 
-Only use the allowed option values. Omit company_tier or education if you truly cannot tell. Always return your verdict by calling the record_score tool."""
+Scorecard, each 0 to 3 (from CV and chat):
+- ownership: real owned outcomes (built, led, shipped, decided), not just participation.
+- impact: concrete achievements with scale or results (numbers, growth, launches).
+- depth: depth in their field and level of responsibility/seniority.
+
+fit_oblast: which portfolio areas genuinely fit (AI, Krypto, E-commerce, Gastrotech, Mental health, Miton interní). Pick only real fits, can be empty.
+
+reasoning: a short scorecard for the recruiter. A one to two sentence snapshot, then the per-signal notes and one line on why the tiers. Plain text, concise, specific, no filler.
+
+Be honest and evidence-based. If the CV is missing, judge from the chat alone and lean conservative. Always return your verdict by calling the record_score tool. The final numeric score and next-step recommendation are computed from your fields, so do not invent a number - just classify accurately."""
 
 
 class Msg(BaseModel):
@@ -895,33 +916,69 @@ def _score_candidate(cv_text, profile, summary, messages, lang):
     return None
 
 
-def _score_props(score) -> dict:
-    """Map the scoring verdict to Notion properties (only allowed option values)."""
-    props = {}
-    s = score.get("score")
-    if isinstance(s, (int, float)):
-        props["Score"] = {"number": int(s)}
-    if score.get("company_tier") in ALLOWED_COMPANY_TIER:
-        props["Company tier"] = {"select": {"name": score["company_tier"]}}
-    if score.get("education") in ALLOWED_EDUCATION:
-        props["Education"] = {"select": {"name": score["education"]}}
-    fit = [{"name": f} for f in (score.get("fit_oblast") or []) if f in ALLOWED_FIT]
+def _clamp03(v) -> int:
+    try:
+        return max(0, min(3, int(v)))
+    except (TypeError, ValueError):
+        return 0
+
+
+def _compute_score(verdict) -> int:
+    """Deterministic 0-100 score from the classified tiers + track-record scorecard.
+    Company + education tiers are the backbone (github-sourcing career-quality method),
+    the conversation scorecard adds the rest."""
+    company = COMPANY_TIER_POINTS.get(verdict.get("company_tier"), 0.0)
+    education = EDUCATION_TIER_POINTS.get(verdict.get("education"), 0.0)
+    track = (_clamp03(verdict.get("ownership")) + _clamp03(verdict.get("impact"))
+             + _clamp03(verdict.get("depth"))) / 9.0
+    score = 100.0 * (SCORE_W_COMPANY * company + SCORE_W_EDUCATION * education + SCORE_W_TRACK * track)
+    return max(0, min(100, round(score)))
+
+
+def _recommendation_for(score) -> str:
+    if score >= REC_CALL_MIN:
+        return "Call"
+    if score >= REC_FOUNDER_MIN:
+        return "Poslat founderovi"
+    return "Template reply"
+
+
+def _score_props(verdict) -> dict:
+    """Map the classified verdict to Notion properties. Score and recommendation are
+    computed here from the tiers/scorecard; only allowed option values are written."""
+    score = _compute_score(verdict)
+    props = {
+        "Score": {"number": score},
+        "Doporučení": {"select": {"name": _recommendation_for(score)}},
+    }
+    if verdict.get("company_tier") in ALLOWED_COMPANY_TIER:
+        props["Company tier"] = {"select": {"name": verdict["company_tier"]}}
+    if verdict.get("education") in ALLOWED_EDUCATION:
+        props["Education"] = {"select": {"name": verdict["education"]}}
+    fit = [{"name": f} for f in (verdict.get("fit_oblast") or []) if f in ALLOWED_FIT]
     if fit:
         props["Fit oblast"] = {"multi_select": fit}
-    if score.get("recommendation") in ALLOWED_DOPORUCENI:
-        props["Doporučení"] = {"select": {"name": score["recommendation"]}}
     return props
 
 
-def _score_blocks(score, lang) -> list:
-    """The evaluation reasoning as page-body blocks (heading + paragraphs)."""
-    reasoning = (score.get("reasoning") or "").strip()
-    if not reasoning:
-        return []
+def _score_blocks(verdict, lang) -> list:
+    """The evaluation as page-body blocks: a computed-breakdown line + the reasoning."""
+    score = _compute_score(verdict)
+    breakdown = (f"Score {score} · Company {verdict.get('company_tier', '?')} · "
+                 f"Education {verdict.get('education', '?')} · "
+                 f"Ownership {_clamp03(verdict.get('ownership'))}/3 · "
+                 f"Impact {_clamp03(verdict.get('impact'))}/3 · "
+                 f"Depth {_clamp03(verdict.get('depth'))}/3 · "
+                 f"{_recommendation_for(score)}")
     heading = "Evaluace" if lang != "en" else "Evaluation"
-    blocks = [{"object": "block", "type": "heading_2",
-               "heading_2": {"rich_text": [{"text": {"content": heading}}]}}]
-    for para in [p.strip() for p in reasoning.split("\n") if p.strip()][:40]:
+    blocks = [
+        {"object": "block", "type": "heading_2",
+         "heading_2": {"rich_text": [{"text": {"content": heading}}]}},
+        {"object": "block", "type": "paragraph",
+         "paragraph": {"rich_text": [{"text": {"content": breakdown},
+                                      "annotations": {"bold": True}}]}},
+    ]
+    for para in [p.strip() for p in (verdict.get("reasoning") or "").split("\n") if p.strip()][:40]:
         blocks.append({"object": "block", "type": "paragraph",
                        "paragraph": {"rich_text": [{"text": {"content": para[:1900]}}]}})
     return blocks

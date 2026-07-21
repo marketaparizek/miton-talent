@@ -35,10 +35,21 @@
   <div id="miton-talent-chat" data-backend="" data-lang="cs" data-height="100%"></div>
   <script>
     // Optional language via the iframe URL: .../?lang=en or .../?locale=en
+    // Optional auto-resize mode: .../?resize=1 lets the page grow with the chat and
+    // the widget reports its height to the parent via postMessage
+    // ({type: "miton-talent-height", height}). Without the param, behaviour is the
+    // fixed-height mode as before.
     (function () {
       var p = new URLSearchParams(location.search);
+      var el = document.getElementById("miton-talent-chat");
       var lang = p.get("lang") || p.get("locale");
-      if (lang === "en") document.getElementById("miton-talent-chat").dataset.lang = "en";
+      if (lang === "en") el.dataset.lang = "en";
+      if (p.get("resize") === "1") {
+        el.dataset.height = "auto";
+        document.documentElement.style.height = "auto";
+        document.body.style.height = "auto";
+        el.style.height = "auto";
+      }
     })();
   </script>
   <script src="/widget.js"></script>

@@ -472,6 +472,16 @@ def embed_page():
     return JSONResponse({"ok": True, "note": "embed page not found, API only"})
 
 
+@app.get("/embed-test")
+def embed_test():
+    # Live demo of the auto-resize embed (?resize=1 + postMessage listener),
+    # same listener snippet the website uses. No secrets, safe to expose.
+    page = os.path.join(STATIC_DIR, "embed-test.html")
+    if os.path.exists(page):
+        return FileResponse(page, media_type="text/html", headers=_NO_CACHE)
+    raise HTTPException(status_code=404)
+
+
 @app.get("/widget.js")
 def widget_js():
     bundle = os.path.join(STATIC_DIR, "miton-talent-chat.js")

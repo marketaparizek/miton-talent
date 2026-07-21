@@ -133,8 +133,40 @@ export default function MitonTalentChat({
   const scrollRef = useRef(null);
   const fileRef = useRef(null);
   const taRef = useRef(null);
+  const rootRef = useRef(null);
 
   const hero = messages.length === 0 && !submitted;
+
+  // Report our content height to the embedding page (cross-origin postMessage),
+  // so it can resize the iframe: low intro, growing conversation. The page opts in
+  // by loading the embed with ?resize=1 and listening for this message.
+  const lastHeight = useRef(0);
+  const reportHeight = () => {
+    if (typeof window === "undefined" || window.parent === window) return;
+    const el = rootRef.current;
+    if (!el) return;
+    const h = Math.ceil(el.getBoundingClientRect().height);
+    if (Math.abs(h - lastHeight.current) > 1) {
+      lastHeight.current = h;
+      window.parent.postMessage({ type: "miton-talent-height", height: h }, "*");
+    }
+  };
+  // After every render commit: catches all growth driven by state (messages,
+  // loading, form, thanks). ResizeObserver + window resize cover the rest
+  // (font loading, viewport changes).
+  useEffect(() => {
+    reportHeight();
+  });
+  useEffect(() => {
+    if (typeof window === "undefined" || window.parent === window) return;
+    const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(reportHeight) : null;
+    if (ro && rootRef.current) ro.observe(rootRef.current);
+    window.addEventListener("resize", reportHeight);
+    return () => {
+      if (ro) ro.disconnect();
+      window.removeEventListener("resize", reportHeight);
+    };
+  }, []);
 
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
@@ -294,9 +326,11 @@ export default function MitonTalentChat({
   );
 
   return (
-    <div style={{ ...S.root, height }}>
+    <div ref={rootRef} style={{ ...S.root, height }}>
       <style>{CSS}</style>
-      <div style={S.card}>
+      {/* In auto-height (resize) mode the page grows with the chat, so cap the panel
+          at a sane height; in fixed mode the iframe height caps it as before. */}
+      <div style={height === "auto" ? { ...S.card, maxHeight: 700 } : S.card}>
         {/* Top bar: profile chips left, language toggle right */}
         <div style={{ ...S.topbar, borderBottom: hero ? "none" : `1px solid ${HAIRLINE}` }}>
           <div style={S.chips}>

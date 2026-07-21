@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="cs">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Miton talent - ukázka auto-resize</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 24px; background: #fff; color: #333; }
+    #stav { margin-bottom: 12px; color: #777; font-size: 14px; }
+    iframe { width: 100%; max-width: 720px; border: 1px dashed #ccc; display: block; transition: height .25s ease; }
+    p.pod { max-width: 720px; }
+  </style>
+</head>
+<body>
+  <!-- Demo of the auto-resize embed: the same listener belongs on miton.cz. -->
+  <div id="stav">výška iframu: <span id="v">400 px (výchozí)</span></div>
+  <iframe id="miton-talent-iframe" src="/?resize=1" style="height:400px" title="Miton talent"></iframe>
+  <p class="pod">Tenhle text stojí pod chatem. Když chat vyroste, odsune se dolů, přesně jako obsah na kariérní stránce.</p>
+  <script>
+    window.addEventListener("message", function (e) {
+      var d = e.data || {};
+      if (d.type === "miton-talent-height" && d.height) {
+        var f = document.getElementById("miton-talent-iframe");
+        f.style.height = d.height + "px";
+        document.getElementById("v").textContent = d.height + " px";
+      }
+    });
+  </script>
+</body>
+</html>

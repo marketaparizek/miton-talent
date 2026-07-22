@@ -451,6 +451,32 @@ def diag():
             out["smtp_login"] = "ok"
         except Exception as e:
             out["smtp_login"] = f"failed: {type(e).__name__}"
+    # Live Anthropic key check: a tiny 1-token call surfaces auth/model problems
+    # that anthropic_key_set (non-empty only) cannot see. Never echoes the key.
+    if os.environ.get("ANTHROPIC_API_KEY"):
+        try:
+            r = httpx.post(
+                "https://api.anthropic.com/v1/messages",
+                headers={
+                    "x-api-key": os.environ["ANTHROPIC_API_KEY"],
+                    "anthropic-version": "2023-06-01",
+                    "content-type": "application/json",
+                },
+                json={"model": MODEL, "max_tokens": 1, "messages": [{"role": "user", "content": "hi"}]},
+                timeout=15,
+            )
+            out["anthropic_api_status"] = r.status_code
+            if r.status_code == 401:
+                out["anthropic_hint"] = "klic je neplatny (zneplatneny / stary / preklep)"
+            elif r.status_code == 404:
+                out["anthropic_hint"] = f"model '{MODEL}' neexistuje nebo neni dostupny"
+            elif r.status_code < 300:
+                out["anthropic_hint"] = "ok"
+            else:
+                out["anthropic_hint"] = (r.json().get("error", {}).get("type") if r.headers.get("content-type", "").startswith("application/json") else "necekany stav")
+        except Exception as e:
+            out["anthropic_api_status"] = "error"
+            out["anthropic_hint"] = type(e).__name__
     return out
 
 

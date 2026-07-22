@@ -473,7 +473,10 @@ def diag():
             elif r.status_code < 300:
                 out["anthropic_hint"] = "ok"
             else:
-                out["anthropic_hint"] = (r.json().get("error", {}).get("type") if r.headers.get("content-type", "").startswith("application/json") else "necekany stav")
+                try:
+                    out["anthropic_hint"] = r.json().get("error", {}).get("message", "necekany stav")
+                except Exception:
+                    out["anthropic_hint"] = "necekany stav"
         except Exception as e:
             out["anthropic_api_status"] = "error"
             out["anthropic_hint"] = type(e).__name__

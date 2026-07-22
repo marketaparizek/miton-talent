@@ -29,16 +29,8 @@
   </style>
 </head>
 <body>
-  <!-- Served by the FastAPI backend at "/", embedded on miton.cz via <iframe>.
-       data-backend="" = same origin, so the widget calls /chat and /submit
-       on this very server and no CORS is involved. -->
   <div id="miton-talent-chat" data-backend="" data-lang="cs" data-height="100%"></div>
   <script>
-    // Optional language via the iframe URL: .../?lang=en or .../?locale=en
-    // Optional auto-resize mode: .../?resize=1 lets the page grow with the chat and
-    // the widget reports its height to the parent via postMessage
-    // ({type: "miton-talent-height", height}). Without the param, behaviour is the
-    // fixed-height mode as before.
     (function () {
       var p = new URLSearchParams(location.search);
       var el = document.getElementById("miton-talent-chat");

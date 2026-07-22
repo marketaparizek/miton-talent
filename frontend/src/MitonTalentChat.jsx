@@ -34,6 +34,7 @@ const FIELD_BG = "#F7F6F5"; // composer surface
 // Four chips cycle through the three colours; dark text on all of them.
 const STARTER_TINTS = ["#B4DABF", "#EB5E09", "#FFD300"];
 const SEND_BG = "#33363B"; // dark grey send button
+const EMBED_TOP_PAD = 48;  // root paddingTop, added to the height reported to the parent
 const HAIRLINE = "rgba(22,24,29,0.06)";
 const COMPOSER_BORDER = "rgba(22,24,29,0.1)";
 const CARD_BORDER = "rgba(22,24,29,0.1)";
@@ -137,18 +138,27 @@ export default function MitonTalentChat({
 
   const hero = messages.length === 0 && !submitted;
 
-  // Report our content height to the embedding page (cross-origin postMessage),
-  // so it can resize the iframe: low intro, growing conversation. The page opts in
-  // by loading the embed with ?resize=1 and listening for this message.
+  // Auto-resize embed (?resize=1): the card keeps its natural height and is
+  // measured; an outer wrapper animates to that height. Sequencing matters: the
+  // parent is notified FIRST, then our wrapper animates (270ms vs the parent's
+  // 250ms), so the iframe is never shorter than the content and nothing clips.
+  // ResizeObserver watches the card (natural height), never the animated wrapper,
+  // which would feed back into itself.
+  const cardRef = useRef(null);
   const lastHeight = useRef(0);
+  const [animHeight, setAnimHeight] = useState(null);
+  const autoResize = height === "auto";
   const reportHeight = () => {
     if (typeof window === "undefined" || window.parent === window) return;
-    const el = rootRef.current;
+    const el = cardRef.current;
     if (!el) return;
     const h = Math.ceil(el.getBoundingClientRect().height);
     if (Math.abs(h - lastHeight.current) > 1) {
       lastHeight.current = h;
-      window.parent.postMessage({ type: "miton-talent-height", height: h }, "*");
+      // 1) tell the parent the target height (card + top padding)
+      window.parent.postMessage({ type: "miton-talent-height", height: h + EMBED_TOP_PAD }, "*");
+      // 2) then animate our own wrapper towards it
+      if (autoResize) setAnimHeight(h);
     }
   };
   // After every render commit: catches all growth driven by state (messages,
@@ -160,7 +170,7 @@ export default function MitonTalentChat({
   useEffect(() => {
     if (typeof window === "undefined" || window.parent === window) return;
     const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(reportHeight) : null;
-    if (ro && rootRef.current) ro.observe(rootRef.current);
+    if (ro && cardRef.current) ro.observe(cardRef.current);
     window.addEventListener("resize", reportHeight);
     return () => {
       if (ro) ro.disconnect();
@@ -325,12 +335,8 @@ export default function MitonTalentChat({
     </div>
   );
 
-  return (
-    <div ref={rootRef} style={{ ...S.root, height }}>
-      <style>{CSS}</style>
-      {/* In auto-height (resize) mode the page grows with the chat, so cap the panel
-          at a sane height; in fixed mode the iframe height caps it as before. */}
-      <div style={height === "auto" ? { ...S.card, maxHeight: 700 } : S.card}>
+  const card = (
+    <div ref={cardRef} style={autoResize ? { ...S.card, maxHeight: 700 } : S.card}>
         {/* Top bar: profile chips left, language toggle right */}
         <div style={{ ...S.topbar, borderBottom: hero ? "none" : `1px solid ${HAIRLINE}` }}>
           <div style={S.chips}>
@@ -438,7 +444,31 @@ export default function MitonTalentChat({
 
         {/* Docked composer (conversation mode only) */}
         {!hero && !submitted && <div style={S.composerWrap}>{composer}</div>}
-      </div>
+    </div>
+  );
+
+  return (
+    <div ref={rootRef} style={{ ...S.root, height }}>
+      <style>{CSS}</style>
+      {autoResize ? (
+        // Animated wrapper: its height follows the card with a slightly longer
+        // transition than the parent iframe (270ms vs 250ms), same easing curve,
+        // so the reveal is smooth and the iframe never clips the content.
+        <div
+          style={{
+            width: "100%",
+            maxWidth: 680,
+            borderRadius: 22,
+            overflow: "hidden",
+            height: animHeight == null ? "auto" : animHeight,
+            transition: "height 270ms cubic-bezier(0.4, 0, 0.2, 1)",
+          }}
+        >
+          {card}
+        </div>
+      ) : (
+        card
+      )}
     </div>
   );
 }

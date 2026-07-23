@@ -457,7 +457,7 @@ export default function MitonTalentChat({
         <div
           style={{
             width: "100%",
-            maxWidth: 820,
+            maxWidth: 1040,
             borderRadius: 22,
             overflow: "hidden",
             height: animHeight == null ? "auto" : animHeight,
@@ -533,7 +533,7 @@ const styles = {
   },
   card: {
     width: "100%",
-    maxWidth: 820,
+    maxWidth: 1040,
     maxHeight: "100%",
     // Gray panel: light-medium gray with enough presence to read as a panel while
     // keeping dark text legible. The composer inside is white; the panel sits on the
@@ -577,7 +577,7 @@ const styles = {
   heroLogo: { display: "block", marginBottom: 20 },
   heroTitle: { fontSize: 31, fontWeight: 600, letterSpacing: "-0.02em", lineHeight: 1.2 },
   heroSub: { color: MUTED, fontSize: 16, lineHeight: 1.55, maxWidth: 440, margin: "12px 0 26px" },
-  heroComposer: { width: "100%", maxWidth: 720 },
+  heroComposer: { width: "100%", maxWidth: 880 },
   starters: { display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 8, marginTop: 16 },
   starter: {
     fontSize: 14.5,

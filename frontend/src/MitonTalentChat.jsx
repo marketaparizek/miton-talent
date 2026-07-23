@@ -457,7 +457,7 @@ export default function MitonTalentChat({
         <div
           style={{
             width: "100%",
-            maxWidth: 680,
+            maxWidth: 820,
             borderRadius: 22,
             overflow: "hidden",
             height: animHeight == null ? "auto" : animHeight,
@@ -533,12 +533,12 @@ const styles = {
   },
   card: {
     width: "100%",
-    maxWidth: 680,
+    maxWidth: 820,
     maxHeight: "100%",
     // Gray panel: light-medium gray with enough presence to read as a panel while
     // keeping dark text legible. The composer inside is white; the panel sits on the
     // host page's white area, kept compact so it always fits within the page section.
-    background: "#DCDAD8",
+    background: "#E7E5E3",
     borderRadius: 22,
     overflow: "hidden",
     display: "flex",
@@ -577,7 +577,7 @@ const styles = {
   heroLogo: { display: "block", marginBottom: 20 },
   heroTitle: { fontSize: 31, fontWeight: 600, letterSpacing: "-0.02em", lineHeight: 1.2 },
   heroSub: { color: MUTED, fontSize: 16, lineHeight: 1.55, maxWidth: 440, margin: "12px 0 26px" },
-  heroComposer: { width: "100%", maxWidth: 620 },
+  heroComposer: { width: "100%", maxWidth: 720 },
   starters: { display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 8, marginTop: 16 },
   starter: {
     fontSize: 14.5,
@@ -591,7 +591,7 @@ const styles = {
   },
 
   // conversation
-  scroll: { flex: 1, overflowY: "auto", padding: "20px 22px", display: "flex", flexDirection: "column", gap: 18, maxWidth: 640, width: "100%", margin: "0 auto", boxSizing: "border-box" },
+  scroll: { flex: 1, overflowY: "auto", padding: "20px 22px", display: "flex", flexDirection: "column", gap: 18, maxWidth: 720, width: "100%", margin: "0 auto", boxSizing: "border-box" },
   scrollCenter: { flex: 1, overflowY: "auto", padding: "22px", display: "flex", flexDirection: "column" },
   rowAssistant: { display: "flex", justifyContent: "flex-start", alignItems: "flex-start", gap: 10 },
   rowRight: { display: "flex", justifyContent: "flex-end" },
@@ -623,7 +623,7 @@ const styles = {
   error: { fontSize: 12, color: ACCENT, margin: "10px 0 0" },
 
   // composer
-  composerWrap: { padding: "14px 18px 18px", maxWidth: 640, width: "100%", margin: "0 auto", boxSizing: "border-box" },
+  composerWrap: { padding: "14px 18px 18px", maxWidth: 720, width: "100%", margin: "0 auto", boxSizing: "border-box" },
   composerPill: {
     display: "flex",
     alignItems: "flex-end",

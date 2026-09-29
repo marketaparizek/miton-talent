@@ -126,7 +126,8 @@ class Importer:
         self.export, self.dry_run, self.skip_rejected = export, dry_run, skip_rejected
         self.stats = {"inbox": 0, "pool": 0, "searches": 0, "search_rows": 0, "outreach": 0,
                       "linked_searches": 0, "linked_rows": 0,
-                      "merged_by_linkedin": 0, "merged_by_email": 0, "skipped_rejected": 0}
+                      "merged_by_linkedin": 0, "merged_by_email": 0, "skipped_rejected": 0,
+                      "skipped_email_conflicts": 0}
         self.duplicates: list[dict] = []
 
     # --- helpers ------------------------------------------------------------
@@ -139,11 +140,13 @@ class Importer:
         if row:
             key = "linkedin" if store.linkedin_identifier(linkedin) and row.linkedin_identifier == store.linkedin_identifier(linkedin) else "email"
             if key == "email" and not _same_person(name, row.full_name):
-                # shared / generic mailbox: do not merge, but ask a human
+                # Same e-mail, different name. Decision (Markéta, 2026-09-29): treat as a
+                # duplicate and leave the row out entirely; it stays listed in the review CSV.
                 self.duplicates.append({"origin": origin, "notion": legacy_ref, "name": name,
                                         "matched_id": row.id, "matched_name": row.full_name,
-                                        "key": "email_conflict"})
-                row = None
+                                        "key": "email_conflict_skipped"})
+                self.stats["skipped_email_conflicts"] += 1
+                return None, False
         if row:
             self.stats[f"merged_by_{key}"] += 1
             if key == "email":
@@ -177,6 +180,8 @@ class Importer:
             row, created_now = self._get_or_create(
                 s, legacy_ref=r["id"], name=name, email=_url(r.get("E-mail")), linkedin=_url(r.get("LinkedIn")),
                 source=src, created=created, origin="inbox")
+            if row is None:
+                continue
             row.note = row.note or (r.get("Application") or None)
             row.summary = row.summary or (r.get("Summary") or None)
             row.area = row.area or vocab.clean_list(r.get("Oblast") or [], vocab.AREA)
@@ -212,6 +217,8 @@ class Importer:
             row, created_now = self._get_or_create(
                 s, legacy_ref=r["id"], name=(r.get("Name") or "").strip(), email=_url(r.get("Contact")),
                 linkedin=_url(r.get("Linkedin/CV")), source="sourcing", created=created, origin="pool")
+            if row is None:
+                continue
             row.current_company = row.current_company or r.get("Current company") or None
             row.current_position = row.current_position or r.get("Current position") or None
             row.positions = sorted(set(row.positions or []) | set(r.get("Position") or []))
@@ -262,6 +269,8 @@ class Importer:
                 row, _ = self._get_or_create(
                     s, legacy_ref=r["id"], name=(r.get("Name") or "").strip(), email=_url(r.get("Contact")),
                     linkedin=_url(r.get("Linkedin/CV")), source="sourcing", created=created, origin=f"search:{title}")
+                if row is None:
+                    continue
                 row.current_company = row.current_company or r.get("Current company") or None
                 row.current_position = row.current_position or r.get("Current position") or None
                 row.positions = sorted(set(row.positions or []) | set(r.get("Position") or []))
@@ -378,6 +387,8 @@ class Importer:
                 s, legacy_ref=r["id"], name=(r.get("Name") or "").strip(), email=_url(r.get("E-mail")),
                 linkedin=_url(r.get("LinkedIn")), source=SOURCE_MAP.get(r.get("Source") or "", "sourcing"),
                 created=created, origin="outreach")
+            if row is None:
+                continue
             channel = (r.get("Channel") or "").lower() or None
             mode = "referral_ask" if (r.get("Mode") or "") == "Referral ask" else "pitch"
             data = {"channel": channel, "mode": mode, "company_role": r.get("Company and role"),

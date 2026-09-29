@@ -455,7 +455,11 @@ def diag():
                 timeout=10,
             )
             out["resend_api_status"] = r.status_code
-            out["resend_hint"] = "ok" if r.status_code < 300 else ("neplatny klic" if r.status_code == 401 else "necekany stav")
+            # A "sending access" key is rejected on /domains with 401 although sending works;
+            # only /emails proves it, so 401 here is "klic je send-only nebo neplatny".
+            out["resend_hint"] = ("ok" if r.status_code < 300
+                                  else "klic je send-only (v poradku) nebo neplatny; overi az prvni odeslany e-mail" if r.status_code == 401
+                                  else "necekany stav")
         except Exception as e:
             out["resend_api_status"] = "error"
             out["resend_hint"] = type(e).__name__

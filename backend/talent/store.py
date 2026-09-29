@@ -119,9 +119,9 @@ def create_from_submission(session: Session, *, uid: str, profile: dict, contact
 
     row = Candidate(
         uid=uid,
-        full_name=name or (email or "") or ("New candidate from chat" if lang == "en" else "Nový kandidát z chatu"),
-        email=email,
-        linkedin_url=li,
+        full_name=(name or (email or "") or ("New candidate from chat" if lang == "en" else "Nový kandidát z chatu"))[:255],
+        email=(email or None) and email[:255],
+        linkedin_url=(li or None) and li[:500],
         linkedin_identifier=linkedin_identifier(li),
         source="talent_chat",
         lang=(lang or "cs")[:8],

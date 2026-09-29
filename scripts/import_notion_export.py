@@ -74,6 +74,24 @@ def _url(v) -> str | None:
     return v or None
 
 
+def _fit(v, n: int):
+    """Clip a string to a column width (Postgres enforces String(n), SQLite does not)."""
+    if v is None:
+        return None
+    v = str(v)
+    return v if len(v) <= n else v[:n]
+
+
+def _split_name(name: str | None) -> tuple[str, str | None]:
+    """A 'name' longer than a name is pasted application text (StartupJobs did that).
+    Keep the first line as the name and return the rest as a note."""
+    name = (name or "").strip()
+    if len(name) <= 120 and "\n" not in name:
+        return name, None
+    first = name.splitlines()[0].strip()[:120] if name else ""
+    return first, name
+
+
 def _same_person(a: str | None, b: str | None) -> bool:
     """Loose name agreement for e-mail merges: empty name, or a shared surname token."""
     ta = {t for t in re.split(r"[\s,]+", (a or "").lower()) if len(t) > 2}
@@ -155,8 +173,11 @@ class Importer:
             if not row.legacy_ref:
                 row.legacy_ref = legacy_ref
             return row, False
-        row = Candidate(full_name=name or (email or "") or "(bez jména)", email=store.normalize_email(email),
-                        linkedin_url=linkedin or None, linkedin_identifier=store.linkedin_identifier(linkedin),
+        name, spill = _split_name(name)
+        row = Candidate(full_name=_fit(name or (email or "") or "(bez jména)", 255),
+                        email=_fit(store.normalize_email(email), 255),
+                        linkedin_url=_fit(linkedin, 500) or None, linkedin_identifier=store.linkedin_identifier(linkedin),
+                        note=spill,
                         source=source, first_seen_at=created or utcnow(), legacy_ref=legacy_ref,
                         created_at=created or utcnow())
         s.add(row)
@@ -188,7 +209,7 @@ class Importer:
             row.level = row.level or [v for v in (r.get("Level") or []) if isinstance(v, str)]
             row.work_mode = row.work_mode or vocab.clean_list(r.get("Remote?") or [], vocab.WORK_MODE)
             row.search_status = row.search_status or vocab.clean_list(r.get("Aktivita hledání") or [], vocab.SEARCH_STATUS)
-            row.cv_filename = row.cv_filename or ((r.get("CV") or [{}])[0].get("name") if r.get("CV") else None)
+            row.cv_filename = row.cv_filename or _fit(((r.get("CV") or [{}])[0].get("name") if r.get("CV") else None), 255)
             if r.get("Score") is not None and row.score is None:
                 row.score = int(r["Score"])
                 row.company_tier = r.get("Company tier") if r.get("Company tier") in vocab.COMPANY_TIERS else None
@@ -219,15 +240,15 @@ class Importer:
                 linkedin=_url(r.get("Linkedin/CV")), source="sourcing", created=created, origin="pool")
             if row is None:
                 continue
-            row.current_company = row.current_company or r.get("Current company") or None
-            row.current_position = row.current_position or r.get("Current position") or None
+            row.current_company = row.current_company or _fit(r.get("Current company"), 255) or None
+            row.current_position = row.current_position or _fit(r.get("Current position"), 255) or None
             row.positions = sorted(set(row.positions or []) | set(r.get("Position") or []))
             row.sourced_for = sorted(set(row.sourced_for or []) | set(r.get("Sourced for") or []))
             row.interviewed_with = sorted(set(row.interviewed_with or []) | set(r.get("Interviewed with") or []))
-            row.owner = row.owner or r.get("Candidate owner") or None
+            row.owner = row.owner or _fit(r.get("Candidate owner"), 32) or None
             row.hiring_review = row.hiring_review or r.get("Hiring review") or None
             row.newsletter = row.newsletter or (r.get("Placed in newsletter") is True)
-            row.alister_profile_url = row.alister_profile_url or r.get("Alister profil") or None
+            row.alister_profile_url = row.alister_profile_url or _fit(r.get("Alister profil"), 500) or None
             notes = "\n".join(x for x in [r.get("Poznámky"), r.get("Notes")] if x)
             if notes and (not row.notes or notes not in row.notes):
                 row.notes = (row.notes + "\n" + notes) if row.notes else notes
@@ -271,8 +292,8 @@ class Importer:
                     linkedin=_url(r.get("Linkedin/CV")), source="sourcing", created=created, origin=f"search:{title}")
                 if row is None:
                     continue
-                row.current_company = row.current_company or r.get("Current company") or None
-                row.current_position = row.current_position or r.get("Current position") or None
+                row.current_company = row.current_company or _fit(r.get("Current company"), 255) or None
+                row.current_position = row.current_position or _fit(r.get("Current position"), 255) or None
                 row.positions = sorted(set(row.positions or []) | set(r.get("Position") or []))
                 row.sourced_for = sorted(set(row.sourced_for or []) | set(r.get("Sourced for") or []) | ({company} if company else set()))
                 row.interviewed_with = sorted(set(row.interviewed_with or []) | set(r.get("Interviewed with") or []))

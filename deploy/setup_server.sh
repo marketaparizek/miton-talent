@@ -3,7 +3,9 @@
 # First-time install of Miton Talent on the Hetzner server, next to Alister.
 # Idempotent: safe to re-run. Run as root on the server:
 #
-#   git clone git@github.com:marketaparizek/miton-talent.git /root/live/miton-talent
+#   git clone git@github-miton-talent:marketaparizek/miton-talent.git /root/live/miton-talent
+#   (github-miton-talent = ssh alias in /root/.ssh/config using the repo deploy key
+#    /root/.ssh/id_miton_talent; the server's default key is bound to the Alister repo)
 #   cd /root/live/miton-talent && bash deploy/setup_server.sh
 #
 # What it does:

@@ -63,7 +63,8 @@ with its own Postgres database `miton_talent` and its own nginx vhost
 
 ```bash
 # first time, as root on the server
-git clone git@github.com:marketaparizek/miton-talent.git /root/live/miton-talent
+# the server clones through its own deploy key (ssh alias github-miton-talent, see deploy/setup_server.sh)
+git clone git@github-miton-talent:marketaparizek/miton-talent.git /root/live/miton-talent
 cd /root/live/miton-talent && bash deploy/setup_server.sh
 certbot --nginx -d talent.miton.cz
 # then fill the API keys into /root/live/miton-talent/.env and: systemctl restart miton-talent

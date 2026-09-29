@@ -23,6 +23,7 @@ import ssl
 import json
 import time
 import base64
+import uuid
 import logging
 import smtplib
 import threading
@@ -36,6 +37,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel
 from anthropic import Anthropic
+
+from talent import db as tdb
+from talent import store as tstore
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 STATIC_DIR = os.path.join(HERE, "static")
@@ -368,7 +372,7 @@ class SubmitIn(BaseModel):
     consent: bool = False
     consent_text: str = ""
     cv: Optional[CVIn] = None
-    messages: List[Msg] = []  # chat transcript, stored in the Notion page body
+    messages: List[Msg] = []  # chat transcript, stored with the candidate row
 
 
 app = FastAPI()
@@ -395,6 +399,17 @@ def health():
     return {"ok": True}
 
 
+def _db_ok() -> bool:
+    try:
+        from sqlalchemy import text
+        with tdb.engine().connect() as c:
+            c.execute(text("select 1"))
+        return True
+    except Exception:
+        log.exception("database check failed")
+        return False
+
+
 @app.get("/diag")
 def diag():
     """Config self-check for operations. Reports only booleans and status codes,
@@ -405,6 +420,8 @@ def diag():
         "scoring_enabled": SCORING_ENABLED,
         "score_model": SCORE_MODEL,
         "notion_token_set": bool(NOTION_TOKEN),
+        "database": tdb.engine().url.drivername,
+        "database_ok": _db_ok(),
         "smtp_pass_set": bool(SMTP_PASS),
         "smtp_user_set": bool(SMTP_USER),
         "mail_from": bool(MAIL_FROM),
@@ -1024,30 +1041,69 @@ def _score_blocks(verdict, lang) -> list:
     return blocks
 
 
-def _run_scoring(page_id, cv: Optional[CVIn], profile, summary, messages, lang):
-    """Best-effort scoring of an already-saved candidate. Never raises to the caller."""
+def _run_scoring(uid, page_id, cv: Optional[CVIn], profile, summary, messages, lang):
+    """Best-effort scoring of an already-saved candidate. Never raises to the caller.
+    Writes to the Miton Talent database (always) and to Notion (while dual-writing)."""
     filename, blob, mime = _decode_cv(cv)
     cv_text = _cv_to_text(blob, mime, filename) if blob else ""
     score = _score_candidate(cv_text, profile, summary, messages, lang)
     if not score:
-        log.warning("scoring produced no result for page %s", page_id)
+        log.warning("scoring produced no result for %s", uid)
         return
-    props = _score_props(score)
-    if props:
-        _update_notion_page(page_id, props)
-    _append_notion_blocks(page_id, _score_blocks(score, lang))
+    if uid:
+        try:
+            with tdb.session() as s:
+                cand = tstore.find_candidate(s, uid=uid)
+                if cand:
+                    computed = _compute_score(score)
+                    tstore.apply_score(
+                        s, cand, score=computed,
+                        company_tier=score.get("company_tier"), education_tier=score.get("education"),
+                        fit_areas=score.get("fit_oblast") or [], recommendation=_recommendation_for(computed),
+                        reasoning=score.get("reasoning"),
+                        breakdown=(f"company {score.get('company_tier', '?')} · education {score.get('education', '?')} · "
+                                   f"ownership {_clamp03(score.get('ownership'))}/3 · impact {_clamp03(score.get('impact'))}/3 · "
+                                   f"depth {_clamp03(score.get('depth'))}/3"),
+                    )
+        except Exception:
+            log.exception("scoring write to database failed for %s", uid)
+    if page_id:
+        props = _score_props(score)
+        if props:
+            _update_notion_page(page_id, props)
+        _append_notion_blocks(page_id, _score_blocks(score, lang))
 
 
-def _deliver_submission(profile, contact, cv: Optional[CVIn], summary, consent, cv_name, lang, messages=None):
-    """Email + Notion delivery, run in the background so the visitor never waits on SMTP.
+def _write_database(uid, profile, contact, consent, consent_text, cv_name, summary, lang, messages) -> bool:
+    """Store the submission in the Miton Talent database. Idempotent on uid. Returns
+    True when the row exists afterwards (created now or already there)."""
+    try:
+        with tdb.session() as s:
+            _, created = tstore.create_from_submission(
+                s, uid=uid, profile=profile, contact=contact, summary=summary, consent=consent,
+                consent_text=consent_text, cv_name=cv_name, lang=lang, messages=messages,
+            )
+        log.info("candidate %s %s", uid, "stored" if created else "already stored")
+        return True
+    except Exception:
+        log.exception("database write failed for %s", uid)
+        return False
+
+
+def _deliver_submission(uid, profile, contact, cv: Optional[CVIn], summary, consent, consent_text,
+                        cv_name, lang, messages=None):
+    """Database + email + Notion delivery, run in the background so the visitor never
+    waits. Order: the database first (it is the system of record), then the CV e-mail,
+    then Notion while NOTION_TOKEN is still set (dual-write during the migration).
     Scoring runs after the candidate is safely written and never affects the save."""
+    db_ok = _write_database(uid, profile, contact, consent, consent_text, cv_name, summary, lang, messages)
     email_ok = _send_cv_email(profile, contact, cv, summary, lang)
     page_id = _write_notion(profile, contact, consent, cv_name, summary, lang, messages)
-    if not email_ok and not page_id:
-        log.error("submission delivered NOWHERE (email and Notion both failed/off); check submissions.jsonl")
-    if page_id and SCORING_ENABLED:
+    if not db_ok and not email_ok and not page_id:
+        log.error("submission delivered NOWHERE (database, email and Notion all failed/off); check submissions.jsonl")
+    if SCORING_ENABLED and (db_ok or page_id):
         try:
-            _run_scoring(page_id, cv, profile, summary, messages, lang)
+            _run_scoring(uid if db_ok else None, page_id, cv, profile, summary, messages, lang)
         except Exception:
             log.exception("scoring step raised (candidate already saved)")
 
@@ -1063,9 +1119,11 @@ def submit(body: SubmitIn, request: Request, background: BackgroundTasks):
         raise HTTPException(status_code=400, detail="consent required")
 
     cv_name = (body.cv.name if body.cv else "") or ""
+    uid = uuid.uuid4().hex  # stable id of this submission across database, e-mail and logs
 
     # local backup just in case (filename only, never the CV bytes)
     record = {
+        "uid": uid,
         "ts": _utcnow().isoformat().replace("+00:00", "Z"),
         "lang": body.lang,
         "profile": body.profile,
@@ -1084,7 +1142,7 @@ def submit(body: SubmitIn, request: Request, background: BackgroundTasks):
     # deliver by email + Notion in the background; the visitor gets the thank-you immediately
     background.add_task(
         _deliver_submission,
-        body.profile or {}, body.contact or {}, body.cv, body.summary,
-        bool(body.consent), cv_name, body.lang, body.messages or [],
+        uid, body.profile or {}, body.contact or {}, body.cv, body.summary,
+        bool(body.consent), body.consent_text, cv_name, body.lang, body.messages or [],
     )
     return {"ok": True, "queued": True}

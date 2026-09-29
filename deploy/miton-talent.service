@@ -1,0 +1,21 @@
+[Unit]
+Description=Miton Talent (chat backend + recruiting back office)
+After=network.target postgresql.service
+Wants=postgresql.service
+
+[Service]
+Type=simple
+WorkingDirectory=/root/live/miton-talent/backend
+EnvironmentFile=/root/live/miton-talent/.env
+Environment=PATH=/root/live/miton-talent/backend/.venv/bin:/root/.local/bin:/usr/local/bin:/usr/bin:/bin
+# Migrations first, then the app. A failed migration keeps the old process down
+# rather than serving against a half-upgraded schema.
+ExecStartPre=/root/live/miton-talent/backend/.venv/bin/alembic upgrade head
+ExecStart=/root/live/miton-talent/backend/.venv/bin/uvicorn app:app --host 127.0.0.1 --port 8200 --workers 2 --proxy-headers --forwarded-allow-ips=127.0.0.1
+Restart=always
+RestartSec=3
+StandardOutput=append:/root/live/miton-talent/logs/app.log
+StandardError=append:/root/live/miton-talent/logs/app.log
+
+[Install]
+WantedBy=multi-user.target

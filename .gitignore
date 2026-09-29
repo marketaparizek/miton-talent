@@ -9,3 +9,5 @@ submissions.jsonl
 node_modules/
 dist/
 .env.local
+miton_talent.db
+*.db-journal

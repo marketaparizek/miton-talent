@@ -23,7 +23,7 @@ _LI_RE = re.compile(r"linkedin\.com/in/([^/?#]+)", re.IGNORECASE)
 
 def linkedin_identifier(url: Optional[str]) -> Optional[str]:
     """'https://www.linkedin.com/in/Jan-Novak-1a2b/' -> 'jan-novak-1a2b'."""
-    if not url:
+    if not url or not isinstance(url, str):
         return None
     m = _LI_RE.search(url.strip())
     if not m:

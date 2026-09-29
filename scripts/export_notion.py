@@ -68,6 +68,12 @@ class Notion:
             if r.status_code >= 500:
                 time.sleep(2 * (attempt + 1))
                 continue
+            if r.status_code == 401:
+                sys.exit("Notion says 401 Unauthorized: NOTION_TOKEN is not a valid integration secret. "
+                         "Copy the Internal Integration Secret (starts with ntn_) from notion.so/profile/integrations.")
+            if r.status_code in (403, 404):
+                sys.exit(f"Notion says {r.status_code} for {path}: the integration is not connected to this page. "
+                         "Open 'HR v Mitonu' in Notion -> ... -> Connections -> add the integration, then re-run.")
             r.raise_for_status()
             return r.json()
         raise RuntimeError(f"Notion API kept failing: {method} {path}")
@@ -148,7 +154,22 @@ def block_text(b: dict) -> dict:
             "has_children": b.get("has_children", False)}
 
 
-def export_database(n: Notion, key: str, db_id: str, out: Path, with_bodies: bool) -> int:
+def _already_exported(out: Path, key: str) -> int | None:
+    """Row count of a previous complete export of this database, else None."""
+    done = out / f"{key}.done"
+    if done.exists():
+        try:
+            return int(done.read_text().strip())
+        except ValueError:
+            return None
+    return None
+
+
+def export_database(n: Notion, key: str, db_id: str, out: Path, with_bodies: bool, force: bool = False) -> int:
+    prev = _already_exported(out, key)
+    if prev is not None and not force:
+        print(f"  {key}: already exported ({prev} rows), skipping", file=sys.stderr)
+        return prev
     meta = n.database(db_id)
     (out / f"{key}.schema.json").write_text(json.dumps(meta, ensure_ascii=False, indent=1))
     count = 0
@@ -163,6 +184,7 @@ def export_database(n: Notion, key: str, db_id: str, out: Path, with_bodies: boo
                     json.dumps(blocks, ensure_ascii=False))
             if count % 100 == 0:
                 print(f"  {key}: {count} rows", file=sys.stderr)
+    (out / f"{key}.done").write_text(str(count))
     return count
 
 
@@ -186,36 +208,85 @@ def main() -> int:
     ap.add_argument("--out", default="notion-export")
     ap.add_argument("--skip-searches", action="store_true")
     ap.add_argument("--skip-bodies", action="store_true")
+    ap.add_argument("--force", action="store_true", help="re-export databases that already have a .done marker")
+    ap.add_argument("--probe", help="diagnose one database/block id: print raw API answers and exit")
     args = ap.parse_args()
 
     token = os.environ.get("NOTION_TOKEN", "").strip()
-    if not token:
-        print("NOTION_TOKEN is not set", file=sys.stderr)
+    token_file = Path.home() / ".config" / "miton-talent" / "notion_token"
+    if (not token or token.startswith("ntn_VLOZ")) and token_file.exists():
+        token = token_file.read_text().strip()
+        print(f"používám uložený token z {token_file} (smaž ho po exportu)", file=sys.stderr)
+    if not token or token.startswith("ntn_VLOZ"):
+        import getpass
+        print("Vlož Internal Integration Secret z notion.so/profile/integrations (začíná ntn_).", file=sys.stderr)
+        print("Při vkládání se nic nezobrazuje, to je v pořádku. Pak stiskni Enter.", file=sys.stderr)
+        token = getpass.getpass("NOTION_TOKEN: ")
+    # Take just the token out of whatever was pasted (extra text, spaces, newlines are fine).
+    import re
+    # Notion internal secrets are "ntn_" + 46 alphanumerics. Take the FIRST such
+    # run so a token pasted twice in a row still yields one clean token.
+    found = re.findall(r"ntn_[A-Za-z0-9]{46}", token or "") or \
+        re.findall(r"secret_[A-Za-z0-9]{43}", token or "") or \
+        re.findall(r"(?:ntn|secret)_[A-Za-z0-9]{20,}", token or "")
+    if not found:
+        print("V zadaném textu není token integrace (má začínat ntn_). Zkus to znovu.", file=sys.stderr)
         return 2
+    token = found[0]
+    print(f"token přijat ({token[:6]}…{token[-4:]})", file=sys.stderr)
+    try:
+        token_file.parent.mkdir(parents=True, exist_ok=True)
+        token_file.write_text(token)
+        os.chmod(token_file, 0o600)
+    except OSError:
+        pass
     out = Path(args.out).expanduser()
     (out / "bodies").mkdir(parents=True, exist_ok=True)
     (out / "searches").mkdir(parents=True, exist_ok=True)
     n = Notion(token)
+    if args.probe:
+        pid = args.probe
+        for method, path, body in (("GET", f"/databases/{pid}", None),
+                                   ("POST", f"/databases/{pid}/query", {"page_size": 1}),
+                                   ("GET", f"/blocks/{pid}", None),
+                                   ("GET", f"/pages/{pid}", None)):
+            n._throttle()
+            r = n.h.request(method, path, json=body) if body else n.h.request(method, path)
+            txt = r.text
+            try:
+                j = r.json()
+                keep = {k: j.get(k) for k in ("object", "type", "title", "code", "message", "is_inline", "parent", "data_sources") if k in j}
+                if j.get("type") and j.get(j["type"]) is not None and isinstance(j.get(j["type"]), dict):
+                    keep[j["type"]] = {k: v for k, v in j[j["type"]].items() if k in ("title", "database_id", "data_source_id")}
+                txt = json.dumps(keep, ensure_ascii=False)
+            except ValueError:
+                pass
+            print(f"{method} {path} -> {r.status_code}: {txt[:600]}", file=sys.stderr)
+        return 0
     manifest = {"exported_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "databases": {}, "searches": {}}
 
     for key, db_id in DATABASES.items():
         print(f"exporting {key} ...", file=sys.stderr)
         manifest["databases"][key] = export_database(
-            n, key, db_id, out, with_bodies=(key in BODIES_FOR and not args.skip_bodies))
+            n, key, db_id, out, with_bodies=(key in BODIES_FOR and not args.skip_bodies), force=args.force)
 
     if not args.skip_searches:
         print("walking Sdílení searchů ...", file=sys.stderr)
         with (out / "searches" / "index.jsonl").open("w", encoding="utf-8") as idx:
             for db_id, title, path in walk_child_databases(n, SEARCHES_ROOT_PAGE, []):
                 try:
-                    cnt = export_database(n, f"searches/{db_id}", db_id, out, with_bodies=False)
+                    cnt = export_database(n, f"searches/{db_id}", db_id, out, with_bodies=False, force=args.force)
+                    rec = {"id": db_id, "title": title, "path": path, "rows": cnt}
                 except httpx.HTTPStatusError as e:
-                    print(f"  skip {db_id} ({title}): {e.response.status_code}", file=sys.stderr)
-                    continue
-                rec = {"id": db_id, "title": title, "path": path, "rows": cnt}
+                    # 400 "no data sources accessible" = a LINKED view of another database
+                    # (in this workspace: filtered views of "Full databáze kandidátů").
+                    # Record it so the import can rebuild the search from the pool rows.
+                    print(f"  linked/skip {db_id} ({title}): {e.response.status_code}", file=sys.stderr)
+                    rec = {"id": db_id, "title": title, "path": path, "rows": 0, "linked": True,
+                           "error": e.response.status_code}
                 idx.write(json.dumps(rec, ensure_ascii=False) + "\n")
                 manifest["searches"][db_id] = rec
-                print(f"  {'/'.join(path)} :: {title or db_id}: {cnt}", file=sys.stderr)
+                print(f"  {'/'.join(path)} :: {title or db_id}: {rec['rows']}", file=sys.stderr)
 
     (out / "manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=1))
     print(json.dumps({k: v for k, v in manifest.items() if k != "searches"}, ensure_ascii=False), file=sys.stderr)

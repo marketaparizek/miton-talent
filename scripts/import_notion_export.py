@@ -62,6 +62,25 @@ def parse_ts(s: str | None) -> dt.datetime | None:
         return None
 
 
+def _url(v) -> str | None:
+    """Notion url / files / rich_text values as one string (first file's url for files)."""
+    if v is None:
+        return None
+    if isinstance(v, list):
+        v = v[0] if v else None
+    if isinstance(v, dict):
+        v = v.get("url") or v.get("name")
+    v = (str(v) if v is not None else "").strip()
+    return v or None
+
+
+def _same_person(a: str | None, b: str | None) -> bool:
+    """Loose name agreement for e-mail merges: empty name, or a shared surname token."""
+    ta = {t for t in re.split(r"[\s,]+", (a or "").lower()) if len(t) > 2}
+    tb = {t for t in re.split(r"[\s,]+", (b or "").lower()) if len(t) > 2}
+    return not ta or not tb or bool(ta & tb)
+
+
 def slug(v: str | None) -> str | None:
     if not v:
         return None
@@ -106,6 +125,7 @@ class Importer:
     def __init__(self, export: Path, dry_run: bool, skip_rejected: bool):
         self.export, self.dry_run, self.skip_rejected = export, dry_run, skip_rejected
         self.stats = {"inbox": 0, "pool": 0, "searches": 0, "search_rows": 0, "outreach": 0,
+                      "linked_searches": 0, "linked_rows": 0,
                       "merged_by_linkedin": 0, "merged_by_email": 0, "skipped_rejected": 0}
         self.duplicates: list[dict] = []
 
@@ -118,9 +138,17 @@ class Importer:
         row = store.find_candidate(s, linkedin_url=linkedin, email=email)
         if row:
             key = "linkedin" if store.linkedin_identifier(linkedin) and row.linkedin_identifier == store.linkedin_identifier(linkedin) else "email"
+            if key == "email" and not _same_person(name, row.full_name):
+                # shared / generic mailbox: do not merge, but ask a human
+                self.duplicates.append({"origin": origin, "notion": legacy_ref, "name": name,
+                                        "matched_id": row.id, "matched_name": row.full_name,
+                                        "key": "email_conflict"})
+                row = None
+        if row:
             self.stats[f"merged_by_{key}"] += 1
-            self.duplicates.append({"origin": origin, "notion": legacy_ref, "name": name,
-                                    "matched_id": row.id, "matched_name": row.full_name, "key": key})
+            if key == "email":
+                self.duplicates.append({"origin": origin, "notion": legacy_ref, "name": name,
+                                        "matched_id": row.id, "matched_name": row.full_name, "key": key})
             if not row.legacy_ref:
                 row.legacy_ref = legacy_ref
             return row, False
@@ -147,7 +175,7 @@ class Importer:
                 src = "typeform" if (created and created < dt.datetime(2026, 7, 1, tzinfo=dt.timezone.utc)) else "startupjobs"
             name = (r.get("Name") or r.get("Jméno") or "").strip()
             row, created_now = self._get_or_create(
-                s, legacy_ref=r["id"], name=name, email=r.get("E-mail"), linkedin=r.get("LinkedIn"),
+                s, legacy_ref=r["id"], name=name, email=_url(r.get("E-mail")), linkedin=_url(r.get("LinkedIn")),
                 source=src, created=created, origin="inbox")
             row.note = row.note or (r.get("Application") or None)
             row.summary = row.summary or (r.get("Summary") or None)
@@ -182,8 +210,8 @@ class Importer:
         for r in read_jsonl(self.export / "full_databaze_kandidatu.jsonl"):
             created = parse_ts(r.get("created_time"))
             row, created_now = self._get_or_create(
-                s, legacy_ref=r["id"], name=(r.get("Name") or "").strip(), email=r.get("Contact"),
-                linkedin=r.get("Linkedin/CV"), source="sourcing", created=created, origin="pool")
+                s, legacy_ref=r["id"], name=(r.get("Name") or "").strip(), email=_url(r.get("Contact")),
+                linkedin=_url(r.get("Linkedin/CV")), source="sourcing", created=created, origin="pool")
             row.current_company = row.current_company or r.get("Current company") or None
             row.current_position = row.current_position or r.get("Current position") or None
             row.positions = sorted(set(row.positions or []) | set(r.get("Position") or []))
@@ -199,13 +227,19 @@ class Importer:
             stage = slug(r.get("Stage"))
             if stage in vocab.STAGES and (created_now or row.stage in ("applied", "sourced")):
                 row.stage = stage
-            elif created_now and r.get("Status") == "Hired":
+            elif r.get("Status") in ("Hired", "Hired with Miton lead"):
                 row.stage = "hired"
+            elif created_now:
+                row.stage = "sourced"
             self.stats["pool"] += 1
 
     # --- per-search tables under Sdílení searchů ---------------------------
     def searches(self, s):
+        seen_linked: dict[tuple, Search] = {}
         for idx in read_jsonl(self.export / "searches" / "index.jsonl"):
+            if idx.get("linked"):
+                self._linked_search(s, idx, seen_linked)
+                continue
             title = (idx.get("title") or "").strip() or idx["id"]
             company, _, role = [x.strip() for x in title.partition("-")] if "-" in title else (title, "", "")
             if not role and "—" in title:
@@ -226,8 +260,8 @@ class Importer:
             for r in read_jsonl(self.export / "searches" / f"{idx['id']}.jsonl"):
                 created = parse_ts(r.get("created_time"))
                 row, _ = self._get_or_create(
-                    s, legacy_ref=r["id"], name=(r.get("Name") or "").strip(), email=r.get("Contact"),
-                    linkedin=r.get("Linkedin/CV"), source="sourcing", created=created, origin=f"search:{title}")
+                    s, legacy_ref=r["id"], name=(r.get("Name") or "").strip(), email=_url(r.get("Contact")),
+                    linkedin=_url(r.get("Linkedin/CV")), source="sourcing", created=created, origin=f"search:{title}")
                 row.current_company = row.current_company or r.get("Current company") or None
                 row.current_position = row.current_position or r.get("Current position") or None
                 row.positions = sorted(set(row.positions or []) | set(r.get("Position") or []))
@@ -241,19 +275,108 @@ class Importer:
                 link = store.add_to_search(
                     s, search, row, miton_comment=(r.get("Poznámky") or r.get("TM - comments") or None),
                     outcome=outcome if outcome in vocab.OUTCOMES else None, actor="import")
+                if outcome in ("hired", "hired_with_miton_lead"):
+                    row.stage = "hired"
                 if founder_bits and not link.founder_comment:
                     link.founder_comment = "\n".join(founder_bits)
                 if link.added_at and created:
                     link.added_at = created
                 self.stats["search_rows"] += 1
 
+    # --- linked views of the pool (PangeAI-GTM, Whisper- FE, Firefish - ...) ---
+    # These Notion "databases" were filtered views of "Full databáze kandidátů"
+    # (Sourced for = company, Position = role). The rows live in the pool export, so
+    # the search is rebuilt from there: members = pool rows sourced for that company
+    # whose Position matches the role in the title (or all of the company's rows when
+    # the role cannot be matched). Approximate by construction; the search note says so.
+    ROLE_TO_POSITIONS = {
+        "gtm": ["Business development manager", "Sales manager", "Head of Growth", "CRO", "CSO",
+                "Expansion manager", "Partnership manager", "Business development", "Head of sales"],
+        "product manager": ["Product manager", "Growth Product Manager", "CPO"],
+        "growth product manager": ["Growth Product Manager"],
+        "growth product marketing manager": ["Growth Product Marketing Manager"],
+        "ux/product design": ["UX/product designer", "Product designer"],
+        "product designer": ["Product designer", "UX/product designer"],
+        "ai": ["AI/ML developer", "AI/MI team lead", "AI researcher", "AI/data scientist", "Data scientist", "AI analyst"],
+        "ai data scientist": ["AI/data scientist", "Data scientist", "AI/ML developer"],
+        "data scientist": ["Data scientist", "AI/data scientist"],
+        "devops": ["DevOps"],
+        "fe": ["Frontend developer", "React developer", "Fullstack developer"],
+        "be": ["Backend developer", "Python developer", "Node.js developer", "Java developer", "PHP developer", "Fullstack developer"],
+        "backend developer/cto": ["Backend developer", "CTO", "Fullstack developer"],
+        "python developer": ["Python developer", "Backend developer"],
+        "fullstack developer": ["Fullstack developer", "Frontend developer", "Backend developer", "React developer"],
+        "tech lead/full-stack developer": ["Fullstack developer", "CTO", "Backend developer"],
+        "sales manager": ["Sales manager", "Business development manager", "Head of sales"],
+        "ceo potential": ["CEO potential", "CEO", "co-founder potential", "Founders material", "CEO potential with finance focus"],
+        "ceo": ["CEO", "CEO potential", "co-founder potential"],
+        "co-founder": ["co-founder potential", "Founders material", "CEO potential"],
+        "performance marketing": ["Performance consultant (PPCRTB)", "Head of Performance", "Marketing manager"],
+        "p&o business partner": ["HR manager", "Recruiter"],
+        "ai trends & market analyst": ["AI analyst", "Research analyst", "Investment analyst", "AI researcher"],
+        "market analyst": ["Research analyst", "AI analyst", "Investment analyst"],
+        "investiční": ["Investment analyst", "Investment manager", "Financial analyst"],
+    }
+    TITLE_COMPANY_ALIASES = {"pangeai": "PangeAI", "whisper": "Whisper", "firefish": "Firefish",
+                             "coinmate": "Coinmate", "deepscout": "Deepscout", "aim": "Aim", "psyon": "Psyon",
+                             "knihobot": "Knihobot", "glami": "GLAMI", "deinsy": "Deinsy", "behavera": "Behavera",
+                             "miton": "Miton", "miton c": "Miton C"}
+
+    def _linked_search(self, s, idx: dict, seen: dict):
+        raw = (idx.get("title") or "").strip()
+        if not raw or raw.lower() == "untitled":
+            return
+        # "PangeAI-GTM", "Whisper- FE", "Firefish - Growth Product Manager", "CEO-Psyon"
+        parts = [p.strip() for p in re.split(r"\s*[-—]\s*", raw, maxsplit=1)]
+        company, role = (parts + [""])[:2]
+        if company.lower() in ("ceo", "cto") and role:         # "CEO-Psyon" is role-company
+            company, role = role, company
+        company_key = self.TITLE_COMPANY_ALIASES.get(company.lower().rstrip(" -"), company)
+        role_clean = re.sub(r"[“”\"]", "", role).strip()
+        path = idx.get("path") or []
+        opened = None
+        for p in reversed(path):
+            m = re.match(r"^\s*(\d{1,2})/(\d{4})", p or "")
+            if m:
+                opened = dt.datetime(int(m.group(2)), int(m.group(1)), 1, tzinfo=dt.timezone.utc)
+                break
+        key = (company_key.lower(), role_clean.lower(), opened.strftime("%Y-%m") if opened else "")
+        if key in seen:
+            return                                              # same linked view listed twice
+        search = s.query(Search).filter(Search.legacy_ref == idx["id"]).one_or_none()
+        if not search:
+            search = store.create_search(s, company_name=company_key, role=role_clean or raw,
+                                         opened_at=opened, legacy_ref=idx["id"])
+            search.status = "closed"
+            search.notes = ("Rebuilt from a Notion linked view of Full databáze kandidátů "
+                            "(filter: Sourced for + Position). Membership is approximate.")
+        seen[key] = search
+        self.stats["linked_searches"] += 1
+
+        wanted = None
+        for k, positions in self.ROLE_TO_POSITIONS.items():
+            if k and k in role_clean.lower():
+                wanted = set(positions)
+                break
+        company_rows = [c for c in s.query(Candidate).filter(Candidate.deleted_at.is_(None)).all()
+                        if company_key in (c.sourced_for or [])]
+        members = [c for c in company_rows if wanted is None or wanted & set(c.positions or [])]
+        if not members:
+            members = company_rows
+        for c in members:
+            outcome = None
+            if c.stage == "hired":
+                outcome = "hired"
+            store.add_to_search(s, search, c, outcome=outcome, actor="import")
+            self.stats["linked_rows"] += 1
+
     # --- outreach table -----------------------------------------------------
     def outreach(self, s):
         for r in read_jsonl(self.export / "outreach_table.jsonl"):
             created = parse_ts(r.get("created_time"))
             row, _ = self._get_or_create(
-                s, legacy_ref=r["id"], name=(r.get("Name") or "").strip(), email=r.get("E-mail"),
-                linkedin=r.get("LinkedIn"), source=SOURCE_MAP.get(r.get("Source") or "", "sourcing"),
+                s, legacy_ref=r["id"], name=(r.get("Name") or "").strip(), email=_url(r.get("E-mail")),
+                linkedin=_url(r.get("LinkedIn")), source=SOURCE_MAP.get(r.get("Source") or "", "sourcing"),
                 created=created, origin="outreach")
             channel = (r.get("Channel") or "").lower() or None
             mode = "referral_ask" if (r.get("Mode") or "") == "Referral ask" else "pitch"

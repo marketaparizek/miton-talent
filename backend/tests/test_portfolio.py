@@ -510,6 +510,51 @@ def test_the_json_is_the_same_snapshot(client):
     assert data["health"]["ran"] is True
 
 
+def _service_token(secret=SECRET, purpose="portfolio-read", ttl=120, **over):
+    import jwt
+    now = dt.datetime.now(dt.timezone.utc)
+    claims = {"sub": "alister", "purpose": purpose, "aud": "miton-talent",
+              "iat": now, "exp": now + dt.timedelta(seconds=ttl)}
+    claims.update(over)
+    return jwt.encode(claims, secret, algorithm="HS256")
+
+
+def test_the_service_snapshot_needs_a_token(client):
+    assert client.get("/api/portfolio/snapshot").status_code == 401
+    assert client.get("/api/portfolio/snapshot",
+                      headers={"Authorization": "Bearer nonsense"}).status_code == 401
+
+
+def test_a_valid_service_token_gets_the_snapshot(client):
+    r = client.get("/api/portfolio/snapshot",
+                   headers={"Authorization": f"Bearer {_service_token()}"})
+    assert r.status_code == 200
+    data = r.json()
+    assert len(data["companies"]) == 44
+    assert sum(len(c["roles"]) for c in data["companies"]) == 117
+
+
+@pytest.mark.parametrize("token_kwargs,why", [
+    ({"secret": "another-secret-that-is-also-32-characters-long"}, "wrong secret"),
+    ({"purpose": "talent-handoff"}, "a sign-in token is not a read token"),
+    ({"ttl": 3600}, "lifetime beyond the ceiling"),
+    ({"aud": "somebody-else"}, "wrong audience"),
+    ({"ttl": -60}, "expired"),
+])
+def test_a_bad_service_token_is_refused(client, token_kwargs, why):
+    token = _service_token(**token_kwargs)
+    assert client.get("/api/portfolio/snapshot",
+                      headers={"Authorization": f"Bearer {token}"}).status_code == 401, why
+
+
+def test_a_service_token_cannot_open_a_session(client):
+    token = _service_token()
+    r = client.get(f"/auth/callback?token={token}", follow_redirects=False)
+    assert r.status_code in (302, 303, 307)
+    assert "alister.example.test" in r.headers["location"]
+    assert client.get("/admin/portfolio", follow_redirects=False).status_code in (302, 303, 307, 401)
+
+
 def test_the_scrape_button_starts_one_run_at_a_time(client, monkeypatch):
     signed_in(client)
     import threading

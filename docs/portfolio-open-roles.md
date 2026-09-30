@@ -53,6 +53,16 @@ marked unread on the page, and its number is labelled as last known. A failed
 fetch must never be able to look like a company that stopped hiring, because
 that is a conclusion someone would act on.
 
+## Where it is read
+
+* `/admin/portfolio` in this service, for a signed-in Miton person.
+* Alister's `/miton` hub draws the same data in its own design. Its API asks
+  `GET /api/portfolio/snapshot` with a two-minute token signed with the shared
+  `TALENT_HANDOFF_SECRET` and `purpose=portfolio-read`. That token carries no
+  identity and cannot open a session here; `talent/auth.py`
+  (`verify_service_token`) is the whole gate. This is the only route another
+  service may call, and it only ever reads.
+
 ## Tables
 
 | Table | One row is |

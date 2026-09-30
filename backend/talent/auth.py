@@ -51,6 +51,11 @@ log = logging.getLogger("miton-talent.auth")
 MITON_DOMAIN = "@miton.cz"
 ALLOWED_ROLES = ("admin", "miton")
 HANDOFF_PURPOSE = "talent-handoff"
+# A second purpose over the same secret: Alister's server asking this service
+# for the portfolio snapshot, so the /miton hub can draw it in Alister's own
+# design. It carries no identity, opens no session, and only ever reads.
+SERVICE_READ_PURPOSE = "portfolio-read"
+SERVICE_READ_MAX_AGE_SECONDS = 300
 HANDOFF_AUDIENCE = "miton-talent"
 HANDOFF_MAX_AGE_SECONDS = 120   # Alister issues 60 s; this is the ceiling we accept
 HANDOFF_LEEWAY_SECONDS = 10     # clock skew between the two services (same box today)
@@ -139,6 +144,53 @@ def verify_handoff_token(token: str) -> dict:
 
     _consume_jti(str(claims["jti"]), dt.datetime.fromtimestamp(int(claims["exp"]), dt.timezone.utc))
     return {"user_id": str(claims["sub"]), "email": email, "role": role}
+
+
+class ServiceTokenRejected(Exception):
+    """A service token that must not be answered."""
+
+    def __init__(self, reason: str):
+        super().__init__(reason)
+        self.reason = reason
+
+
+def verify_service_token(token: str, purpose: str = SERVICE_READ_PURPOSE) -> dict:
+    """Check a token minted by the other service with the shared secret.
+
+    Different from the handoff in three ways, all of them on purpose: it says
+    which service is asking rather than which person, it is not recorded
+    against replay because replaying a read changes nothing, and it may never
+    open a session. It is the only way in that is not a browser with a cookie.
+    """
+    try:
+        claims = jwt.decode(
+            token,
+            handoff_secret(),
+            algorithms=["HS256"],
+            audience=HANDOFF_AUDIENCE,
+            leeway=HANDOFF_LEEWAY_SECONDS,
+            options={"require": ["exp", "iat", "aud", "purpose"]},
+        )
+    except jwt.InvalidTokenError as e:
+        raise ServiceTokenRejected(f"invalid token: {type(e).__name__}") from e
+    if claims.get("purpose") != purpose:
+        raise ServiceTokenRejected("wrong purpose")
+    if int(claims["exp"]) - int(claims["iat"]) > SERVICE_READ_MAX_AGE_SECONDS:
+        raise ServiceTokenRejected("lifetime too long")
+    return {"service": str(claims.get("sub") or "unknown")}
+
+
+def require_service(request: Request) -> dict:
+    """FastAPI dependency: an Authorization: Bearer <token> header, nothing else."""
+    header = request.headers.get("authorization", "")
+    scheme, _, token = header.partition(" ")
+    if scheme.lower() != "bearer" or not token.strip():
+        raise HTTPException(status_code=401, detail="service token required")
+    try:
+        return verify_service_token(token.strip())
+    except ServiceTokenRejected as e:
+        log.warning("service token refused: %s", e.reason)
+        raise HTTPException(status_code=401, detail="service token refused") from e
 
 
 def _consume_jti(jti: str, expires_at: dt.datetime) -> None:

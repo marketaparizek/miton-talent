@@ -32,6 +32,18 @@ log = logging.getLogger("miton-talent.portfolio.view")
 
 router = APIRouter(prefix="/admin/portfolio", tags=["portfolio"], dependencies=[Depends(tauth.require_user)])
 
+# The one route another service may call. Alister's /miton hub draws the
+# portfolio in its own design and asks for the data here, with a short-lived
+# token signed with the secret the two services already share. Read only, no
+# session, no identity: see talent/auth.py verify_service_token.
+service_router = APIRouter(prefix="/api/portfolio", tags=["portfolio"])
+
+
+@service_router.get("/snapshot")
+def service_snapshot(caller: dict = Depends(tauth.require_service)):
+    log.info("portfolio snapshot served to service %s", caller.get("service"))
+    return JSONResponse(_snapshot(), headers=_NO_STORE)
+
 PAGE = os.path.join(os.path.dirname(__file__), "page.html")
 _NO_STORE = {"Cache-Control": "no-store"}
 

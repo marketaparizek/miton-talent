@@ -397,6 +397,8 @@ app.include_router(tauth.router)
 # same session as the rest of the back office; the weekly scrape that feeds it
 # runs from cron (scripts/scrape_portfolio.py), not from a request.
 app.include_router(portfolio_view.router)
+# Read-only snapshot for Alister's /miton hub (service token, no session).
+app.include_router(portfolio_view.service_router)
 
 
 @app.exception_handler(tauth.LoginRequired)

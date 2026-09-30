@@ -552,14 +552,14 @@ tbody tr:hover{background:var(--surface-2)}
   var cogrid=document.getElementById('cogrid');
   COS.forEach(function(c){
     var b=document.createElement('button');
-    b.className='cotile'+(c.roles.length?'':' zero')+(c.read_ok?'':' unread');
+    b.className='cotile'+(c.roles.length?'':' zero')+(c.verified?'':' unread');
     b.setAttribute('aria-expanded','false');
     b.dataset.co=c.name;
     b.innerHTML='<div class="row1"><span class="nm">'+esc(c.name)+(c.not_on_site?'<span class="badge">off list</span>':'')+
         '</span><span class="n">'+c.roles.length+'</span></div>'+
       '<div class="seg"><i class="t"></i><i class="o"></i></div>'+
       '<div class="st"><span class="chev">&#9656;</span> '+esc(c.stage)+
-        (c.read_ok?'':' <span class="warn">· unread</span>')+'</div>';
+        (c.verified?'':' <span class="warn">· unread</span>')+'</div>';
     b.onclick=function(){ S.co=(S.co===c.name)?null:c.name; render(); };
     cogrid.appendChild(b);
   });
@@ -583,7 +583,7 @@ tbody tr:hover{background:var(--surface-2)}
                  '<div><span class="tagpill'+(r.tech?' tech':'')+'">'+esc(r.fn)+'</span></div></div>';
         }).join('')+'</div>';
     } else {
-      right='<div class="rolelist"><div class="rl-h">'+(c.read_ok?'No open roles':'Nothing known')+'</div>'+
+      right='<div class="rolelist"><div class="rl-h">'+(c.verified?'No open roles':'Nothing known')+'</div>'+
             '<div class="none" style="margin-top:11px">'+esc(c.note||'Nothing published.')+'</div></div>';
     }
     drawer.innerHTML='<div>'+
@@ -724,7 +724,7 @@ tbody tr:hover{background:var(--surface-2)}
     document.getElementById('silentHint').innerHTML='<b>'+SILENT.length+'</b> of '+D.companies.length+' companies';
     sil.innerHTML = SILENT.map(function(c){
       var link=c.careers_url?'<a href="'+esc(c.careers_url)+'" target="_blank" rel="noopener">'+esc(host(c.careers_url))+'</a> → ':'';
-      return '<div class="srow"><div class="sn">'+esc(c.name)+(c.read_ok?'':'<span class="badge">unread</span>')+
+      return '<div class="srow"><div class="sn">'+esc(c.name)+(c.verified?'':'<span class="badge">unread</span>')+
         '</div><div class="sd">'+link+esc(c.note||'')+'</div></div>';
     }).join('') || '<div class="empty">Every company has something open.</div>';
   })();

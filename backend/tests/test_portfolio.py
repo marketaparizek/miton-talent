@@ -184,8 +184,20 @@ def test_a_page_that_could_not_be_read_closes_nothing(session):
     snap = store.snapshot(session)
     entry = next(c for c in snap["companies"] if c["slug"] == "acme")
     assert entry["read_ok"] is False
+    assert entry["verified"] is False
     assert "403" in entry["note"]
     assert snap["health"]["unverified"] == ["Acme"]
+
+
+def test_a_company_with_no_careers_page_is_a_known_zero_not_an_unread_one(session):
+    comp = company(session, "silent", name="Silent", careers_url=None)
+    run = store.start_run(session, actor="cron", companies_total=1)
+    store.record_company_result(session, run, comp, status="no_careers_page", rows=[])
+    store.finish_run(session, run)
+    entry = next(c for c in store.snapshot(session)["companies"] if c["slug"] == "silent")
+    assert entry["read_ok"] is False      # nothing was read, because there is nothing to read
+    assert entry["verified"] is True      # ...so the zero is this week's, not last week's
+    assert store.snapshot(session)["health"]["unverified"] == []
 
 
 def test_a_real_zero_closes_every_role(session):
@@ -241,6 +253,10 @@ def test_seed_loads_the_portfolio_and_the_baseline_once(session):
     # The import is not a week of news.
     assert snap["changes"]["baseline"] is True
     assert snap["changes"]["new"] == []
+    # ...and its roles were open on the baseline date, not created today, or
+    # every one of them would count as new this week.
+    first_seen = {r["first_seen"] for c in snap["companies"] for r in c["roles"]}
+    assert first_seen == {"2026-09-14"}
 
     again = seed.seed(session)
     assert again["companies_created"] == 0

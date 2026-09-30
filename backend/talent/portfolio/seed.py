@@ -110,12 +110,13 @@ def _baseline(session: Session, data: dict) -> dict | None:
             classify_rows=False,
         )
         roles += outcome["roles"]
-    # first_seen on the baseline is "was already open then", not "new", so the
-    # weekly diff must not report 117 new roles on the first page load.
+    # The baseline's roles were open ON the baseline date, so they must carry it.
+    # Written rows default to "now", which would make every one of them count as
+    # new this week on both surfaces for as long as the window is open.
     session.execute(
         PortfolioRole.__table__.update()
         .where(PortfolioRole.first_seen_run_id == run.id)
-        .values(last_seen_run_id=run.id)
+        .values(last_seen_run_id=run.id, first_seen_at=day, last_seen_at=day)
     )
     store.finish_run(session, run, status="done")
     run.roles_new = 0

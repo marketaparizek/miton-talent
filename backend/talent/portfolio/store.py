@@ -27,8 +27,11 @@ from talent.portfolio.collapse import apply_aliases, collapse, fingerprint
 
 log = logging.getLogger("miton-talent.portfolio.store")
 
-# A company whose page was read and showed roles counts as "hiring".
+# A run read this company's page and may close its roles.
 READ_STATUSES = {"ok"}
+# The count can be trusted: either the page was read, or there is no page to
+# read and the zero is a known zero. Everything else is last week's number.
+VERIFIED_STATUSES = {"ok", "no_careers_page"}
 
 
 # --- companies ---------------------------------------------------------------
@@ -294,6 +297,9 @@ def snapshot(session: Session) -> dict:
             "status": crun.status if crun else ("no_careers_page" if not company.careers_url else "unknown"),
             "adapter": crun.adapter if crun else company.adapter,
             "read_ok": bool(crun and crun.status in READ_STATUSES),
+            # "the number is this week's": a company with no careers page has
+            # nothing to read and is not a failed fetch.
+            "verified": bool(crun and crun.status in VERIFIED_STATUSES),
             "checked_at": crun.run.started_at.isoformat() if crun and crun.run else None,
             "roles": [role_dict(r) for r in roles],
         })
@@ -427,7 +433,8 @@ def health(session: Session, run: PortfolioRun | None) -> dict:
         "companies": len(cruns),
         "by_status": {k: sorted(v) for k, v in sorted(by_status.items())},
         "unverified": sorted(
-            name for status, names_ in by_status.items() if status in {"failed", "blocked"} for name in names_
+            name for status, names_ in by_status.items()
+            if status not in VERIFIED_STATUSES for name in names_
         ),
         "llm_read": sorted(
             names.get(c.company_id, "?") for c in cruns if c.adapter == "html" and c.status == "ok"

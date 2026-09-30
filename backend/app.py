@@ -41,6 +41,7 @@ from anthropic import Anthropic
 from talent import auth as tauth
 from talent import db as tdb
 from talent import store as tstore
+from talent.portfolio import view as portfolio_view
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 STATIC_DIR = os.path.join(HERE, "static")
@@ -392,6 +393,11 @@ app.add_middleware(
 # talent/auth.py. The chat widget routes below stay public on purpose.
 app.include_router(tauth.router)
 
+# The portfolio hiring dashboard (/admin/portfolio). Its own router, behind the
+# same session as the rest of the back office; the weekly scrape that feeds it
+# runs from cron (scripts/scrape_portfolio.py), not from a request.
+app.include_router(portfolio_view.router)
+
 
 @app.exception_handler(tauth.LoginRequired)
 async def _login_required(request: Request, exc: tauth.LoginRequired):
@@ -537,6 +543,7 @@ def admin_home(user: dict = Depends(tauth.require_user)):
         "<h1>Miton Talent</h1>"
         f"<p>Přihlášen(a) jako <strong>{email}</strong> přes Alister.</p>"
         "<p>Back office (inbox, kandidáti, searche) vzniká tady. Zatím: "
+        "<a href='/admin/portfolio'>portfolio hiring</a> · "
         "<a href='/diag'>diagnostika</a> · <a href='/auth/logout'>odhlásit</a></p>"
         "</main></body></html>",
         headers={"Cache-Control": "no-store"},

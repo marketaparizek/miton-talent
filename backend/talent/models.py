@@ -237,3 +237,170 @@ class UsedHandoffToken(Base):
     jti: Mapped[str] = mapped_column(String(64), primary_key=True)
     expires_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
     used_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+
+
+# --- Portfolio open roles -----------------------------------------------------
+# The weekly scrape of every Miton portfolio company's careers page. Three
+# tables and one join row per run:
+#
+#   portfolio_companies   the portfolio itself: who is in it, where its careers
+#                         page is, how to read it. Miton's own list, so it lives
+#                         here and not in Alister (docs/miton-layer-architecture.md).
+#   portfolio_runs        one row per weekly scrape, with its totals.
+#   portfolio_company_runs  what one run saw at one company: status, method,
+#                         how many roles, the error if it failed. This is what
+#                         keeps a zero honest: "nothing published" and "the page
+#                         did not load" must never look the same.
+#   portfolio_roles       one row per requisition, kept across runs.
+#                         first_seen_at / last_seen_at / closed_at give the
+#                         "new this week / closed this week" diff for free, so
+#                         no snapshot table is needed.
+
+
+class PortfolioCompany(Base):
+    __tablename__ = "portfolio_companies"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    slug: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    # Miton's portfolio stage ("Early Growth", "Scaling", "Mature"). NULL for a
+    # company the public portfolio page does not list (Boski, ACE).
+    stage: Mapped[Optional[str]] = mapped_column(String(32))
+    not_on_site: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    # Companies merged into one holding still show separately because miton.cz
+    # lists them separately; this says which ones are one hiring plan.
+    group_name: Mapped[Optional[str]] = mapped_column(String(64))
+    website: Mapped[Optional[str]] = mapped_column(String(500))
+    careers_url: Mapped[Optional[str]] = mapped_column(String(500))
+    # Which adapter reads the careers page: recruitee, personio, smartrecruiters,
+    # ashby, greenhouse, lever, workable, teamtailor, recruitis, html (LLM), or
+    # NULL to let the scraper detect it from careers_url.
+    adapter: Mapped[Optional[str]] = mapped_column(String(32))
+    # Adapter arguments the URL does not carry, plus per-company overrides:
+    # {"board": "GLAMI1", "aliases": {"<fingerprint>": "<fingerprint>"}, "skip": true}
+    config: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    cats: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    description: Mapped[Optional[str]] = mapped_column(Text)
+    # The standing caveat a reader needs before trusting this company's count
+    # ("hires through Discord", "page is a JS shell"). Written by hand, kept
+    # across runs; the run's own message goes to PortfolioCompanyRun.note.
+    note: Mapped[Optional[str]] = mapped_column(Text)
+    active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+    updated_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow, onupdate=utcnow)
+
+    roles: Mapped[list["PortfolioRole"]] = relationship(
+        "PortfolioRole", back_populates="company", cascade="all, delete-orphan"
+    )
+
+    def __repr__(self) -> str:
+        return f"<PortfolioCompany {self.slug}>"
+
+
+class PortfolioRun(Base):
+    __tablename__ = "portfolio_runs"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    started_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow, index=True)
+    finished_at: Mapped[Optional[dt.datetime]] = mapped_column(DateTime(timezone=True))
+    # running / done / failed
+    status: Mapped[str] = mapped_column(String(16), nullable=False, default="running")
+    actor: Mapped[Optional[str]] = mapped_column(String(255))   # "cron", an e-mail, "seed"
+    companies_total: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    companies_failed: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    roles_total: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    roles_new: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    roles_closed: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    error: Mapped[Optional[str]] = mapped_column(Text)
+
+    company_runs: Mapped[list["PortfolioCompanyRun"]] = relationship(
+        "PortfolioCompanyRun", back_populates="run", cascade="all, delete-orphan"
+    )
+
+    def __repr__(self) -> str:
+        return f"<PortfolioRun {self.id} {self.status}>"
+
+
+class PortfolioCompanyRun(Base):
+    __tablename__ = "portfolio_company_runs"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    run_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("portfolio_runs.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    company_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("portfolio_companies.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    # ok            the page was read and its roles counted (0 is a real zero)
+    # no_careers_page  the company has no careers page to read
+    # blocked       the page answered, but refused us (403, bot wall, JS shell)
+    # failed        the fetch or the parse broke; the count is NOT trustworthy
+    # skipped       config says do not scrape this one
+    status: Mapped[str] = mapped_column(String(24), nullable=False)
+    adapter: Mapped[Optional[str]] = mapped_column(String(32))
+    source_url: Mapped[Optional[str]] = mapped_column(String(500))
+    http_status: Mapped[Optional[int]] = mapped_column(Integer)
+    roles_found: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    raw_rows: Mapped[int] = mapped_column(Integer, nullable=False, default=0)  # before collapsing duplicates
+    note: Mapped[Optional[str]] = mapped_column(Text)
+    error: Mapped[Optional[str]] = mapped_column(Text)
+    duration_ms: Mapped[Optional[int]] = mapped_column(Integer)
+
+    run: Mapped["PortfolioRun"] = relationship("PortfolioRun", back_populates="company_runs")
+
+    __table_args__ = (
+        UniqueConstraint("run_id", "company_id", name="uq_portfolio_company_run"),
+    )
+
+
+class PortfolioRole(Base):
+    """One open requisition at one portfolio company, kept across runs.
+
+    ``fingerprint`` is the normalised title (see portfolio/collapse.py): the same
+    job posted in four cities, or in Czech and German, is one requisition, so
+    every location it was seen in is collected in ``locations``.
+    """
+
+    __tablename__ = "portfolio_roles"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    company_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("portfolio_companies.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    fingerprint: Mapped[str] = mapped_column(String(255), nullable=False)
+    title: Mapped[str] = mapped_column(String(500), nullable=False)
+    location: Mapped[Optional[str]] = mapped_column(String(255))     # display value
+    locations: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    team: Mapped[Optional[str]] = mapped_column(String(255))
+    employment_type: Mapped[Optional[str]] = mapped_column(String(64))
+    url: Mapped[Optional[str]] = mapped_column(String(1000))
+    # Function bucket (see portfolio/classify.py FUNCTIONS) and whether it counts
+    # as technical; both derived, both stored so the view never re-computes.
+    fn: Mapped[Optional[str]] = mapped_column(String(32), index=True)
+    fn_source: Mapped[Optional[str]] = mapped_column(String(16))     # rules / llm / seed / manual
+    is_technical: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    cc: Mapped[Optional[str]] = mapped_column(String(8))
+
+    first_seen_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+    first_seen_run_id: Mapped[Optional[int]] = mapped_column(Integer, index=True)
+    last_seen_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+    last_seen_run_id: Mapped[Optional[int]] = mapped_column(Integer, index=True)
+    # Set when a run read the company's page successfully and the role was gone.
+    # A failed fetch never closes a role.
+    closed_at: Mapped[Optional[dt.datetime]] = mapped_column(DateTime(timezone=True), index=True)
+    closed_run_id: Mapped[Optional[int]] = mapped_column(Integer, index=True)
+    raw: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+
+    company: Mapped["PortfolioCompany"] = relationship("PortfolioCompany", back_populates="roles")
+
+    __table_args__ = (
+        # A role that closes and is posted again later gets a new row (a new
+        # first_seen_run_id), so the pair (company, fingerprint) may repeat over
+        # time. "At most one OPEN row per pair" cannot be a NULL-tolerant unique
+        # index on either database, so store.py enforces it on the write path.
+        UniqueConstraint("company_id", "fingerprint", "first_seen_run_id", name="uq_portfolio_role_run"),
+        Index("ix_portfolio_roles_company_closed", "company_id", "closed_at"),
+    )
+
+    def __repr__(self) -> str:
+        return f"<PortfolioRole {self.title!r} company={self.company_id}>"

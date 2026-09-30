@@ -15,6 +15,7 @@
 #   4. systemd unit miton-talent.service (port 8200), enabled + started
 #   5. nginx vhost for talent.miton.cz (TLS: run certbot afterwards, see below)
 #   6. daily backup cron (03:15) -> /root/db_backups/miton_talent
+#   7. weekly portfolio scrape cron (Monday 06:10) -> the /admin/portfolio dashboard
 #
 # Afterwards, by hand, once:
 #   certbot --nginx -d talent.miton.cz
@@ -82,5 +83,13 @@ fi
 cron_line="15 3 * * * cd ${APP_DIR} && bash deploy/backup_db.sh >> logs/backup.log 2>&1"
 ( crontab -l 2>/dev/null | grep -v "miton-talent && bash deploy/backup_db.sh" ; echo "$cron_line" ) | crontab -
 echo "backup cron installed (daily 03:15)"
+
+# 6. weekly portfolio scrape -------------------------------------------------
+# Monday morning, before anyone looks at the dashboard or writes the Slack digest.
+# Reads every portfolio company's careers page; unread pages keep last week's
+# roles, so a bad Monday costs a note on the page and nothing else.
+scrape_line="10 6 * * 1 cd ${APP_DIR} && backend/.venv/bin/python scripts/scrape_portfolio.py --actor cron >> logs/portfolio.log 2>&1"
+( crontab -l 2>/dev/null | grep -v "scripts/scrape_portfolio.py" ; echo "$scrape_line" ) | crontab -
+echo "portfolio scrape cron installed (Mondays 06:10)"
 
 echo "done. logs: ${APP_DIR}/logs/app.log   status: systemctl status miton-talent"

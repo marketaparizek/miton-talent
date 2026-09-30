@@ -15,6 +15,9 @@ git pull --ff-only
 uv pip install --python backend/.venv/bin/python -r backend/requirements.txt
 systemctl restart miton-talent
 sleep 3
+# The portfolio list (and, the very first time, the 14 Sep 2026 baseline it
+# diffs against). An upsert with no network calls: safe on every release.
+backend/.venv/bin/python scripts/scrape_portfolio.py --seed
 curl -fsS http://127.0.0.1:8200/health && echo " <- healthy"
 curl -fsS http://127.0.0.1:8200/diag
 echo

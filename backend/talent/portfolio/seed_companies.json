@@ -1,0 +1,1810 @@
+{
+ "baseline_date": "2026-09-14",
+ "source": "https://www.miton.cz/portfolio/",
+ "companies": [
+  {
+   "slug": "equilibre-technologies",
+   "name": "EquiLibre Technologies",
+   "stage": "Early Growth",
+   "website": "https://www.equilibretechnologies.com/",
+   "careers_url": "https://equilibre.ai/hiring",
+   "status": "ok",
+   "note": "Apply via hiring@equilibre.ai, no per-role URLs. equilibretechnologies.com/open-positions 302-redirects to equilibre.ai.",
+   "cats": [
+    "AI",
+    "Krypto/web3"
+   ],
+   "desc": "Equilibre vytváří umělou inteligenci pro algoritmické obchodování na burzách.",
+   "not_on_site": false,
+   "group_name": null,
+   "roles": [
+    {
+     "title": "Senior Research Scientist",
+     "location": "Prague",
+     "team": "Research",
+     "employment_type": "Full-time",
+     "url": "https://equilibre.ai/hiring",
+     "fn": "Engineering & AI",
+     "cc": "CZ"
+    },
+    {
+     "title": "Junior Research Scientist",
+     "location": "Prague",
+     "team": "Research",
+     "employment_type": "Full-time / Internship",
+     "url": "https://equilibre.ai/hiring",
+     "fn": "Engineering & AI",
+     "cc": "CZ"
+    },
+    {
+     "title": "Experienced Deep ML Quant",
+     "location": "Prague",
+     "team": "Research",
+     "employment_type": "Full-time",
+     "url": "https://equilibre.ai/hiring",
+     "fn": "Engineering & AI",
+     "cc": "CZ"
+    },
+    {
+     "title": "ML Research Engineer",
+     "location": "Prague",
+     "team": "Engineering",
+     "employment_type": "Full-time",
+     "url": "https://equilibre.ai/hiring",
+     "fn": "Engineering & AI",
+     "cc": "CZ"
+    },
+    {
+     "title": "ML Infrastructure Engineer",
+     "location": "Prague",
+     "team": "Engineering",
+     "employment_type": "Full-time",
+     "url": "https://equilibre.ai/hiring",
+     "fn": "Engineering & AI",
+     "cc": "CZ"
+    }
+   ]
+  },
+  {
+   "slug": "megaeth",
+   "name": "MegaETH",
+   "stage": "Early Growth",
+   "website": "https://www.megaeth.com/",
+   "careers_url": "https://www.megaeth.com/about#career",
+   "status": "ok",
+   "note": "Counsel role closed. The /about career section is now a pure open-application pitch, no named roles. A Senior DevOps Engineer (Blockchain) trace circulates on LinkedIn (job 4342604548) but cannot be verified; the investor board jobs.dragonfly.xyz shows nothing.",
+   "cats": [
+    "Krypto/web3"
+   ],
+   "desc": "Nejrychlejší blockchain (~400x rychlejší než Solana) a škálovací řešení nad Ethereem.",
+   "not_on_site": false,
+   "group_name": null,
+   "roles": []
+  },
+  {
+   "slug": "gte",
+   "name": "GTE",
+   "stage": "Early Growth",
+   "website": "https://www.gte.xyz/",
+   "careers_url": null,
+   "status": "no_careers_page",
+   "note": "Every path 302-redirects to waitlist.gte.xyz. Wellfound (company/gte-nyc) says no jobs added. Legal entity is Liquid Labs Global Inc. Ignore GTE Financial hits.",
+   "cats": [
+    "Krypto/web3"
+   ],
+   "desc": "Burza, která ztělesňuje DeFi a zároveň zcela konkuruje CeFi.",
+   "not_on_site": false,
+   "group_name": null,
+   "roles": []
+  },
+  {
+   "slug": "showdown",
+   "name": "Showdown",
+   "stage": "Early Growth",
+   "website": "https://www.showdown.game/",
+   "careers_url": null,
+   "status": "no_careers_page",
+   "note": "Homepage fetched this week. No careers page, no jobs link. Alive and shipping; Discord and X are the only public channels.",
+   "cats": [
+    "Krypto/web3"
+   ],
+   "desc": "Bývalí nejlepší hráči Magicu a Hearthstonu na světě vytvořili novou hru na principech pokeru s elementy trading card games.",
+   "not_on_site": false,
+   "group_name": null,
+   "roles": []
+  },
+  {
+   "slug": "accountable",
+   "name": "Accountable",
+   "stage": "Early Growth",
+   "website": "https://www.accountable.capital/",
+   "careers_url": null,
+   "status": "no_careers_page",
+   "note": "cryptocurrencyjobs.co shows all four engineering/marketing roles as Closed. Funded, not distressed ($7.5M, Pantera). Do not confuse with accountable.eu or accountable.org.",
+   "cats": [
+    "Krypto/web3"
+   ],
+   "desc": "Accountable transformuje trh s krypto půjčkami tím, že odstraňuje kompromis mezi transparentností a soukromím.",
+   "not_on_site": false,
+   "group_name": null,
+   "roles": []
+  },
+  {
+   "slug": "firefish",
+   "name": "Firefish",
+   "stage": "Early Growth",
+   "website": "https://firefish.io/",
+   "careers_url": "https://docs.firefish.io/careers",
+   "status": "ok",
+   "note": "Page explicitly states no current openings in all three departments. Open applications to careers@firefish.io.",
+   "cats": [
+    "Krypto/web3"
+   ],
+   "desc": "Non-custodial P2P protokol pro bezpečné bitcoinové půjčky.",
+   "not_on_site": false,
+   "group_name": null,
+   "roles": []
+  },
+  {
+   "slug": "psyon",
+   "name": "Psyon",
+   "stage": "Early Growth",
+   "website": "http://www.psyon.cz",
+   "careers_url": "https://www.psyon.cz/nabidka-prace/",
+   "status": "ok",
+   "note": "Two clinical roles posted Aug 2026. The CEO kliniky role page now 404s.",
+   "cats": [
+    "Psychedelika a duševní zdraví"
+   ],
+   "desc": "První evropská psychedelická klinika nabízí ketaminem asistovanou psychoterapii.",
+   "not_on_site": false,
+   "group_name": null,
+   "roles": [
+    {
+     "title": "Koordinátor*ka klinických studií",
+     "location": "Praha 6",
+     "team": "Clinical Research",
+     "employment_type": null,
+     "url": "https://www.psyon.cz/work/koordinatorka-klinickych-studii/",
+     "fn": "Clinical",
+     "cc": "CZ"
+    },
+    {
+     "title": "Lekar*ka - psychiatr",
+     "location": "Praha 6",
+     "team": "Psychiatrie",
+     "employment_type": null,
+     "url": "https://www.psyon.cz/work/hledame-lekarky-lekare-psychiatry/",
+     "fn": "Clinical",
+     "cc": "CZ"
+    }
+   ]
+  },
+  {
+   "slug": "wavepaths",
+   "name": "Wavepaths",
+   "stage": "Early Growth",
+   "website": "https://wavepaths.com/",
+   "careers_url": "https://wavepaths.com/vacancies",
+   "status": "ok",
+   "note": "Page states explicitly: we are currently not hiring. URL now resolves without the trailing slash.",
+   "cats": [
+    "Psychedelika a duševní zdraví"
+   ],
+   "desc": "Hudební software pro psychedelické kliniky. Wavepaths pomocí AI komponuje hudbu.",
+   "not_on_site": false,
+   "group_name": null,
+   "roles": []
+  },
+  {
+   "slug": "aim",
+   "name": "Aim",
+   "stage": "Early Growth",
+   "website": "https://www.startaiming.com/",
+   "careers_url": "https://startaiming.com/hiring",
+   "status": "ok",
+   "note": "Header says 4 positions. All roles apply through one Typeform.",
+   "cats": [
+    "AI"
+   ],
+   "desc": "Aim je AI agent pro kontinuální byznysový briefing, který se přizpůsobuje kontextu svého uživatele.",
+   "not_on_site": false,
+   "group_name": null,
+   "roles": [
+    {
+     "title": "Senior Backend Engineer",
+     "location": "Prague",
+     "team": "Engineering",
+     "employment_type": "Full-time",
+     "url": "https://startaiming.com/hiring",
+     "fn": "Engineering & AI",
+     "cc": "CZ"
+    },
+    {
+     "title": "AI Product Engineer",
+     "location": "Prague",
+     "team": "Product",
+     "employment_type": "Full-time",
+     "url": "https://startaiming.com/hiring",
+     "fn": "Engineering & AI",
+     "cc": "CZ"
+    },
+    {
+     "title": "Account Executive",
+     "location": "Prague / Bay Area",
+     "team": "Sales",
+     "employment_type": "Full-time",
+     "url": "https://startaiming.com/hiring",
+     "fn": "Sales & BD",
+     "cc": "CZ"
+    },
+    {
+     "title": "Customer Success",
+     "location": "Prague / Bay Area",
+     "team": "Customer Success",
+     "employment_type": "Full-time",
+     "url": "https://startaiming.com/hiring",
+     "fn": "Sales & BD",
+     "cc": "CZ"
+    }
+   ]
+  },
+  {
+   "slug": "bandits",
+   "name": "Bandits",
+   "stage": "Early Growth",
+   "website": "https://banditshq.com/en",
+   "careers_url": "https://banditshq.com/en/careers",
+   "status": "ok",
+   "note": "No titled vacancies. Four open areas only: GTM, product engineering, forward deployment, operations. Legal entity DoneByAI s.r.o.",
+   "cats": [
+    "AI"
+   ],
+   "desc": "Nabízí AI moduly integrovatelné do firemních systémů pro automatizaci rutinních procesů.",
+   "not_on_site": false,
+   "group_name": null,
+   "roles": []
+  },
+  {
+   "slug": "lasso",
+   "name": "Lasso",
+   "stage": "Early Growth",
+   "website": "https://productlasso.com/",
+   "careers_url": "https://banditshq.com/en/careers",
+   "status": "ok",
+   "note": "Lasso is a BANDITS product; every careers link points to the BANDITS page. Not double-counted.",
+   "cats": [
+    "AI",
+    "E-commerce"
+   ],
+   "desc": "AI pro zpracování a obohacení produktových dat e-shopů.",
+   "not_on_site": false,
+   "group_name": null,
+   "roles": []
+  },
+  {
+   "slug": "deepscout",
+   "name": "DeepScout",
+   "stage": "Early Growth",
+   "website": "https://deepscout.ai/",
+   "careers_url": "https://www.startupjobs.cz/startup/deepscout",
+   "status": "ok",
+   "note": "StartupJobs profile has zero live postings. najitventures.cz still shows two DeepScout ads but the underlying listings are expired.",
+   "cats": [
+    "AI",
+    "E-commerce"
+   ],
+   "desc": "SimilarWeb pro e-commerce. E-shopy mohou získat tržní data od konkurence.",
+   "not_on_site": false,
+   "group_name": null,
+   "roles": [],
+   "adapter": "startupjobs"
+  },
+  {
+   "slug": "pangeai",
+   "name": "PangeAI",
+   "stage": "Early Growth",
+   "website": "https://www.pangeai.com/",
+   "careers_url": "https://www.pangeai.com/careers",
+   "status": "ok",
+   "note": "Careers page is client-side rendered, WebFetch reads only metadata. No ATS board, nothing on Wellfound or StartupJobs. Worth a manual browser check.",
+   "cats": [
+    "AI"
+   ],
+   "desc": "Komplexní analýzy fyzické infrastruktury pomocí AI. Cílem je učinit fyzický svět stejně prohledatelný jako ten digitální.",
+   "not_on_site": false,
+   "group_name": null,
+   "roles": []
+  },
+  {
+   "slug": "whisper",
+   "name": "Whisper",
+   "stage": "Early Growth",
+   "website": "https://letswhisper.ai/",
+   "careers_url": null,
+   "status": "no_careers_page",
+   "note": "letswhisper.ai/careers still 404s. Google still indexes the dead URL.",
+   "cats": [
+    "AI",
+    "E-commerce"
+   ],
+   "desc": "AI agenti pro e-commerce. Prvním je agent pro zákaznickou podporu.",
+   "not_on_site": false,
+   "group_name": null,
+   "roles": []
+  },
+  {
+   "slug": "100ks",
+   "name": "100ks",
+   "stage": "Early Growth",
+   "website": "https://100ks.cz/",
+   "careers_url": null,
+   "status": "no_careers_page",
+   "note": "No careers page anywhere, no ATS profile. Small shop, likely hires informally.",
+   "cats": [
+    "E-commerce",
+    "Consumer"
+   ],
+   "desc": "100ks nabízí kurátorovaný výběr uměleckých tisků v limitovaných řadách po sto kusech.",
+   "not_on_site": false,
+   "group_name": null,
+   "roles": []
+  },
+  {
+   "slug": "graet",
+   "name": "Graet",
+   "stage": "Early Growth",
+   "website": "https://www.graet.com/",
+   "careers_url": null,
+   "status": "no_careers_page",
+   "note": "JS-rendered SPA: every path including /careers returns an empty shell, so WebFetch cannot tell a real page from a 404. Needs a browser check if ever suspected.",
+   "cats": [
+    "Sport"
+   ],
+   "desc": "Platforma pro osobní promo sportovců. Přes Graet se mohou prezentovat podobně jako na LinkedInu.",
+   "not_on_site": false,
+   "group_name": null,
+   "roles": []
+  },
+  {
+   "slug": "camperguru",
+   "name": "Camperguru",
+   "stage": "Early Growth",
+   "website": "https://camperguru.com/",
+   "careers_url": null,
+   "status": "no_careers_page",
+   "note": "No careers page, no ATS profile. The Ambassadors link is a brand programme, not a job.",
+   "cats": [
+    "Cestování",
+    "Consumer"
+   ],
+   "desc": "Průvodce po nejkrásnějších, ručně vybraných evropských místech pro karavaning a camping.",
+   "not_on_site": false,
+   "group_name": null,
+   "roles": []
+  },
+  {
+   "slug": "rohlik-group",
+   "name": "Rohlik Group",
+   "stage": "Scaling",
+   "website": "https://www.rohlik.group/",
+   "careers_url": "https://career.rohlik.group/group/jobs",
+   "status": "ok",
+   "note": "Pulled from career.rohlik.group/api/jobs in four slices; the HTML board caps at ~20 rows. 57 requisitions after collapsing cross-locale and cross-language duplicates (~80 raw rows). Ashby mirror is a JS shell and unusable.",
+   "cats": [
+    "E-commerce",
+    "Consumer"
+   ],
+   "desc": "Přední evropský online supermarket a první český startupový jednorožec působí také v Německu, Rakousku a Maďarsku.",
+   "not_on_site": false,
+   "group_name": null,
+   "roles": [
+    {
+     "title": "AI Engineer",
+     "location": "Prague",
+     "team": "IT",
+     "employment_type": "Full-time",
+     "url": "https://career.rohlik.group/group/jobs/6aee5b36-e0f5-44fd-928e-f4a65017a4d7",
+     "fn": "Engineering & AI",
+     "cc": "CZ"
+    },
+    {
+     "title": "Robot Learning Engineer",
+     "location": "Prague",
+     "team": "IT",
+     "employment_type": "Full-time",
+     "url": "https://career.rohlik.group/group/jobs/8acce5b3-f15c-4a3c-b1c9-7215dfbed82a",
+     "fn": "Engineering & AI",
+     "cc": "CZ"
+    },
+    {
+     "title": "Senior Product Engineer",
+     "location": "Prague",
+     "team": "IT",
+     "employment_type": "Full-time",
+     "url": "https://career.rohlik.group/group/jobs/05ccee37-e421-4aa8-8f7f-5cea9ac921d7",
+     "fn": "Engineering & AI",
+     "cc": "CZ"
+    },
+    {
+     "title": "Senior Technical Domain Lead",
+     "location": "Prague",
+     "team": "IT",
+     "employment_type": "Full-time",
+     "url": "https://career.rohlik.group/group/jobs/0a42d27b-ff37-4f99-95ad-927ce55cb2f2",
+     "fn": "Engineering & AI",
+     "cc": "CZ"
+    },
+    {
+     "title": "IT Specialist pro skladové technologie",
+     "location": "Opatovice nad Labem",
+     "team": "People Experience",
+     "employment_type": "Contract",
+     "url": "https://career.rohlik.group/group/jobs/72a6f8b2-fcb4-42be-96d1-ecaa0162d869",
+     "fn": "Engineering & AI",
+     "cc": "CZ"
+    },
+    {
+     "title": "Principal Product Manager: Fulfillment Center",
+     "location": "Prague / München / Vienna",
+     "team": "Product Management",
+     "employment_type": "Full-time",
+     "url": "https://career.rohlik.group/group/jobs/10b5f7ed-a8f4-49a6-a88e-626baf86fd6f",
+     "fn": "Product & Design",
+     "cc": "CZ"
+    },
+    {
+     "title": "S&OP Analyst",
+     "location": "Prague",
+     "team": "Commercial & Marketing",
+     "employment_type": "Full-time",
+     "url": "https://career.rohlik.group/group/jobs/4ddb8a21-bd6d-4e0d-9a92-832bcdef34ee",
+     "fn": "Marketing & Commercial",
+     "cc": "CZ"
+    },
+    {
+     "title": "Head of Finance Automation / AI Agentification",
+     "location": "Prague / München",
+     "team": "Finance",
+     "employment_type": "Full-time",
+     "url": "https://career.rohlik.group/group/jobs/14529045-051e-4207-a9e4-8bed84b49a1b",
+     "fn": "Finance & Legal",
+     "cc": "CZ"
+    },
+    {
+     "title": "Senior Finance/Accounting Automation Specialist",
+     "location": "Prague",
+     "team": "Finance",
+     "employment_type": "Full-time",
+     "url": "https://career.rohlik.group/group/jobs/d21a18e5-17dc-43e2-bbe9-53c57d2b1440",
+     "fn": "Finance & Legal",
+     "cc": "CZ"
+    },
+    {
+     "title": "Finance Business Partner",
+     "location": "Prague",
+     "team": "Finance",
+     "employment_type": "Full-time",
+     "url": "https://career.rohlik.group/group/jobs/ef4de7de-c6ba-4104-96a0-340cb58e38fd",
+     "fn": "Finance & Legal",
+     "cc": "CZ"
+    },
+    {
+     "title": "GL / RTR Accountant",
+     "location": "Prague",
+     "team": "Finance",
+     "employment_type": "Full-time",
+     "url": "https://career.rohlik.group/group/jobs/af47857b-635f-4d7c-8ec9-711ec72a7420",
+     "fn": "Finance & Legal",
+     "cc": "CZ"
+    },
+    {
+     "title": "Senior Analyst Finance Planning & Analysis",
+     "location": "Prague",
+     "team": "Finance",
+     "employment_type": "Full-time",
+     "url": "https://career.rohlik.group/group/jobs/185181c4-e8a4-4e9b-b102-cacb1232d5c2",
+     "fn": "Finance & Legal",
+     "cc": "CZ"
+    },
+    {
+     "title": "Head of Labour Procurement",
+     "location": "Prague",
+     "team": "Finance",
+     "employment_type": "Full-time",
+     "url": "https://career.rohlik.group/group/jobs/1c60d8bd-21b6-440e-bb93-d6d3f59c5858",
+     "fn": "Finance & Legal",
+     "cc": "CZ"
+    },
+    {
+     "title": "Senior Legal Counsel - Germany & Austria",
+     "location": "München",
+     "team": "Legal & Administration",
+     "employment_type": "Full-time",
+     "url": "https://career.rohlik.group/group/jobs",
+     "fn": "Finance & Legal",
+     "cc": "DE"
+    },
+    {
+     "title": "Account & Campaign Manager",
+     "location": "Prague / Budapest",
+     "team": "Commercial & Marketing",
+     "employment_type": "Full-time",
+     "url": "https://career.rohlik.group/group/jobs/ea4a2a44-8fab-4172-bc32-3fe3396d4783",
+     "fn": "Sales & BD",
+     "cc": "CZ"
+    },
+    {
+     "title": "Sales Director Europe",
+     "location": "Prague / Vienna / Berlin",
+     "team": "Veloq",
+     "employment_type": "Full-time",
+     "url": "https://career.rohlik.group/group/jobs/f18a4fec-52a2-4ffa-9a39-f50762394fa4",
+     "fn": "Sales & BD",
+     "cc": "CZ"
+    },
+    {
+     "title": "Sales Director US",
+     "location": "New York",
+     "team": "Veloq",
+     "employment_type": "Full-time",
+     "url": "https://career.rohlik.group/group/jobs/cb2521c8-4352-4d43-9d22-fd152cafb9ef",
+     "fn": "Sales & BD",
+     "cc": "US"
+    },
+    {
+     "title": "Delivery Service Providers Account Manager",
+     "location": "Budapest FC",
+     "team": "Operations & Supply Chain",
+     "employment_type": "Full-time",
+     "url": "https://career.rohlik.group/group/jobs/21be075b-8c8f-45b4-9611-d42048d2638c",
+     "fn": "Sales & BD",
+     "cc": "HU"
+    },
+    {
+     "title": "Category Manager Wine & Alcohol",
+     "location": "Budapest",
+     "team": "Commercial & Marketing",
+     "employment_type": "Full-time",
+     "url": "https://career.rohlik.group/group/jobs/aefae578-90ca-4d49-a55b-4c4e89f8acc3",
+     "fn": "Marketing & Commercial",
+     "cc": "HU"
+    },
+    {
+     "title": "Warengruppenmanager / Einkäufer – Frische & Tiefkühl (m/w/d)",
+     "location": "Vienna",
+     "team": "Commercial & Marketing",
+     "employment_type": "Full-time",
+     "url": "https://career.rohlik.group/group/jobs/a1490143-a8f1-4944-8f1e-e8f136769ce5",
+     "fn": "Marketing & Commercial",
+     "cc": "AT"
+    },
+    {
+     "title": "Customer Care Specialist (German)",
+     "location": "Prague",
+     "team": "Customer Care",
+     "employment_type": "Full-time + part-time variant",
+     "url": "https://career.rohlik.group/group/jobs/b8271f31-4be7-4bc5-8b86-4dd8f41b065f",
+     "fn": "People & Support",
+     "cc": "CZ"
+    },
+    {
+     "title": "Customer Care Specialist HU",
+     "location": "Budapest",
+     "team": "Customer Care",
+     "employment_type": "Full-time",
+     "url": "https://career.rohlik.group/group/jobs/68849e69-45c7-4044-b020-ff05a18f9bf4",
+     "fn": "People & Support",
+     "cc": "HU"
+    },
+    {
+     "title": "HR Administrator",
+     "location": "Liboc, Prague / Opatovice nad Labem",
+     "team": "People Experience",
+     "employment_type": "Full-time",
+     "url": "https://career.rohlik.group/group/jobs/5dc8d4e2-f86a-474b-8d33-aac671ef727f",
+     "fn": "People & Support",
+     "cc": "CZ"
+    },
+    {
+     "title": "Recruiter",
+     "location": "Prague",
+     "team": "People Experience",
+     "employment_type": "Temporary",
+     "url": "https://career.rohlik.group/group/jobs/7cf57e0e-3f81-4c73-b3c5-c140ed51a06e",
+     "fn": "People & Support",
+     "cc": "CZ"
+    },
+    {
+     "title": "Senior Vice President Operations",
+     "location": "Prague / München / Vienna",
+     "team": "Operations & Supply Chain",
+     "employment_type": "Full-time",
+     "url": "https://career.rohlik.group/group/jobs/3ae2600d-f4f7-4004-99a2-d14cf24690d5",
+     "fn": "Ops & Logistics",
+     "cc": "CZ"
+    },
+    {
+     "title": "Head of Supply Chain - Czech Republic",
+     "location": "Prague",
+     "team": "Operations & Supply Chain",
+     "employment_type": "Full-time",
+     "url": "https://career.rohlik.group/group/jobs/92a8033e-4f64-4811-89b5-abea1af5cf8f",
+     "fn": "Ops & Logistics",
+     "cc": "CZ"
+    },
+    {
+     "title": "Senior Supply Chain Specialist",
+     "location": "Prague",
+     "team": "Operations & Supply Chain",
+     "employment_type": "Full-time",
+     "url": "https://career.rohlik.group/group/jobs/de1ac762-74b3-4cd6-a46e-192d19f835d7",
+     "fn": "Ops & Logistics",
+     "cc": "CZ"
+    },
+    {
+     "title": "Inbound Operations Manager",
+     "location": "Opatovice nad Labem",
+     "team": "Operations & Supply Chain",
+     "employment_type": "Full-time",
+     "url": "https://career.rohlik.group/group/jobs/2621a043-33db-4b9b-a98a-6fea4c4b305e",
+     "fn": "Ops & Logistics",
+     "cc": "CZ"
+    },
+    {
+     "title": "Outbound Operations Manager",
+     "location": "Opatovice nad Labem",
+     "team": "Operations & Supply Chain",
+     "employment_type": "Full-time",
+     "url": "https://career.rohlik.group/group/jobs/10bd9232-02ef-49f3-9116-7b14c4e9bb95",
+     "fn": "Ops & Logistics",
+     "cc": "CZ"
+    },
+    {
+     "title": "Last Mile Operations Manager",
+     "location": "Opatovice nad Labem",
+     "team": "Operations & Supply Chain",
+     "employment_type": "Full-time",
+     "url": "https://career.rohlik.group/group/jobs/290d5b48-d7cb-4324-8629-dd051e552306",
+     "fn": "Ops & Logistics",
+     "cc": "CZ"
+    },
+    {
+     "title": "Last Mile Lead",
+     "location": "Liboc, Prague",
+     "team": "Operations & Supply Chain",
+     "employment_type": "Full-time",
+     "url": "https://career.rohlik.group/group/jobs/68c9d5fd-ac22-4193-b786-ca993f1204a1",
+     "fn": "Ops & Logistics",
+     "cc": "CZ"
+    },
+    {
+     "title": "Crossdock Coordinator",
+     "location": "Liboc, Prague",
+     "team": "Operations & Supply Chain",
+     "employment_type": "Part-time",
+     "url": "https://career.rohlik.group/group/jobs/db0f4f7c-16c9-4b88-adc4-4d4670f71405",
+     "fn": "Ops & Logistics",
+     "cc": "CZ"
+    },
+    {
+     "title": "Warehouse Operations Manager",
+     "location": "Opatovice nad Labem",
+     "team": "Operations & Supply Chain",
+     "employment_type": "Full-time",
+     "url": "https://career.rohlik.group/group/jobs/bccfa174-6d48-4fb4-9e1a-51c6c2e1ea92",
+     "fn": "Ops & Logistics",
+     "cc": "CZ"
+    },
+    {
+     "title": "Warehouse Area Manager",
+     "location": "Opatovice nad Labem",
+     "team": "Operations & Supply Chain",
+     "employment_type": "Full-time",
+     "url": "https://career.rohlik.group/group/jobs/ed0b3d96-6e61-4765-a3ec-be89b9bbed71",
+     "fn": "Ops & Logistics",
+     "cc": "CZ"
+    },
+    {
+     "title": "Warehouse Lead",
+     "location": "Opatovice nad Labem",
+     "team": "Operations & Supply Chain",
+     "employment_type": "Full-time",
+     "url": "https://career.rohlik.group/group/jobs/a3fcc50b-095a-42cf-8236-35e13a4c125f",
+     "fn": "Ops & Logistics",
+     "cc": "CZ"
+    },
+    {
+     "title": "Area Manager",
+     "location": "Horní Počernice, Prague",
+     "team": "Operations & Supply Chain",
+     "employment_type": "Full-time",
+     "url": "https://career.rohlik.group/group/jobs/3c169b5c-822b-446b-862f-6a002dcd1292",
+     "fn": "Ops & Logistics",
+     "cc": "CZ"
+    },
+    {
+     "title": "Logistic Area Manager",
+     "location": "Opatovice nad Labem",
+     "team": "Operations & Supply Chain",
+     "employment_type": "Full-time",
+     "url": "https://career.rohlik.group/group/jobs/fb3b6b6b-68b8-4c92-acbf-7f43e46188a3",
+     "fn": "Ops & Logistics",
+     "cc": "CZ"
+    },
+    {
+     "title": "Change Manager",
+     "location": "Ostrava FC",
+     "team": "Operations & Supply Chain",
+     "employment_type": "Full-time",
+     "url": "https://career.rohlik.group/group/jobs/b2a5b0ba-6769-4409-aca6-d27473e4439b",
+     "fn": "Ops & Logistics",
+     "cc": "CZ"
+    },
+    {
+     "title": "Lead (Inbound)",
+     "location": "Brno FC",
+     "team": "Operations & Supply Chain",
+     "employment_type": "Full-time",
+     "url": "https://career.rohlik.group/group/jobs/60838611-14b5-430b-9fcd-7998e5ad6279",
+     "fn": "Ops & Logistics",
+     "cc": "CZ"
+    },
+    {
+     "title": "Lead (Outbound)",
+     "location": "Chrášťany, Prague",
+     "team": "Operations & Supply Chain",
+     "employment_type": "Full-time",
+     "url": "https://career.rohlik.group/group/jobs/a9b179f9-07cf-4cfa-94ab-b14f90f0fa32",
+     "fn": "Ops & Logistics",
+     "cc": "CZ"
+    },
+    {
+     "title": "Logistics Partner Manager",
+     "location": "Liboc, Prague",
+     "team": "Operations & Supply Chain",
+     "employment_type": "Full-time",
+     "url": "https://career.rohlik.group/group/jobs/59c430cb-b62d-4a6b-9b9d-e759df9ca2f1",
+     "fn": "Ops & Logistics",
+     "cc": "CZ"
+    },
+    {
+     "title": "Operations Coordinator",
+     "location": "Opatovice nad Labem",
+     "team": "Operations & Supply Chain",
+     "employment_type": "Full-time",
+     "url": "https://career.rohlik.group/group/jobs/dfc7c894-317b-4c6d-96bb-b5c1a80eb225",
+     "fn": "Ops & Logistics",
+     "cc": "CZ"
+    },
+    {
+     "title": "Koordinátor vozového parku",
+     "location": "Opatovice nad Labem",
+     "team": "Operations & Supply Chain",
+     "employment_type": "Full-time",
+     "url": "https://career.rohlik.group/group/jobs/21d13be7-21ff-49ed-8245-9dc52ac2fa3e",
+     "fn": "Ops & Logistics",
+     "cc": "CZ"
+    },
+    {
+     "title": "Technik udrzby - novy sklad",
+     "location": "Opatovice nad Labem",
+     "team": "Operations & Supply Chain",
+     "employment_type": "Full-time",
+     "url": "https://career.rohlik.group/group/jobs/482c6b26-c2a6-493d-a181-9bf945549c7d",
+     "fn": "Ops & Logistics",
+     "cc": "CZ"
+    },
+    {
+     "title": "Technik skladu a automatických linek",
+     "location": "Chrášťany, Prague",
+     "team": "Operations & Supply Chain",
+     "employment_type": "Full-time",
+     "url": "https://career.rohlik.group/group/jobs/02c0ad4b-d3c9-4919-9978-fb0428c95677",
+     "fn": "Ops & Logistics",
+     "cc": "CZ"
+    },
+    {
+     "title": "Technician (m/w/d)",
+     "location": "Vienna FC",
+     "team": "Operations & Supply Chain",
+     "employment_type": "Full-time",
+     "url": "https://career.rohlik.group/group/jobs/96795611-82a4-45d7-aec0-7c7374744e03",
+     "fn": "Ops & Logistics",
+     "cc": "CZ"
+    },
+    {
+     "title": "Inventory & Replacement Worker",
+     "location": "Opatovice nad Labem",
+     "team": "Operations & Supply Chain",
+     "employment_type": "Full-time",
+     "url": "https://career.rohlik.group/group/jobs/6637eeb9-12f3-4d07-a73a-c96af9a2bdcd",
+     "fn": "Ops & Logistics",
+     "cc": "CZ"
+    },
+    {
+     "title": "FC Worker",
+     "location": "Opatovice nad Labem",
+     "team": "Operations & Supply Chain",
+     "employment_type": "Full-time",
+     "url": "https://career.rohlik.group/group/jobs/a04d2ede-4c6a-4a8a-8aab-8ab0356d7a5c",
+     "fn": "Ops & Logistics",
+     "cc": "CZ"
+    },
+    {
+     "title": "Senior Capacity Lead",
+     "location": "Budapest FC",
+     "team": "Operations & Supply Chain",
+     "employment_type": "Full-time",
+     "url": "https://career.rohlik.group/group/jobs",
+     "fn": "Ops & Logistics",
+     "cc": "HU"
+    },
+    {
+     "title": "Létesítmény üzemeltetési csoportvezető",
+     "location": "Budapest FC",
+     "team": "Operations & Supply Chain",
+     "employment_type": "Full-time",
+     "url": "https://career.rohlik.group/group/jobs/ecb68ef6-eb3f-4633-bcf7-fdda5eddd1f8",
+     "fn": "Ops & Logistics",
+     "cc": "HU"
+    },
+    {
+     "title": "EHS & Security Specialist",
+     "location": "Budapest FC",
+     "team": "Operations & Supply Chain",
+     "employment_type": "Full-time",
+     "url": "https://career.rohlik.group/group/jobs/99fee270-c1dc-4b30-9d9c-31c3c0547778",
+     "fn": "Ops & Logistics",
+     "cc": "HU"
+    },
+    {
+     "title": "Zöldség Gyümölcs Minőségellenőr",
+     "location": "Biatorbágy FC / Budapest FC",
+     "team": "Operations & Supply Chain",
+     "employment_type": "Full-time",
+     "url": "https://career.rohlik.group/group/jobs/7ad929df-dbe1-40c3-b2c5-7a93139bd02d",
+     "fn": "Ops & Logistics",
+     "cc": "HU"
+    },
+    {
+     "title": "Warehouse Teamleiter (m/w/d)",
+     "location": "Bischofsheim bei Frankfurt",
+     "team": "Operations & Supply Chain",
+     "employment_type": "Full-time",
+     "url": "https://career.rohlik.group/group/jobs/e4564035-9f00-4d98-a240-bc7d791e60ff",
+     "fn": "Ops & Logistics",
+     "cc": "DE"
+    },
+    {
+     "title": "Warehouse Trainer (m/w/d)",
+     "location": "Garching / Bischofsheim",
+     "team": "Operations & Supply Chain",
+     "employment_type": "Full-time",
+     "url": "https://career.rohlik.group/group/jobs/c9ca2de2-f067-4385-999d-c0aba3168d09",
+     "fn": "Ops & Logistics",
+     "cc": "DE"
+    },
+    {
+     "title": "Staplerfahrer (m/w/d)",
+     "location": "Garching / Bischofsheim / Schönefeld",
+     "team": "Operations & Supply Chain",
+     "employment_type": "Full-time",
+     "url": "https://career.rohlik.group/group/jobs/00ee19cc-8d27-4123-86c4-1f4fc40fe1c3",
+     "fn": "Ops & Logistics",
+     "cc": "DE"
+    },
+    {
+     "title": "Lagermitarbeiter (m/w/d)",
+     "location": "Garching / Bischofsheim / Schönefeld",
+     "team": "Operations & Supply Chain",
+     "employment_type": "Full-time",
+     "url": "https://career.rohlik.group/group/jobs/38af3bec-8a9e-49e3-aa27-f3729e06d8b8",
+     "fn": "Ops & Logistics",
+     "cc": "DE"
+    },
+    {
+     "title": "Mitarbeiter für Obst & Gemüse (m/w/d)",
+     "location": "Garching bei München",
+     "team": "Operations & Supply Chain",
+     "employment_type": "Full-time",
+     "url": "https://career.rohlik.group/group/jobs/9487f503-7190-4341-ac05-90ea0c4df859",
+     "fn": "Ops & Logistics",
+     "cc": "DE"
+    }
+   ],
+   "config": {
+    "board": "rohlik"
+   },
+   "adapter": "ashby"
+  },
+  {
+   "slug": "knihobot",
+   "name": "Knihobot",
+   "stage": "Scaling",
+   "website": "https://knihobot.cz/",
+   "careers_url": "https://jobs.recruitis.io/knihobot",
+   "status": "ok",
+   "note": "Recruitis ATS. Six rows shown, five counted: the No position for you row is an open-application form. Office Manager closed since last week.",
+   "cats": [
+    "E-commerce",
+    "Re-commerce"
+   ],
+   "desc": "Re-commerce marketplace pro knihy z druhé ruky ročně prodá přes 2 miliony knih a meziročně roste o více než 100 %.",
+   "not_on_site": false,
+   "group_name": null,
+   "roles": [
+    {
+     "title": "FullFullstack DEV+ops Platform Engineer",
+     "location": "Praha 9",
+     "team": "IS/IT",
+     "employment_type": "Full-time",
+     "url": "https://jobs.recruitis.io/knihobot/495157-fullfullstack-just-fullstack-is-not-enough-dev-ops-platform-engineer",
+     "fn": "Engineering & AI",
+     "cc": "CZ"
+    },
+    {
+     "title": "Team Leader v logistickém centru",
+     "location": "Praha 15",
+     "team": "Logistika",
+     "employment_type": "Full-time",
+     "url": "https://jobs.recruitis.io/knihobot/497106-team-leader-v-logistickem-centru",
+     "fn": "Ops & Logistics",
+     "cc": "CZ"
+    },
+    {
+     "title": "Brigáda na výdejně (Holešovice, Kolbenova)",
+     "location": "Praha 9 / Praha 7",
+     "team": "Operations",
+     "employment_type": "Brigada",
+     "url": "https://jobs.recruitis.io/knihobot/496662-brigada-na-vydejne-holesovice-a-kolbenova",
+     "fn": "Ops & Logistics",
+     "cc": "CZ"
+    },
+    {
+     "title": "Brigada v Knihobotu - Hostivar",
+     "location": "Praha 15",
+     "team": "Operations",
+     "employment_type": "Brigada",
+     "url": "https://jobs.recruitis.io/knihobot/458172-brigada-v-knihobotu-hostivar",
+     "fn": "Ops & Logistics",
+     "cc": "CZ"
+    },
+    {
+     "title": "UA - Brigada v Knihobot, Hostivar",
+     "location": "Praha 15",
+     "team": "Operations",
+     "employment_type": "Brigada",
+     "url": "https://jobs.recruitis.io/knihobot/483041-ua-brigada-v-knihobot-hostivar",
+     "fn": "Ops & Logistics",
+     "cc": "CZ"
+    }
+   ]
+  },
+  {
+   "slug": "coinmate",
+   "name": "Coinmate",
+   "stage": "Scaling",
+   "website": "https://coinmate.io/cs",
+   "careers_url": "https://coinmate.io/cz/kariera/",
+   "status": "ok",
+   "note": "Java Backend Developer closed. The Koho ted hledame section is now an empty heading, verified twice. All three StartupJobs mirrors expired.",
+   "cats": [
+    "Krypto/web3",
+    "Consumer"
+   ],
+   "desc": "Největší česká krypto burza. Od svého založení v roce 2014 Coinmate zprostředkovalo obchody za 42 miliard korun.",
+   "not_on_site": false,
+   "group_name": null,
+   "roles": []
+  },
+  {
+   "slug": "confirmo",
+   "name": "Confirmo",
+   "stage": "Scaling",
+   "website": "https://confirmo.net/",
+   "careers_url": "https://confirmo.recruitee.com/",
+   "status": "ok",
+   "note": "Recruitee board, five roles. Java Developer is new. Departments are not exposed at list level. The two Account Executive rows are separate listings, do not dedupe.",
+   "cats": [
+    "Krypto/web3",
+    "SaaS"
+   ],
+   "desc": "Kryptoměnová platební brána pro globální businessy založená v roce 2014.",
+   "not_on_site": false,
+   "group_name": null,
+   "roles": [
+    {
+     "title": "Java Developer",
+     "location": "Prague (+2 further locations)",
+     "team": null,
+     "employment_type": "On-site / Hybrid / Remote",
+     "url": "https://confirmo.recruitee.com/o/java-developer",
+     "fn": "Engineering & AI",
+     "cc": "CZ"
+    },
+    {
+     "title": "Product Manager",
+     "location": "Prague",
+     "team": "Product",
+     "employment_type": "On-site / Hybrid / Remote",
+     "url": "https://confirmo.recruitee.com/o/product-manager-3",
+     "fn": "Product & Design",
+     "cc": "CZ"
+    },
+    {
+     "title": "Account Executive",
+     "location": "Dublin",
+     "team": "Sales",
+     "employment_type": "On-site / Hybrid / Remote",
+     "url": "https://confirmo.recruitee.com/o/account-executive-1",
+     "fn": "Sales & BD",
+     "cc": "US"
+    },
+    {
+     "title": "Account Executive",
+     "location": "New York",
+     "team": "Sales",
+     "employment_type": "Remote",
+     "url": "https://confirmo.recruitee.com/o/account-executive",
+     "fn": "Sales & BD",
+     "cc": "US"
+    },
+    {
+     "title": "Head of Business Development",
+     "location": "Dubai",
+     "team": "Sales",
+     "employment_type": "On-site / Hybrid",
+     "url": "https://confirmo.recruitee.com/o/head-of-business-development",
+     "fn": "Sales & BD",
+     "cc": "AE"
+    }
+   ]
+  },
+  {
+   "slug": "marinade",
+   "name": "Marinade",
+   "stage": "Scaling",
+   "website": "https://marinade.finance/",
+   "careers_url": null,
+   "status": "no_careers_page",
+   "note": "jobs.solana.com now says this company has no jobs on the board. The eight roles on web3.career are 2-5 year old archive rows; that site never delists.",
+   "cats": [
+    "Krypto/web3",
+    "Consumer"
+   ],
+   "desc": "Marinade zajišťuje bezpečnost a decentralizaci krypto sítě Solana.",
+   "not_on_site": false,
+   "group_name": null,
+   "roles": []
+  },
+  {
+   "slug": "scuk-cz",
+   "name": "Scuk.cz",
+   "stage": "Scaling",
+   "website": "https://www.scuk.cz",
+   "careers_url": "https://www.myjsme.scuk.cz",
+   "status": "ok",
+   "note": "Page states: prave nemame vypsane zadne pozice. Open applications to chcidoscuku@scuk.cz.",
+   "cats": [
+    "E-commerce",
+    "Consumer"
+   ],
+   "desc": "Farmářské trhy online. Marketplace Scuk přináší kvalitní lokální potraviny.",
+   "not_on_site": false,
+   "group_name": null,
+   "roles": []
+  },
+  {
+   "slug": "sense-arena",
+   "name": "Sense Arena",
+   "stage": "Scaling",
+   "website": "https://www.sensearena.com",
+   "careers_url": null,
+   "status": "no_careers_page",
+   "note": "jobs.cz employer page states the company has no job offers. sensearena.com/careers could not be fetched (provenance), so absence is inferred not confirmed. Two TeamWork Online rows are stale US-entity archive listings.",
+   "cats": [
+    "VR a trénink"
+   ],
+   "desc": "VR, jež nabízí realistické prostředí, které simuluje hokejový a tenisový trénink.",
+   "not_on_site": false,
+   "group_name": null,
+   "roles": []
+  },
+  {
+   "slug": "qerko",
+   "name": "Qerko",
+   "stage": "Scaling",
+   "website": "https://qerko.com/",
+   "careers_url": "https://qerko.nelisa.com/en",
+   "status": "ok",
+   "note": "Nelisa site shows only a spontaneous-application form. The Graphic Designer StartupJobs ad is expired. Use the /en path, the bare root fails on provenance.",
+   "cats": [
+    "Gastrotech",
+    "SaaS"
+   ],
+   "desc": "Platba v restauraci bez obsluhy. Stačí načíst QR kód na stole.",
+   "not_on_site": false,
+   "group_name": "Piano Group",
+   "roles": []
+  },
+  {
+   "slug": "grason",
+   "name": "Grason",
+   "stage": "Scaling",
+   "website": "https://www.grason.cz",
+   "careers_url": "https://www.jobs.cz/prace/?company=1703013062",
+   "status": "blocked",
+   "note": "jobs.cz states Grason Solutions s.r.o. prave neobsazuje zadne pozice. jobs.grason.cz is their shift-work marketplace, not corporate hiring, and is deliberately not counted.",
+   "cats": [
+    "Gastrotech",
+    "HR Tech"
+   ],
+   "desc": "Personál jako služba (Workforce-as-a-Service), která pomáhá firmám najít a najímat flexibilní pracovníky.",
+   "not_on_site": false,
+   "group_name": "Piano Group",
+   "roles": []
+  },
+  {
+   "slug": "pecosta",
+   "name": "Pecosta",
+   "stage": "Scaling",
+   "website": "https://pecosta.cz/",
+   "careers_url": "https://www.autset.com/kariera",
+   "status": "ok",
+   "note": "Hiring MOVED. pecosta.cz/kariera still says all positions filled and is stale; the live board is on the product-brand site autset.com, whose footer names Pecosta a.s. as the entity. Same HR contact both places.",
+   "cats": [
+    "Gastrotech"
+   ],
+   "desc": "B2B online platforma, která propojuje restaurace s dodavateli.",
+   "not_on_site": false,
+   "group_name": "Piano Group",
+   "roles": [
+    {
+     "title": "Backend Developer",
+     "location": "Ostrava",
+     "team": "IT / vyvoj (AutSet)",
+     "employment_type": "HPP nebo IC, 2 dny HO tydne",
+     "url": "https://www.autset.com/kariera/backend-developer",
+     "fn": "Engineering & AI",
+     "cc": "CZ"
+    },
+    {
+     "title": "Frontend Developer",
+     "location": "Ostrava",
+     "team": "IT / vyvoj (AutSet)",
+     "employment_type": "HPP nebo IC, 2 dny HO tydne",
+     "url": "https://www.autset.com/kariera/frontend-developer",
+     "fn": "Engineering & AI",
+     "cc": "CZ"
+    },
+    {
+     "title": "DevOps Engineer",
+     "location": "Ostrava",
+     "team": "IT / vyvoj (AutSet)",
+     "employment_type": "HPP nebo IC, 2 dny HO tydne",
+     "url": "https://www.autset.com/kariera/devops",
+     "fn": "Engineering & AI",
+     "cc": "CZ"
+    }
+   ]
+  },
+  {
+   "slug": "boataround",
+   "name": "Boataround",
+   "stage": "Scaling",
+   "website": "https://www.boataround.com/",
+   "careers_url": "https://www.boataround.com/careers",
+   "status": "ok",
+   "note": "profesia.sk now returns zero offers, so last week's mirror is dead. The same role is live on kariera.zoznam.sk, posted 27.07.2026, fed from the Slovak labour office. Workable board and Glassdoor both empty.",
+   "cats": [
+    "Cestování",
+    "Consumer"
+   ],
+   "desc": "Nabízí jednoduchou službu pro booking lodí, podobně jako Booking pro rezervaci hotelů.",
+   "not_on_site": false,
+   "group_name": null,
+   "roles": [
+    {
+     "title": "Account Manager Spain",
+     "location": "Bratislava",
+     "team": "Sales",
+     "employment_type": "Fixed-term 12 months, from 1 850 EUR/month",
+     "url": "https://kariera.zoznam.sk/pracovna-ponuka/1552637/account-manager-spain-muz-zena-",
+     "fn": "Sales & BD",
+     "cc": "SK"
+    }
+   ]
+  },
+  {
+   "slug": "dokempu",
+   "name": "Dokempu",
+   "stage": "Scaling",
+   "website": "https://www.dokempu.cz/",
+   "careers_url": null,
+   "status": "no_careers_page",
+   "note": "No careers page. Dokempu was acquired by Campiri in Dec 2021 and runs as a Campiri-owned brand, which is why it has no hiring entity of its own.",
+   "cats": [
+    "Cestování",
+    "Consumer"
+   ],
+   "desc": "Online průvodce kempy po České republice s uživatelsky přívětivým vyhledáváním.",
+   "not_on_site": false,
+   "group_name": null,
+   "roles": []
+  },
+  {
+   "slug": "reas",
+   "name": "Reas",
+   "stage": "Scaling",
+   "website": "https://www.reas.cz/",
+   "careers_url": "https://www.startupjobs.cz/startup/reas-cz",
+   "status": "ok",
+   "note": "reas.cz/kariera is stale and still links two expired dev ads. The live ads are on the StartupJobs company page and are not linked from reas.cz. Reas has swung from engineering hiring to commercial and HR.",
+   "cats": [
+    "Real Estate Tech"
+   ],
+   "desc": "Realitní marketplace orientovaný na nákup, prodej a porovnávání cen.",
+   "not_on_site": false,
+   "group_name": null,
+   "roles": [
+    {
+     "title": "HR generalista/ka – nábor, provoz a kancelář",
+     "location": "Praha",
+     "team": "HR / provoz",
+     "employment_type": "40-60 000 Kc/mesic",
+     "url": "https://www.startupjobs.cz/nabidka/107623/hr-generalista-ka-nabor-provoz-a-kancelar",
+     "fn": "People & Support",
+     "cc": "CZ"
+    },
+    {
+     "title": "Account Manager pro Reas.cz",
+     "location": "Praha",
+     "team": "Account management",
+     "employment_type": "50-80 000 Kc/mesic",
+     "url": "https://www.startupjobs.cz/nabidka/107351/account-manager-pro-reas-cz",
+     "fn": "Sales & BD",
+     "cc": "CZ"
+    },
+    {
+     "title": "Business Development Manager pro realitní partnery",
+     "location": "Praha",
+     "team": "Business development",
+     "employment_type": "Full-time",
+     "url": "https://www.startupjobs.cz/nabidka/107353/business-development-manager-pro-realitni-partnery",
+     "fn": "Sales & BD",
+     "cc": "CZ"
+    },
+    {
+     "title": "Junior Account Manager – vyber si trh: CZ / SK / HU",
+     "location": "Praha",
+     "team": "Account management",
+     "employment_type": "38-60 000 Kc/mesic",
+     "url": "https://www.startupjobs.cz/nabidka/107355/junior-account-manager-vyber-si-trh-cz-sk-hu",
+     "fn": "Sales & BD",
+     "cc": "CZ"
+    },
+    {
+     "title": "Obchodník na telefonu",
+     "location": "Praha",
+     "team": "Sales",
+     "employment_type": null,
+     "url": "https://www.reas.cz/nastartuj-karieru",
+     "fn": "Sales & BD",
+     "cc": "CZ"
+    }
+   ],
+   "adapter": "startupjobs"
+  },
+  {
+   "slug": "glami",
+   "name": "Glami",
+   "stage": "Mature",
+   "website": "https://glami.group/",
+   "careers_url": "https://careers.smartrecruiters.com/GLAMI1",
+   "status": "ok",
+   "note": "Junior Account Manager closed. The one remaining listing is a talent pool, counted only because SmartRecruiters lists it as an open job. glami.cz/info/volna-mista is robots-blocked.",
+   "cats": [
+    "E-commerce",
+    "Consumer"
+   ],
+   "desc": "Módní vyhledávač Glami působí ve 14 evropských zemích. Měsíčně ho navštíví bezmála 50 mil. uživatelů.",
+   "not_on_site": false,
+   "group_name": null,
+   "roles": [
+    {
+     "title": "Marketing and Fashion Enthusiasts (talent pool)",
+     "location": "Praha 2",
+     "team": "Marketing",
+     "employment_type": "Full-time",
+     "url": "https://jobs.smartrecruiters.com/GLAMI1/743999667599504-marketing-and-fashion-enthusiasts",
+     "fn": "Marketing & Commercial",
+     "cc": "CZ"
+    }
+   ]
+  },
+  {
+   "slug": "bonami",
+   "name": "Bonami",
+   "stage": "Mature",
+   "website": "https://www.bonami.cz/",
+   "careers_url": "https://www.cocuma.co/company/bonami/",
+   "status": "ok",
+   "note": "All four roles closed. Cocuma page now states there are no opportunities at this time. URL moved from cocuma.cz to cocuma.co.",
+   "cats": [
+    "E-commerce",
+    "Consumer"
+   ],
+   "desc": "S miliardovými tržbami a přítomností v 11 zemích je Bonami významným evropským hráčem v segmentu nábytku online.",
+   "not_on_site": false,
+   "group_name": null,
+   "roles": []
+  },
+  {
+   "slug": "biano",
+   "name": "Biano",
+   "stage": "Mature",
+   "website": "https://www.biano.cz",
+   "careers_url": "https://www.startupjobs.cz/startup/biano-s-r-o",
+   "status": "ok",
+   "note": "No open roles. jobs.cz returns zero. Open applications to jobs@biano.com. Shares a CEO with Glami but the boards are separate.",
+   "cats": [
+    "E-commerce",
+    "Consumer"
+   ],
+   "desc": "Vyhledávač, díky kterému je konečně snadné nalézt nábytek ze stovek e-shopů.",
+   "not_on_site": false,
+   "group_name": null,
+   "roles": [],
+   "adapter": "startupjobs"
+  },
+  {
+   "slug": "displate",
+   "name": "Displate",
+   "stage": "Mature",
+   "website": "https://www.displate.com",
+   "careers_url": "https://about.displate.com/careers",
+   "status": "ok",
+   "note": "20 roles after collapsing the double-posted Sports Product Designer. The careers index renders 19 cards; People and Culture Business Partner (Engineering) and Artists Community Growth Lead are live with active apply buttons but missing from the index, found via search, and are counted. ATS is PeopleForce. Second largest hirer.",
+   "cats": [
+    "E-commerce",
+    "Consumer"
+   ],
+   "desc": "Přední globální marketplace pro vysoce kvalitní kovové plakáty s unikátní technologií vlastní výroby.",
+   "not_on_site": false,
+   "group_name": null,
+   "roles": [
+    {
+     "title": "IT & OT Specialist",
+     "location": "Marki, Poland",
+     "team": "Engineering",
+     "employment_type": "On-site",
+     "url": "https://about.displate.com/careers/it-ot-specialist",
+     "fn": "Engineering & AI",
+     "cc": "PL"
+    },
+    {
+     "title": "Sports Product Designer",
+     "location": "US (remote, Orlando/Tampa)",
+     "team": "Business Development",
+     "employment_type": "Remote",
+     "url": "https://about.displate.com/careers/sports-product-designer-2",
+     "fn": "Product & Design",
+     "cc": "US"
+    },
+    {
+     "title": "Performance Creative Strategy Lead",
+     "location": "Warsaw",
+     "team": "Digital Marketing",
+     "employment_type": "On-site or Hybrid",
+     "url": "https://about.displate.com/careers/performence-creative-strategy-lead",
+     "fn": "Marketing & Commercial",
+     "cc": "PL"
+    },
+    {
+     "title": "Global Paid Social Team Lead",
+     "location": "Europe",
+     "team": "Digital Marketing",
+     "employment_type": "Remote",
+     "url": "https://about.displate.com/careers/global-paid-social-team-lead",
+     "fn": "Marketing & Commercial",
+     "cc": "Europe"
+    },
+    {
+     "title": "Paid Social Specialist (TikTok Ads)",
+     "location": "Warsaw",
+     "team": "Digital Marketing",
+     "employment_type": "On-site",
+     "url": "https://about.displate.com/careers/paid-social-specialist-tiktok-ads",
+     "fn": "Marketing & Commercial",
+     "cc": "PL"
+    },
+    {
+     "title": "Creative Copywriter",
+     "location": "Warsaw",
+     "team": "Digital Marketing",
+     "employment_type": "On-site or Hybrid",
+     "url": "https://about.displate.com/careers/creative-copywriter",
+     "fn": "Marketing & Commercial",
+     "cc": "PL"
+    },
+    {
+     "title": "Influencer Marketing Manager",
+     "location": "Europe",
+     "team": "Influencer Marketing",
+     "employment_type": "Remote",
+     "url": "https://about.displate.com/careers/influencer-marketing-manager-2",
+     "fn": "Marketing & Commercial",
+     "cc": "Europe"
+    },
+    {
+     "title": "Social Media Specialist",
+     "location": "US",
+     "team": "Brand and Communications",
+     "employment_type": "Remote",
+     "url": "https://about.displate.com/careers/social-media-specialist-2",
+     "fn": "Marketing & Commercial",
+     "cc": "US"
+    },
+    {
+     "title": "Social Video Content Creator",
+     "location": "Warsaw",
+     "team": "Creative Team",
+     "employment_type": "On-site",
+     "url": "https://about.displate.com/careers/content-creator",
+     "fn": "Marketing & Commercial",
+     "cc": "PL"
+    },
+    {
+     "title": "Junior E-Commerce Content Specialist",
+     "location": "Warsaw",
+     "team": "Marketplace",
+     "employment_type": "On-site or Hybrid",
+     "url": "https://about.displate.com/careers/junior-e-commerce-content-specialist-3",
+     "fn": "Marketing & Commercial",
+     "cc": "PL"
+    },
+    {
+     "title": "Artists Community Growth Lead",
+     "location": "Warsaw",
+     "team": "Marketplace",
+     "employment_type": "Full-time, On-site or Hybrid",
+     "url": "https://about.displate.com/careers/community-growth-lead",
+     "fn": "Marketing & Commercial",
+     "cc": "PL"
+    },
+    {
+     "title": "Anime Licensing Assistant",
+     "location": "Warsaw",
+     "team": "Business Development",
+     "employment_type": "On-site or Hybrid",
+     "url": "https://about.displate.com/careers/anime-licensing-assistant",
+     "fn": "Sales & BD",
+     "cc": "PL"
+    },
+    {
+     "title": "Displate Artist Network",
+     "location": "Warsaw",
+     "team": "Business Development",
+     "employment_type": "Part-time, On-site or Hybrid",
+     "url": "https://about.displate.com/careers/displate-artist-network",
+     "fn": "Sales & BD",
+     "cc": "PL"
+    },
+    {
+     "title": "FP&A Controller",
+     "location": "Warsaw",
+     "team": "Finance & Legal",
+     "employment_type": "On-site",
+     "url": "https://about.displate.com/careers/fp-a-controller",
+     "fn": "Finance & Legal",
+     "cc": "PL"
+    },
+    {
+     "title": "Senior Treasury Specialist",
+     "location": "Warsaw",
+     "team": "Finance & Legal",
+     "employment_type": "On-site",
+     "url": "https://about.displate.com/careers/treasury-manager",
+     "fn": "Finance & Legal",
+     "cc": "PL"
+    },
+    {
+     "title": "Senior Controlling Specialist",
+     "location": "Warsaw",
+     "team": "Finance & Legal",
+     "employment_type": "On-site or Hybrid",
+     "url": "https://about.displate.com/careers/controlling-specialist",
+     "fn": "Finance & Legal",
+     "cc": "PL"
+    },
+    {
+     "title": "Accountant",
+     "location": "Warsaw",
+     "team": "Finance & Legal",
+     "employment_type": "On-site or Hybrid",
+     "url": "https://about.displate.com/careers/accountant",
+     "fn": "Finance & Legal",
+     "cc": "PL"
+    },
+    {
+     "title": "B2B Support Specialist",
+     "location": "Marki, Poland",
+     "team": "Physical Product Design",
+     "employment_type": "On-site",
+     "url": "https://about.displate.com/careers/b2b-support-specialist",
+     "fn": "People & Support",
+     "cc": "PL"
+    },
+    {
+     "title": "People and Culture Business Partner (Engineering)",
+     "location": "Warsaw",
+     "team": "People & Culture",
+     "employment_type": "Full-time",
+     "url": "https://about.displate.com/careers/pcbp-eng",
+     "fn": "People & Support",
+     "cc": "PL"
+    },
+    {
+     "title": "Junior Client Service Agent",
+     "location": "Europe",
+     "team": "Client Experience",
+     "employment_type": "Remote",
+     "url": "https://about.displate.com/careers/client-agent",
+     "fn": "People & Support",
+     "cc": "Europe"
+    }
+   ]
+  },
+  {
+   "slug": "septim",
+   "name": "Septim",
+   "stage": "Mature",
+   "website": "https://www.septim.cz/",
+   "careers_url": "https://www.septim.cz/kariera",
+   "status": "ok",
+   "note": "No open roles. The Jobstack.it profile that was Septim Systems is now rebranded to PIANO, confirming the Piano Group consolidation has reached the employer-brand layer.",
+   "cats": [
+    "Gastrotech"
+   ],
+   "desc": "Provozní systém restaurace (ERP) neboli POS. S více než tisícovkou klientů.",
+   "not_on_site": false,
+   "group_name": "Piano Group",
+   "roles": []
+  },
+  {
+   "slug": "ulovdomov",
+   "name": "UlovDomov",
+   "stage": "Mature",
+   "website": "https://www.ulovdomov.cz",
+   "careers_url": "https://livendo.jobs.personio.com/?language=cs",
+   "status": "ok",
+   "note": "Four roles on the Personio board, up from two. The bare Personio root fails on provenance, use ?language=cs. The jobs.cz mirror duplicates the Ceske Budejovice listing rather than adding a fifth role; an independent re-count confirmed four. Livendo rebrand is live: four brands under one group.",
+   "cats": [
+    "Real Estate Tech"
+   ],
+   "desc": "Největší inzertní portál na pronájmy. Zisková společnost s meziročním růstem tržeb přes 50 %.",
+   "not_on_site": false,
+   "group_name": null,
+   "roles": [
+    {
+     "title": "Akviziční obchodník bez cold callingu",
+     "location": "Praha",
+     "team": "Sales",
+     "employment_type": "Plny uvazek / OSVC",
+     "url": "https://livendo.jobs.personio.com/job/2654381",
+     "fn": "Sales & BD",
+     "cc": "CZ"
+    },
+    {
+     "title": "Realitní retenční obchodník",
+     "location": "Praha",
+     "team": "Sales",
+     "employment_type": "Plny uvazek / OSVC",
+     "url": "https://livendo.jobs.personio.com/job/2524846",
+     "fn": "Sales & BD",
+     "cc": "CZ"
+    },
+    {
+     "title": "Obchodník a správce nemovitostí",
+     "location": "České Budějovice",
+     "team": "Sales / property management",
+     "employment_type": "Plny uvazek",
+     "url": "https://livendo.jobs.personio.com/job/2786628",
+     "fn": "Sales & BD",
+     "cc": "CZ"
+    },
+    {
+     "title": "Správca prenajímaných bytov",
+     "location": "Bratislava",
+     "team": "Property management",
+     "employment_type": "0,5 uvazok",
+     "url": "https://livendo.jobs.personio.com/job/2788905",
+     "fn": "Ops & Logistics",
+     "cc": "SK"
+    }
+   ]
+  },
+  {
+   "slug": "startupjobs",
+   "name": "StartupJobs",
+   "stage": "Mature",
+   "website": "https://www.startupjobs.cz",
+   "careers_url": "https://www.startupjobs.cz/startup/startupjobs",
+   "status": "ok",
+   "note": "Zero active offers on their own profile.",
+   "cats": [
+    "HR Tech"
+   ],
+   "desc": "Kariérní portál, který se stal nedílnou součástí českého startupového prostředí.",
+   "not_on_site": false,
+   "group_name": null,
+   "roles": [],
+   "adapter": "startupjobs"
+  },
+  {
+   "slug": "harsys",
+   "name": "Harsys",
+   "stage": "Mature",
+   "website": "https://www.abxharsys.cz/",
+   "careers_url": "https://www.abxharsys.cz/kariera-volna-mista",
+   "status": "ok",
+   "note": "Same two roles still described (IT servisni technik, Programator) and both still marked pozice momentalne neni otevrena. Entity is ABX software s.r.o.",
+   "cats": [
+    "Gastrotech"
+   ],
+   "desc": "Systém pro efektivní řízení provozu velkých gastro provozů, řetězců a cateringových služeb.",
+   "not_on_site": false,
+   "group_name": "Piano Group",
+   "roles": []
+  },
+  {
+   "slug": "pos-experts",
+   "name": "POS Experts",
+   "stage": "Mature",
+   "website": "https://www.posexperts.cz/",
+   "careers_url": null,
+   "status": "no_careers_page",
+   "note": "Could not be fetched this week: robots.txt times out so WebFetch refuses. Assessment rests on search-index coverage only, which shows product pages and no kariera path.",
+   "cats": [
+    "Gastrotech"
+   ],
+   "desc": "Hardware a software řešení pro pokladní systémy.",
+   "not_on_site": false,
+   "group_name": "Piano Group",
+   "roles": []
+  },
+  {
+   "slug": "protel",
+   "name": "Protel",
+   "stage": "Mature",
+   "website": "https://www.protelsystems.cz/",
+   "careers_url": "https://www.protelsystems.cz/novinky-kariera",
+   "status": "ok",
+   "note": "One sales role, unchanged. No permalink, it renders inline on the combined novinky a kariera page. Only Piano Group company with anything open.",
+   "cats": [
+    "Gastrotech"
+   ],
+   "desc": "Protel Systems je smluvním distributorem hotelového systému Protel pro Česko a Slovensko.",
+   "not_on_site": false,
+   "group_name": "Piano Group",
+   "roles": [
+    {
+     "title": "Obchodní zástupce",
+     "location": "Praha",
+     "team": "Sales",
+     "employment_type": "Full-time, hybrid",
+     "url": "https://www.protelsystems.cz/novinky-kariera",
+     "fn": "Sales & BD",
+     "cc": "CZ"
+    }
+   ]
+  },
+  {
+   "slug": "savarin",
+   "name": "Savarin",
+   "stage": "Mature",
+   "website": "https://www.ab-x.cz/",
+   "careers_url": null,
+   "status": "no_careers_page",
+   "note": "ab-x.cz fetched this week and confirmed to have no careers link at all. Savarin and Harsys are both ABX software products, so this zero is the same zero as Harsys.",
+   "cats": [
+    "Gastrotech"
+   ],
+   "desc": "Pokladní systém, který zároveň funguje jako restaurační a hotelový systém.",
+   "not_on_site": false,
+   "group_name": "Piano Group",
+   "roles": []
+  },
+  {
+   "slug": "meriton",
+   "name": "Meriton",
+   "stage": "Mature",
+   "website": "https://www.meriton.cz/",
+   "careers_url": "https://www.startupjobs.cz/startup/miton-klidna-sila",
+   "status": "ok",
+   "note": "Zero active offers. Their StartupJobs slug is /startup/miton-klidna-sila, not /meriton, and is not guessable.",
+   "cats": [
+    "Holding a investice"
+   ],
+   "desc": "Samostatný holding a součást širší skupiny Miton. Investuje do projektů s hmatatelnými aktivy.",
+   "not_on_site": false,
+   "group_name": null,
+   "roles": [],
+   "adapter": "startupjobs"
+  },
+  {
+   "slug": "boski",
+   "name": "Boski",
+   "stage": null,
+   "website": "https://www.boski.com/",
+   "careers_url": "https://www.boski.com/careers",
+   "status": "ok",
+   "note": "Not listed on the public miton.cz portfolio page. boski.ai redirects to boski.com. Hires only through its own site, no ATS. Compensation is published on the role pages.",
+   "cats": [
+    "AI",
+    "Consumer"
+   ],
+   "desc": "„Boski is an AI agent that works 24/7 on helping you achieve your goals.“ (boski.com)",
+   "not_on_site": true,
+   "group_name": null,
+   "roles": [
+    {
+     "title": "Founding Engineer",
+     "location": "Warsaw, onsite",
+     "team": null,
+     "employment_type": "Full-time",
+     "url": "https://www.boski.com/careers/founding-engineer",
+     "fn": "Engineering & AI",
+     "cc": "PL"
+    },
+    {
+     "title": "Founding Product Designer",
+     "location": "Warsaw, onsite",
+     "team": null,
+     "employment_type": "Full-time",
+     "url": "https://www.boski.com/careers/founding-product-designer",
+     "fn": "Product & Design",
+     "cc": "PL"
+    }
+   ]
+  },
+  {
+   "slug": "ace",
+   "name": "ACE",
+   "stage": null,
+   "website": "https://www.aceplay.app/",
+   "careers_url": "https://www.aceplay.app/career",
+   "status": "ok",
+   "note": "Not listed on the public miton.cz portfolio page. Careers page is /career, singular, and has no per-role URLs, so both roles link to the same page. Also runs a club-side booking product (thefullclub.com).",
+   "cats": [
+    "Sport",
+    "Consumer",
+    "SaaS"
+   ],
+   "desc": "„Find players at your level, organize matches, and track your padel game.“ (aceplay.app)",
+   "not_on_site": true,
+   "group_name": null,
+   "roles": [
+    {
+     "title": "Fullstack Developer",
+     "location": "Prague or remote (CET)",
+     "team": null,
+     "employment_type": "Full-time",
+     "url": "https://www.aceplay.app/career",
+     "fn": "Engineering & AI",
+     "cc": "CZ"
+    },
+    {
+     "title": "Community Manager",
+     "location": "Prague",
+     "team": null,
+     "employment_type": "Full-time",
+     "url": "https://www.aceplay.app/career",
+     "fn": "Marketing & Commercial",
+     "cc": "CZ"
+    }
+   ]
+  }
+ ]
+}

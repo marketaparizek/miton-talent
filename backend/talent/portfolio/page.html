@@ -1,0 +1,822 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Portfolio hiring · Miton Talent</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap">
+<style>
+:root{
+  --orange:#E9600D; --orange-dk:#C24F09; --yellow:#FFC800;
+  --mint:#A9D6B4; --mint-dk:#8CC49E; --brand-ink:#1D1D1B; --brand-white:#FFFFFF;
+  --paper:#FFFFFF; --paper-2:#F5F4F0; --surface:#FFFFFF; --surface-2:#FAF9F6;
+  --ink:#1D1D1B; --ink-2:#4A4A45; --muted:#82807A;
+  --line:#E6E4DC; --line-2:#CFCCC1;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#131311; --paper-2:#1A1A17; --surface:#1E1E1A; --surface-2:#232320;
+    --ink:#F3F1EA; --ink-2:#C2BFB5; --muted:#8B8880;
+    --line:#2A2A24; --line-2:#3C3B33;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#131311; --paper-2:#1A1A17; --surface:#1E1E1A; --surface-2:#232320;
+  --ink:#F3F1EA; --ink-2:#C2BFB5; --muted:#8B8880;
+  --line:#2A2A24; --line-2:#3C3B33;
+}
+*{box-sizing:border-box}
+body{
+  margin:0; background:var(--paper); color:var(--ink);
+  font-family:"Figtree","Helvetica Neue",Arial,sans-serif;
+  font-size:15px; line-height:1.45; -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:1280px; margin:0 auto; padding:14px 16px 70px}
+.mono{font-family:"JetBrains Mono",ui-monospace,SFMono-Regular,monospace}
+
+/* ---------- header band ---------- */
+.top{
+  background:var(--orange); color:#fff; border-radius:14px;
+  padding:20px clamp(18px,2.4vw,28px);
+  display:grid; grid-template-columns:auto 1fr; gap:18px 24px; align-items:center;
+}
+.mark{width:48px; height:48px; border-radius:12px; background:#fff; display:grid; place-items:center}
+.mark span{
+  width:37px; height:37px; border-radius:50%; background:var(--yellow); display:grid; place-items:center;
+  font-weight:800; font-size:15px; color:var(--orange); letter-spacing:-.04em;
+}
+.tophead h1{margin:0; font-size:22px; font-weight:700; letter-spacing:-.025em}
+.tophead .sub{
+  font-family:"JetBrains Mono",ui-monospace,monospace; font-size:11px;
+  letter-spacing:.14em; text-transform:uppercase; color:#FFD9B8; margin-top:5px;
+}
+.kpis{grid-column:1/-1; display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-top:4px}
+.kpi{
+  background:rgba(255,255,255,.13); border:1.5px solid transparent; border-radius:11px;
+  padding:13px 15px; text-align:left; font:inherit; color:#fff; cursor:pointer;
+  display:grid; gap:0; align-content:start; position:relative;
+  transition:background .13s, border-color .13s;
+}
+.kpi:hover{background:rgba(255,255,255,.22); border-color:rgba(255,255,255,.45)}
+.kpi:focus-visible{outline:3px solid #fff; outline-offset:2px}
+.kpi[aria-pressed="true"]{background:#fff; border-color:#fff; color:var(--orange)}
+.kpi[aria-pressed="true"] .k{color:var(--orange-dk)}
+.kpi .go{
+  position:absolute; top:11px; right:13px; font-size:13px; opacity:.55;
+  font-family:"JetBrains Mono",ui-monospace,monospace;
+}
+.kpi:hover .go{opacity:1}
+.kpi .v{font-size:31px; font-weight:800; letter-spacing:-.04em; line-height:1; font-variant-numeric:tabular-nums}
+.kpi .k{
+  font-family:"JetBrains Mono",ui-monospace,monospace; font-size:10px; font-weight:500;
+  letter-spacing:.12em; text-transform:uppercase; color:#FFD9B8; margin-top:8px;
+}
+@media (max-width:720px){.kpis{grid-template-columns:repeat(2,1fr)} .top{grid-template-columns:1fr}}
+
+/* ---------- section frame ---------- */
+.card{background:var(--paper-2); border-radius:14px; padding:18px clamp(16px,2vw,22px) 22px; margin-top:12px}
+.chead{display:flex; flex-wrap:wrap; justify-content:space-between; align-items:baseline; gap:10px 16px; margin-bottom:14px}
+.chead h2{
+  margin:0; font-family:"JetBrains Mono",ui-monospace,monospace; font-size:12px; font-weight:700;
+  letter-spacing:.14em; text-transform:uppercase; color:var(--ink);
+}
+.chead .hint{font-family:"JetBrains Mono",ui-monospace,monospace; font-size:11.5px; color:var(--muted)}
+.chead .hint b{color:var(--ink); font-weight:700; font-variant-numeric:tabular-nums}
+
+/* ---------- company grid ---------- */
+.cogrid{display:grid; grid-template-columns:repeat(auto-fill,minmax(172px,1fr)); gap:8px}
+.cotile{
+  background:var(--surface); border:1.5px solid var(--line); border-radius:11px;
+  padding:11px 12px 12px; cursor:pointer; text-align:left; font:inherit; color:var(--ink);
+  display:grid; gap:8px; align-content:space-between; min-height:94px;
+  transition:border-color .12s, background .12s;
+}
+.cotile[hidden]{display:none}
+.cotile:hover{border-color:var(--orange)}
+.cotile:focus-visible{outline:3px solid var(--orange); outline-offset:2px}
+.cotile[aria-pressed="true"]{border-color:var(--orange); background:var(--surface-2); box-shadow:inset 0 0 0 1.5px var(--orange)}
+.cotile .row1{display:flex; justify-content:space-between; align-items:baseline; gap:8px}
+.cotile .nm{font-size:14px; font-weight:700; letter-spacing:-.012em; line-height:1.2}
+.cotile .n{
+  font-family:"JetBrains Mono",ui-monospace,monospace; font-size:16px; font-weight:700;
+  color:var(--orange); font-variant-numeric:tabular-nums; line-height:1;
+}
+.cotile .seg{display:flex; height:6px; border-radius:3px; overflow:hidden; background:var(--line)}
+.cotile .seg i{display:block; height:100%}
+.cotile .seg .t{background:var(--orange-dk)}
+.cotile .seg .o{background:var(--mint-dk)}
+.cotile .st{
+  font-family:"JetBrains Mono",ui-monospace,monospace; font-size:9.5px; font-weight:500;
+  letter-spacing:.12em; text-transform:uppercase; color:var(--muted);
+}
+.cotile.offsite{box-shadow:inset 3px 0 0 var(--yellow)}
+.drawer .offtag{
+  display:inline-block; font-family:"JetBrains Mono",ui-monospace,monospace; font-size:9.5px;
+  letter-spacing:.1em; text-transform:uppercase; background:var(--yellow); color:#5C4400;
+  padding:3px 8px; border-radius:999px; margin-left:8px; vertical-align:1px;
+}
+.cotile.zero{background:transparent; border-style:dashed}
+.cotile.zero .nm{font-weight:600; color:var(--muted)}
+.cotile.zero .n{color:var(--muted); font-weight:400}
+.legend{
+  display:flex; flex-wrap:wrap; gap:6px 18px; margin-top:12px;
+  font-family:"JetBrains Mono",ui-monospace,monospace; font-size:11px; color:var(--muted);
+}
+.legend i{display:inline-block; width:11px; height:11px; border-radius:3px; margin-right:6px; vertical-align:-1px}
+
+
+/* ---------- category chips ---------- */
+.catbar{display:flex; flex-wrap:wrap; gap:6px; margin:0 0 14px}
+.catchip{
+  font-family:"JetBrains Mono",ui-monospace,monospace; font-size:10.5px; font-weight:500; letter-spacing:.04em;
+  background:transparent; color:var(--ink-2); border:1.5px solid var(--line-2); border-radius:999px;
+  padding:7px 13px; cursor:pointer; white-space:nowrap;
+}
+.catchip:hover{border-color:var(--ink)}
+.catchip:focus-visible{outline:3px solid var(--orange); outline-offset:2px}
+.catchip[aria-pressed="true"]{background:var(--mint); border-color:var(--mint-dk); color:#24402C}
+.catchip .c{opacity:.6; margin-left:6px; font-variant-numeric:tabular-nums}
+
+/* ---------- company drawer ---------- */
+.cotile .chev{
+  font-family:"JetBrains Mono",ui-monospace,monospace; font-size:10px; color:var(--muted);
+  display:inline-block; transition:transform .18s;
+}
+.cotile[aria-expanded="true"] .chev{transform:rotate(90deg); color:var(--orange)}
+.drawer{
+  grid-column:1/-1; background:var(--surface); border:1.5px solid var(--orange); border-radius:11px;
+  padding:16px 18px 18px; display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.25fr); gap:20px 28px;
+}
+@media (max-width:820px){.drawer{grid-template-columns:1fr}}
+.drawer h3{margin:0 0 3px; font-size:19px; font-weight:700; letter-spacing:-.02em}
+.drawer .meta{
+  font-family:"JetBrains Mono",ui-monospace,monospace; font-size:10.5px; letter-spacing:.11em;
+  text-transform:uppercase; color:var(--muted); margin-bottom:10px;
+}
+.drawer .cats{display:flex; flex-wrap:wrap; gap:5px; margin:0 0 11px}
+.drawer .cats span{
+  font-family:"JetBrains Mono",ui-monospace,monospace; font-size:10px; letter-spacing:.05em;
+  background:var(--mint); color:#24402C; padding:4px 9px; border-radius:999px;
+}
+.drawer .desc{margin:0 0 13px; font-size:14px; line-height:1.55; color:var(--ink-2); max-width:52ch}
+.drawer .links{display:flex; flex-wrap:wrap; gap:7px}
+.dlink{
+  font-family:"JetBrains Mono",ui-monospace,monospace; font-size:11px; font-weight:500;
+  text-decoration:none; border:1.5px solid var(--line-2); border-radius:999px; padding:7px 13px;
+  color:var(--ink-2); white-space:nowrap;
+}
+.dlink:hover{border-color:var(--orange); color:var(--orange)}
+.dlink.primary{background:var(--orange); border-color:var(--orange); color:#fff}
+.dlink.primary:hover{background:var(--orange-dk); border-color:var(--orange-dk); color:#fff}
+.drawer .rolelist{display:grid; gap:0; align-content:start}
+.drawer .rl-h{
+  font-family:"JetBrains Mono",ui-monospace,monospace; font-size:10.5px; font-weight:700;
+  letter-spacing:.13em; text-transform:uppercase; color:var(--muted);
+  padding-bottom:7px; border-bottom:1.5px solid var(--line-2);
+}
+.drole{
+  display:grid; grid-template-columns:1fr auto auto; gap:12px; align-items:baseline;
+  padding:8px 0; border-bottom:1px solid var(--line);
+}
+.drole .dt{font-size:13.5px; font-weight:600}
+.drole .dt a{color:var(--ink); text-decoration:none; box-shadow:inset 0 -1px 0 var(--line-2)}
+.drole .dt a:hover{color:var(--orange); box-shadow:inset 0 -1px 0 var(--orange)}
+.drole .dl{font-family:"JetBrains Mono",ui-monospace,monospace; font-size:11px; color:var(--muted); white-space:nowrap}
+.drawer .none{
+  font-family:"JetBrains Mono",ui-monospace,monospace; font-size:12px; line-height:1.6; color:var(--muted);
+  padding:11px 13px; background:var(--surface-2); border-radius:9px; border-left:3px solid var(--mint-dk);
+}
+@media (max-width:620px){.drole{grid-template-columns:1fr; gap:3px}}
+
+/* ---------- breakdown pair ---------- */
+.pair{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+@media (max-width:860px){.pair{grid-template-columns:1fr}}
+.bars{display:grid; gap:8px}
+.brow{
+  width:100%; background:none; border:0; padding:0; font:inherit; color:inherit; cursor:pointer;
+  display:grid; gap:5px; text-align:left;
+}
+.brow:focus-visible{outline:3px solid var(--orange); outline-offset:3px}
+.blab{
+  display:flex; justify-content:space-between; gap:12px; align-items:baseline;
+  font-family:"JetBrains Mono",ui-monospace,monospace; font-size:12px; color:var(--ink-2);
+}
+.blab b{color:var(--ink); font-weight:700; font-variant-numeric:tabular-nums}
+.btrack{height:13px; background:var(--line); border-radius:3px; overflow:hidden}
+.bfill{height:100%; background:var(--mint-dk); border-radius:3px; transition:width .3s ease}
+.bfill.tech{background:var(--orange)}
+.brow[aria-pressed="true"] .blab, .brow[aria-pressed="true"] .blab b{color:var(--orange)}
+.brow[aria-pressed="true"] .bfill{background:var(--orange)}
+.brow:hover .btrack{background:var(--line-2)}
+
+/* ---------- filter bar ---------- */
+.bar{
+  position:sticky; top:0; z-index:40; background:var(--paper-2);
+  padding:12px 0 12px; margin:-4px 0 12px;
+  display:flex; flex-wrap:wrap; gap:8px; align-items:center;
+  border-bottom:2px solid var(--ink);
+}
+input[type=search]{
+  font:inherit; font-family:"JetBrains Mono",ui-monospace,monospace; font-size:13.5px; color:var(--ink);
+  background:var(--surface); border:2px solid var(--ink); border-radius:999px;
+  padding:9px 17px; min-width:190px; max-width:250px; flex:1 1 190px;
+}
+input[type=search]::placeholder{color:var(--muted)}
+input:focus-visible,.chip:focus-visible,.sortbtn:focus-visible{outline:3px solid var(--orange); outline-offset:2px}
+.chip{
+  font-family:"JetBrains Mono",ui-monospace,monospace; font-size:11px; font-weight:500; letter-spacing:.03em;
+  background:transparent; color:var(--ink-2); border:1.5px solid var(--line-2); border-radius:999px;
+  padding:8px 14px; cursor:pointer; white-space:nowrap;
+}
+.chip:hover{border-color:var(--ink)}
+.chip[aria-pressed="true"]{background:var(--orange); border-color:var(--orange); color:#fff}
+.chip.dark[aria-pressed="true"]{background:var(--ink); border-color:var(--ink); color:var(--paper-2)}
+.chip.clear{border-color:var(--orange); color:var(--orange)}
+.spacer{flex:1 1 auto}
+
+/* ---------- table ---------- */
+.tblwrap{overflow-x:auto; background:var(--surface); border-radius:11px; border:1.5px solid var(--line)}
+table{border-collapse:collapse; width:100%; min-width:720px}
+th{
+  background:var(--surface); text-align:left; padding:0;
+  border-bottom:1.5px solid var(--line-2);
+}
+.sortbtn{
+  width:100%; text-align:left; background:none; border:0; cursor:pointer;
+  font-family:"JetBrains Mono",ui-monospace,monospace; font-size:10.5px; font-weight:700;
+  letter-spacing:.13em; text-transform:uppercase; color:var(--muted);
+  padding:11px 13px; display:flex; gap:5px; align-items:center;
+}
+.sortbtn:hover{color:var(--ink)}
+.sortbtn .ar{opacity:0; font-size:9px}
+.sortbtn[data-active="1"]{color:var(--orange)}
+.sortbtn[data-active="1"] .ar{opacity:1}
+td{padding:9px 13px; border-bottom:1px solid var(--line); vertical-align:baseline}
+tr:last-child td{border-bottom:0}
+tbody tr:hover{background:var(--surface-2)}
+.c-role{font-weight:600; font-size:14.5px; letter-spacing:-.008em}
+.c-role a{color:var(--ink); text-decoration:none; box-shadow:inset 0 -1px 0 var(--line-2)}
+.c-role a:hover{color:var(--orange); box-shadow:inset 0 -1px 0 var(--orange)}
+.c-co{font-weight:600; font-size:13.5px; white-space:nowrap}
+.c-loc,.c-cc{font-family:"JetBrains Mono",ui-monospace,monospace; font-size:11.5px; color:var(--muted); white-space:nowrap}
+.tagpill{
+  display:inline-block; font-family:"JetBrains Mono",ui-monospace,monospace; font-size:10px; font-weight:500;
+  letter-spacing:.05em; padding:4px 10px; border-radius:999px; white-space:nowrap;
+  background:var(--mint); color:#24402C;
+}
+.tagpill.tech{background:var(--orange); color:#fff}
+.noresult{padding:34px 14px; color:var(--muted); font-size:14px; text-align:center}
+
+/* ---------- silent + notes ---------- */
+.silent{display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:0 26px}
+.srow{display:grid; grid-template-columns:130px 1fr; gap:12px; padding:8px 0; border-bottom:1px solid var(--line); align-items:baseline}
+.srow .sn{font-weight:600; font-size:13.5px}
+.srow .sd{font-family:"JetBrains Mono",ui-monospace,monospace; font-size:11px; line-height:1.55; color:var(--muted)}
+.srow .sd a{color:var(--muted)}
+.notes{display:grid; gap:11px}
+.note{display:grid; grid-template-columns:140px 1fr; gap:16px; align-items:start}
+.note .nt{
+  font-family:"JetBrains Mono",ui-monospace,monospace; font-size:11px; font-weight:700;
+  letter-spacing:.11em; text-transform:uppercase; color:var(--orange); padding-top:2px;
+}
+.note p{margin:0; font-size:14px; color:var(--ink-2); max-width:74ch}
+.note p b{color:var(--ink); font-weight:700}
+@media (max-width:700px){.note,.srow{grid-template-columns:1fr; gap:3px}}
+.method{
+  margin-top:16px; font-family:"JetBrains Mono",ui-monospace,monospace;
+  font-size:11px; line-height:1.7; color:var(--muted); max-width:100ch;
+}
+.method p{margin:0 0 7px}
+
+/* ---------- changes panel ---------- */
+#sec-changes .chgwrap{display:grid; grid-template-columns:1fr 1fr; gap:18px 28px}
+@media (max-width:860px){#sec-changes .chgwrap{grid-template-columns:1fr}}
+#sec-changes .chgh{
+  font-family:"JetBrains Mono",ui-monospace,monospace; font-size:10.5px; font-weight:700;
+  letter-spacing:.13em; text-transform:uppercase; color:var(--muted);
+  padding-bottom:7px; margin-bottom:2px; border-bottom:1.5px solid var(--mint-dk);
+  display:flex; justify-content:space-between;
+}
+#sec-changes .chgh span{color:var(--ink); font-variant-numeric:tabular-nums}
+#sec-changes .chg{
+  display:grid; grid-template-columns:16px minmax(0,1fr) auto; gap:2px 10px;
+  padding:7px 0; border-bottom:1px solid var(--line); align-items:baseline;
+}
+#sec-changes .cm{
+  font-family:"JetBrains Mono",ui-monospace,monospace; font-size:12px; color:var(--mint-dk);
+  grid-row:span 2; align-self:start; padding-top:1px;
+}
+#sec-changes .cm.tech{color:var(--orange)}
+#sec-changes .ct{font-size:13.5px; font-weight:600; letter-spacing:-.008em}
+#sec-changes .cco{
+  font-family:"JetBrains Mono",ui-monospace,monospace; font-size:10px; letter-spacing:.08em;
+  text-transform:uppercase; background:var(--mint); color:#24402C; padding:3px 9px;
+  border-radius:999px; white-space:nowrap; justify-self:end;
+}
+#sec-changes .cls .ct{color:var(--ink-2)}
+#sec-changes .cl{grid-column:2/-1; font-size:11px; color:var(--muted)}
+#sec-changes .chgfoot{
+  margin-top:16px; padding-top:14px; border-top:1.5px solid var(--mint-dk); display:grid; gap:7px;
+  font-size:13.5px; color:var(--ink-2);
+}
+#sec-changes .chgfoot b{
+  font-family:"JetBrains Mono",ui-monospace,monospace; font-size:10.5px; font-weight:700;
+  letter-spacing:.12em; text-transform:uppercase; color:var(--ink); margin-right:8px;
+}
+
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style><style>
+/* --- additions over the artifact's stylesheet ------------------------------ */
+.nav{display:flex; gap:14px; align-items:center; font-family:"JetBrains Mono",ui-monospace,monospace; font-size:11px;
+     letter-spacing:.1em; text-transform:uppercase; margin:0 0 12px; color:var(--muted)}
+.nav a{color:var(--muted); text-decoration:none}
+.nav a:hover{color:var(--orange)}
+.nav .who{margin-left:auto; text-transform:none; letter-spacing:0}
+.topact{grid-column:1/-1; display:flex; flex-wrap:wrap; gap:9px; align-items:center; margin-top:2px}
+.tbtn{font:inherit; font-family:"JetBrains Mono",ui-monospace,monospace; font-size:11px; font-weight:500; letter-spacing:.05em;
+      background:rgba(255,255,255,.15); color:#fff; border:1.5px solid rgba(255,255,255,.4); border-radius:999px;
+      padding:8px 15px; cursor:pointer}
+.tbtn:hover{background:#fff; color:var(--orange); border-color:#fff}
+.tbtn[disabled]{opacity:.5; cursor:progress}
+.topnote{font-family:"JetBrains Mono",ui-monospace,monospace; font-size:11px; color:#FFD9B8}
+.cotile.unread{box-shadow:inset 3px 0 0 var(--yellow)}
+.cotile .warn{color:#B37500; font-weight:700}
+.badge{display:inline-block; font-family:"JetBrains Mono",ui-monospace,monospace; font-size:9.5px; letter-spacing:.1em;
+       text-transform:uppercase; background:var(--yellow); color:#5C4400; padding:3px 8px; border-radius:999px; margin-left:8px}
+.badge.grey{background:var(--line); color:var(--ink-2)}
+.hgrid{display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:10px 22px}
+.hrow{display:grid; grid-template-columns:130px 1fr; gap:10px; padding:7px 0; border-bottom:1px solid var(--line); align-items:baseline}
+.hrow .hk{font-family:"JetBrains Mono",ui-monospace,monospace; font-size:10.5px; font-weight:700; letter-spacing:.11em;
+          text-transform:uppercase; color:var(--muted)}
+.hrow .hv{font-size:13.5px}
+.hrow .hv.bad{color:var(--orange); font-weight:600}
+.empty{font-family:"JetBrains Mono",ui-monospace,monospace; font-size:12px; color:var(--muted); padding:10px 0}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="nav">
+    <a href="/admin">&#8592; Miton Talent</a>
+    <a href="/admin/portfolio.json">JSON</a>
+    <a href="https://www.miton.cz/portfolio/" target="_blank" rel="noopener">miton.cz/portfolio</a>
+    <span class="who" id="who"></span>
+  </div>
+
+  <div class="top">
+    <div class="mark"><span>Ai</span></div>
+    <div class="tophead">
+      <h1>Portfolio hiring</h1>
+      <div class="sub" id="sub">Miton</div>
+    </div>
+    <div class="kpis">
+      <button class="kpi" data-act="all" aria-pressed="false"><span class="go">&#8595;</span><div class="v" id="k-roles">0</div><div class="k">open roles</div></button>
+      <button class="kpi" data-act="hiring" aria-pressed="false"><span class="go">&#8595;</span><div class="v" id="k-cos">0</div><div class="k">companies hiring</div></button>
+      <button class="kpi" data-act="tech" aria-pressed="false"><span class="go">&#8595;</span><div class="v" id="k-tech">0</div><div class="k">technical roles</div></button>
+      <button class="kpi" data-act="new" aria-pressed="false"><span class="go">&#8595;</span><div class="v" id="k-new">0</div><div class="k">new this week</div></button>
+    </div>
+    <div class="topact">
+      <button class="tbtn" id="scrape">Run the scrape now</button>
+      <span class="topnote" id="scrapenote"></span>
+    </div>
+  </div>
+
+  <section class="card" id="sec-companies">
+    <div class="chead">
+      <h2>Who is hiring</h2>
+      <div class="hint">click a company to open it &nbsp;·&nbsp; bar width = share of the largest</div>
+    </div>
+    <div class="catbar" id="catbar"></div>
+    <div class="cogrid" id="cogrid"></div>
+    <div class="legend">
+      <span><i style="background:var(--orange-dk)"></i>technical roles</span>
+      <span><i style="background:var(--mint-dk)"></i>everything else</span>
+      <span><i style="background:transparent;border:1.5px dashed var(--line-2)"></i>nothing published</span>
+      <span><i style="background:var(--yellow)"></i>page could not be read: last known count</span>
+    </div>
+  </section>
+
+  <div class="pair">
+    <section class="card">
+      <div class="chead"><h2>By function</h2><div class="hint" id="fnHint"></div></div>
+      <div class="bars" id="fnBars"></div>
+    </section>
+    <section class="card">
+      <div class="chead"><h2>By country</h2><div class="hint" id="ccHint"></div></div>
+      <div class="bars" id="ccBars"></div>
+    </section>
+  </div>
+
+  <section class="card" id="sec-roles">
+    <div class="bar">
+      <input type="search" id="q" placeholder="search role, company, city" aria-label="Search">
+      <button class="chip dark" id="hideBig" aria-pressed="false">Hide Rohlik</button>
+      <button class="chip" id="techOnly" aria-pressed="false">Technical only</button>
+      <button class="chip" id="newOnly" aria-pressed="false">New this week</button>
+      <div class="spacer"></div>
+      <span class="hint mono" id="tally"></span>
+      <button class="chip clear" id="clear" hidden>Clear filters</button>
+    </div>
+    <div class="tblwrap">
+      <table>
+        <thead><tr>
+          <th><button class="sortbtn" data-k="title">Role <span class="ar">&#9650;</span></button></th>
+          <th><button class="sortbtn" data-k="company" data-active="1">Company <span class="ar">&#9650;</span></button></th>
+          <th><button class="sortbtn" data-k="location">Location <span class="ar">&#9650;</span></button></th>
+          <th><button class="sortbtn" data-k="fn">Function <span class="ar">&#9650;</span></button></th>
+        </tr></thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="card" id="sec-changes">
+    <div class="chead"><h2>Changes this week</h2><div class="hint" id="chgHint"></div></div>
+    <div class="chgwrap">
+      <div class="chgcol"><div class="chgh">new <span id="newCount">0</span></div><div id="newList"></div></div>
+      <div class="chgcol"><div class="chgh">closed <span id="closedCount">0</span></div><div id="closedList"></div></div>
+    </div>
+    <div class="chgfoot" id="chgfoot"></div>
+  </section>
+
+  <section class="card" id="sec-silent">
+    <div class="chead"><h2>Nothing published</h2><div class="hint" id="silentHint"></div></div>
+    <div class="silent" id="silent"></div>
+  </section>
+
+  <section class="card" id="sec-health">
+    <div class="chead">
+      <h2>Read before you trust a zero</h2>
+      <div class="hint" id="healthHint"></div>
+    </div>
+    <div class="hgrid" id="health"></div>
+    <div class="method" id="method"></div>
+  </section>
+</div>
+
+<script id="DATA" type="application/json">__DATA__</script>
+<script id="USER" type="application/json">__USER__</script>
+<script>
+(function(){
+  var D=JSON.parse(document.getElementById('DATA').textContent);
+  var ME=JSON.parse(document.getElementById('USER').textContent);
+  var TECH={'Engineering & AI':1,'Data & Analytics':1,'Product & Design':1};
+  var CCNAME={CZ:'Czechia',SK:'Slovakia',PL:'Poland',DE:'Germany',AT:'Austria',HU:'Hungary',RO:'Romania',
+              IE:'Ireland',AE:'UAE',GB:'United Kingdom',US:'United States',Remote:'Remote',Europe:'Europe, remote',Other:'Other'};
+  var FN_ORDER=['Engineering & AI','Data & Analytics','Product & Design','Ops & Logistics','Sales & BD',
+                'Marketing & Commercial','Finance & Legal','People & Support','Clinical','Other'];
+  var STATUS_LABEL={ok:'read',failed:'could not be read',blocked:'refused us',
+                    no_careers_page:'no careers page',skipped:'not scraped',unknown:'not checked yet'};
+
+  function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(m){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]})}
+  function host(u){try{return String(u).replace(/^https?:\/\//,'').replace(/^www\./,'').split('/')[0]}catch(e){return ''}}
+
+  var CO={}, ALL=[];
+  D.companies.forEach(function(c){
+    CO[c.name]=c;
+    c.roles.forEach(function(r){
+      ALL.push({title:r.title,company:c.name,stage:c.stage,location:r.location||'—',
+                fn:r.fn,cc:r.cc||'Other',url:r.url||'',tech:!!r.tech,isnew:!!r.new});
+    });
+  });
+  var CHG=D.changes||{new:[],closed:[],started_hiring:[],went_quiet:[]};
+  var NEWKEY={}; (CHG.new||[]).forEach(function(r){NEWKEY[r.company+'|'+r.title]=1});
+  ALL.forEach(function(r){ r.isnew = !!NEWKEY[r.company+'|'+r.title]; });
+
+  // The one company that would otherwise own every chart gets its own toggle,
+  // the way the artifact singled out Rohlik: whoever is biggest this week.
+  var BIG=(function(){
+    var best=null;
+    D.companies.forEach(function(c){ if(!best || c.roles.length>best.roles.length) best=c; });
+    return (best && best.roles.length>=Math.max(8, Math.round(ALL.length*0.35))) ? best.name : null;
+  })();
+
+  var COS=D.companies.slice().sort(function(a,b){
+    if(b.roles.length!==a.roles.length) return b.roles.length-a.roles.length;
+    return a.name.localeCompare(b.name);
+  });
+  var SILENT=D.companies.filter(function(c){return !c.roles.length})
+                        .sort(function(a,b){return a.name.localeCompare(b.name)});
+
+  var S={q:'',co:null,fn:null,cc:null,cat:null,hideBig:false,tech:false,onlyNew:false,sort:'company',dir:1};
+
+  function inCat(name){ return !S.cat || (CO[name].cats||[]).indexOf(S.cat)>=0; }
+  function pass(r,skip){
+    if(S.hideBig && BIG && r.company===BIG) return false;
+    if(S.tech && !r.tech) return false;
+    if(S.onlyNew && !r.isnew) return false;
+    if(!inCat(r.company)) return false;
+    if(S.q){
+      var hay=(r.title+' '+r.company+' '+r.location+' '+r.fn).toLowerCase();
+      if(hay.indexOf(S.q)<0) return false;
+    }
+    if(skip!=='co' && S.co && r.company!==S.co) return false;
+    if(skip!=='fn' && S.fn && r.fn!==S.fn) return false;
+    if(skip!=='cc' && S.cc && r.cc!==S.cc) return false;
+    return true;
+  }
+  function rows(skip){return ALL.filter(function(r){return pass(r,skip)})}
+
+  /* ---- header ---- */
+  document.getElementById('who').textContent = ME.email ? ME.email : '';
+  var big=document.getElementById('hideBig');
+  if(BIG){ big.textContent='Hide '+BIG; } else { big.hidden=true; }
+  (function(){
+    var n=D.companies.length, when=D.scraped_at||'not scraped yet';
+    document.getElementById('sub').innerHTML='Miton &nbsp;/&nbsp; snapshot '+esc(when)+' &nbsp;/&nbsp; '+n+' companies';
+    document.getElementById('k-roles').textContent=ALL.length;
+    var hiring={}; ALL.forEach(function(r){hiring[r.company]=1});
+    document.getElementById('k-cos').textContent=Object.keys(hiring).length;
+    document.getElementById('k-tech').textContent=ALL.filter(function(r){return r.tech}).length;
+    document.getElementById('k-new').textContent=(CHG.new||[]).length;
+  })();
+
+  /* ---- category chips ---- */
+  var catbar=document.getElementById('catbar');
+  (function(){
+    var counts={};
+    D.companies.forEach(function(c){(c.cats||[]).forEach(function(k){counts[k]=(counts[k]||0)+1})});
+    Object.keys(counts).sort(function(a,b){return counts[b]-counts[a]||a.localeCompare(b)}).forEach(function(k){
+      var b=document.createElement('button');
+      b.className='catchip'; b.setAttribute('aria-pressed','false'); b.dataset.cat=k;
+      b.innerHTML=esc(k)+'<span class="c">'+counts[k]+'</span>';
+      b.onclick=function(){ S.cat=(S.cat===k)?null:k; if(S.co && !inCat(S.co)) S.co=null; render(); };
+      catbar.appendChild(b);
+    });
+  })();
+
+  /* ---- company grid ---- */
+  var cogrid=document.getElementById('cogrid');
+  COS.forEach(function(c){
+    var b=document.createElement('button');
+    b.className='cotile'+(c.roles.length?'':' zero')+(c.read_ok?'':' unread');
+    b.setAttribute('aria-expanded','false');
+    b.dataset.co=c.name;
+    b.innerHTML='<div class="row1"><span class="nm">'+esc(c.name)+(c.not_on_site?'<span class="badge">off list</span>':'')+
+        '</span><span class="n">'+c.roles.length+'</span></div>'+
+      '<div class="seg"><i class="t"></i><i class="o"></i></div>'+
+      '<div class="st"><span class="chev">&#9656;</span> '+esc(c.stage)+
+        (c.read_ok?'':' <span class="warn">· unread</span>')+'</div>';
+    b.onclick=function(){ S.co=(S.co===c.name)?null:c.name; render(); };
+    cogrid.appendChild(b);
+  });
+  var drawer=document.createElement('div'); drawer.className='drawer';
+
+  function buildDrawer(c){
+    var rs=ALL.filter(function(r){return r.company===c.name && pass(r,'co')});
+    var cats=(c.cats||[]).map(function(k){return '<span>'+esc(k)+'</span>'}).join('');
+    var links='';
+    if(c.careers_url) links+='<a class="dlink primary" href="'+esc(c.careers_url)+'" target="_blank" rel="noopener">Careers page &#8594;</a>';
+    if(c.website) links+='<a class="dlink" href="'+esc(c.website)+'" target="_blank" rel="noopener">'+esc(host(c.website))+' &#8594;</a>';
+    links+='<a class="dlink" href="https://www.miton.cz/portfolio/" target="_blank" rel="noopener">miton.cz &#8594;</a>';
+
+    var right;
+    if(rs.length){
+      right='<div class="rolelist"><div class="rl-h">'+rs.length+' open role'+(rs.length===1?'':'s')+'</div>'+
+        rs.map(function(r){
+          var t=r.url?'<a href="'+esc(r.url)+'" target="_blank" rel="noopener">'+esc(r.title)+'</a>':esc(r.title);
+          return '<div class="drole"><div class="dt">'+t+(r.isnew?'<span class="badge">new</span>':'')+'</div>'+
+                 '<div class="dl">'+esc(r.location)+'</div>'+
+                 '<div><span class="tagpill'+(r.tech?' tech':'')+'">'+esc(r.fn)+'</span></div></div>';
+        }).join('')+'</div>';
+    } else {
+      right='<div class="rolelist"><div class="rl-h">'+(c.read_ok?'No open roles':'Nothing known')+'</div>'+
+            '<div class="none" style="margin-top:11px">'+esc(c.note||'Nothing published.')+'</div></div>';
+    }
+    drawer.innerHTML='<div>'+
+        '<h3>'+esc(c.name)+'</h3>'+
+        '<div class="meta">'+esc(c.stage)+' &nbsp;·&nbsp; page '+esc(STATUS_LABEL[c.status]||c.status)+
+          (c.adapter?' ('+esc(c.adapter)+')':'')+
+          (c.group_name?'<span class="badge grey">'+esc(c.group_name)+'</span>':'')+'</div>'+
+        (cats?'<div class="cats">'+cats+'</div>':'')+
+        (c.desc?'<p class="desc">'+esc(c.desc)+'</p>':'')+
+        (c.note?'<div class="none" style="margin:0 0 11px">'+esc(c.note)+'</div>':'')+
+        '<div class="links">'+links+'</div>'+
+      '</div>'+right;
+  }
+
+  function placeDrawer(){
+    if(!S.co){ if(drawer.parentNode) drawer.parentNode.removeChild(drawer); return; }
+    var tiles=Array.prototype.slice.call(cogrid.querySelectorAll('.cotile'));
+    var i=-1; tiles.forEach(function(el,n){ if(el.dataset.co===S.co) i=n; });
+    if(i<0){ if(drawer.parentNode) drawer.parentNode.removeChild(drawer); return; }
+    var cols=1;
+    try{ cols=getComputedStyle(cogrid).gridTemplateColumns.split(' ').filter(function(x){return x}).length||1; }catch(e){}
+    var last=Math.min(tiles.length-1,(Math.floor(i/cols)+1)*cols-1);
+    var after=tiles[last];
+    if(after.nextSibling!==drawer) cogrid.insertBefore(drawer, after.nextSibling);
+  }
+
+  function drawGrid(){
+    var max=0, per={};
+    COS.forEach(function(c){
+      var rs=ALL.filter(function(r){return r.company===c.name && pass(r,'co')});
+      per[c.name]={n:rs.length,t:rs.filter(function(r){return r.tech}).length};
+      if(rs.length>max) max=rs.length;
+    });
+    Array.prototype.forEach.call(cogrid.querySelectorAll('.cotile'),function(el){
+      var name=el.dataset.co, p=per[name], n=p.n;
+      el.hidden = !inCat(name);
+      el.setAttribute('aria-expanded', S.co===name?'true':'false');
+      el.querySelector('.n').textContent=n;
+      el.classList.toggle('zero', n===0);
+      var seg=el.querySelector('.seg');
+      seg.style.visibility = n?'visible':'hidden';
+      var w = max ? n/max*100 : 0;
+      seg.querySelector('.t').style.width=(n?w*(p.t/n):0)+'%';
+      seg.querySelector('.o').style.width=(n?w*(1-p.t/n):0)+'%';
+    });
+    if(S.co){ buildDrawer(CO[S.co]); placeDrawer(); }
+    else if(drawer.parentNode) drawer.parentNode.removeChild(drawer);
+  }
+  window.addEventListener('resize',function(){ if(S.co) placeDrawer(); });
+
+  /* ---- breakdown bars ---- */
+  function drawBars(el,key,hintEl,order){
+    var rs=rows(key), counts={};
+    rs.forEach(function(r){counts[r[key]]=(counts[r[key]]||0)+1});
+    var keys=Object.keys(counts).sort(function(a,b){return counts[b]-counts[a]});
+    if(order) keys=order.filter(function(k){return counts[k]}).concat(keys.filter(function(k){return order.indexOf(k)<0}));
+    var max=Math.max.apply(null,keys.map(function(k){return counts[k]}).concat([1]));
+    el.innerHTML='';
+    keys.forEach(function(k){
+      var b=document.createElement('button');
+      b.className='brow'; b.setAttribute('aria-pressed', S[key]===k?'true':'false');
+      var label = key==='cc' ? (CCNAME[k]||k) : k;
+      var isTech = key==='fn' && TECH[k];
+      b.innerHTML='<div class="blab"><span>'+esc(label)+'</span><b>'+counts[k]+'</b></div>'+
+        '<div class="btrack"><div class="bfill'+(isTech?' tech':'')+'" style="width:'+Math.round(counts[k]/max*100)+'%"></div></div>';
+      b.onclick=function(){ S[key]=(S[key]===k)?null:k; render(); };
+      el.appendChild(b);
+    });
+    if(!keys.length) el.innerHTML='<div class="none" style="font-family:inherit">No roles under these filters.</div>';
+    hintEl.innerHTML='<b>'+rs.length+'</b> roles';
+  }
+
+  /* ---- table ---- */
+  var tbody=document.getElementById('tbody');
+  function drawTable(){
+    var rs=rows(null).slice();
+    rs.sort(function(a,b){
+      var c=String(a[S.sort]).localeCompare(String(b[S.sort]),'cs');
+      if(c===0 && S.sort!=='title') c=String(a.title).localeCompare(String(b.title),'cs');
+      return c*S.dir;
+    });
+    if(!rs.length){ tbody.innerHTML='<tr><td colspan="4" class="noresult">Nothing matches these filters.</td></tr>'; }
+    else{
+      tbody.innerHTML=rs.map(function(r){
+        var t=r.url?'<a href="'+esc(r.url)+'" target="_blank" rel="noopener">'+esc(r.title)+'</a>':esc(r.title);
+        return '<tr><td class="c-role">'+t+(r.isnew?'<span class="badge">new</span>':'')+'</td>'+
+          '<td class="c-co">'+esc(r.company)+'</td>'+
+          '<td class="c-loc">'+esc(r.location)+'</td>'+
+          '<td><span class="tagpill'+(r.tech?' tech':'')+'">'+esc(r.fn)+'</span></td></tr>';
+      }).join('');
+    }
+    var cos={}; rs.forEach(function(r){cos[r.company]=1});
+    var nc=Object.keys(cos).length;
+    document.getElementById('tally').innerHTML='<b>'+rs.length+'</b> role'+(rs.length===1?'':'s')+
+      ' · <b>'+nc+'</b> compan'+(nc===1?'y':'ies');
+  }
+
+  Array.prototype.forEach.call(document.querySelectorAll('.sortbtn'),function(b){
+    b.onclick=function(){
+      var k=b.dataset.k;
+      if(S.sort===k) S.dir*=-1; else { S.sort=k; S.dir=1; }
+      Array.prototype.forEach.call(document.querySelectorAll('.sortbtn'),function(x){
+        x.removeAttribute('data-active'); x.querySelector('.ar').textContent='▲'});
+      b.setAttribute('data-active','1');
+      b.querySelector('.ar').textContent = S.dir===1?'▲':'▼';
+      drawTable();
+    };
+  });
+
+  /* ---- changes this week ---- */
+  (function(){
+    function line(r,kind){
+      var t=r.url?'<a href="'+esc(r.url)+'" target="_blank" rel="noopener" style="color:inherit">'+esc(r.title)+'</a>':esc(r.title);
+      return '<div class="chg '+(kind==='new'?'add':'cls')+'"><span class="cm'+(r.tech?' tech':'')+'">'+
+        (kind==='new'?'&#10003;':'&#10007;')+'</span><span class="ct">'+t+'</span>'+
+        '<span class="cco">'+esc(r.company)+'</span><span class="cl mono">'+esc(r.location)+'</span></div>';
+    }
+    var n=CHG.new||[], cl=CHG.closed||[];
+    document.getElementById('newCount').textContent=n.length;
+    document.getElementById('closedCount').textContent=cl.length;
+    document.getElementById('newList').innerHTML = n.length?n.map(function(r){return line(r,'new')}).join('')
+      : '<div class="empty">Nothing new.</div>';
+    document.getElementById('closedList').innerHTML = cl.length?cl.map(function(r){return line(r,'closed')}).join('')
+      : '<div class="empty">Nothing closed.</div>';
+    var hint = CHG.baseline ? 'this is the imported baseline, so there is nothing to compare against yet'
+      : (CHG.since ? 'vs '+esc(CHG.since)+' &nbsp;·&nbsp; <b>'+(CHG.roles_before==null?'?':CHG.roles_before)+
+         '</b> &#8594; <b>'+CHG.roles_now+'</b> open roles' : 'first run: no previous snapshot to compare against');
+    document.getElementById('chgHint').innerHTML=hint;
+    var foot='';
+    if((CHG.started_hiring||[]).length) foot+='<div><b>Started hiring</b> '+CHG.started_hiring.map(esc).join(', ')+'</div>';
+    if((CHG.went_quiet||[]).length) foot+='<div><b>Went quiet</b> '+CHG.went_quiet.map(esc).join(', ')+'</div>';
+    document.getElementById('chgfoot').innerHTML=foot;
+  })();
+
+  /* ---- nothing published ---- */
+  (function(){
+    var sil=document.getElementById('silent');
+    document.getElementById('silentHint').innerHTML='<b>'+SILENT.length+'</b> of '+D.companies.length+' companies';
+    sil.innerHTML = SILENT.map(function(c){
+      var link=c.careers_url?'<a href="'+esc(c.careers_url)+'" target="_blank" rel="noopener">'+esc(host(c.careers_url))+'</a> → ':'';
+      return '<div class="srow"><div class="sn">'+esc(c.name)+(c.read_ok?'':'<span class="badge">unread</span>')+
+        '</div><div class="sd">'+link+esc(c.note||'')+'</div></div>';
+    }).join('') || '<div class="empty">Every company has something open.</div>';
+  })();
+
+  /* ---- health ---- */
+  (function(){
+    var H=D.health||{ran:false}, el=document.getElementById('health');
+    if(!H.ran){ el.innerHTML='<div class="empty">The scrape has not run yet.</div>'; return; }
+    function row(k,v,bad){return '<div class="hrow"><div class="hk">'+esc(k)+'</div><div class="hv'+(bad?' bad':'')+'">'+v+'</div></div>'}
+    var by=H.by_status||{}, out='';
+    out+=row('run', '#'+H.run_id+' &nbsp;'+esc((H.started_at||'').slice(0,16).replace('T',' '))+' &nbsp;·&nbsp; '+esc(H.actor||''),false);
+    out+=row('pages read', String((by.ok||[]).length)+' of '+H.companies, false);
+    ['failed','blocked','no_careers_page','skipped'].forEach(function(k){
+      if((by[k]||[]).length) out+=row(STATUS_LABEL[k]||k, esc(by[k].join(', ')), k==='failed'||k==='blocked');
+    });
+    if((H.llm_read||[]).length) out+=row('read by the model', esc(H.llm_read.join(', ')), false);
+    el.innerHTML=out;
+    document.getElementById('healthHint').innerHTML = (H.unverified||[]).length
+      ? '<b>'+H.unverified.length+'</b> compan'+(H.unverified.length===1?'y':'ies')+' show a last-known count, not a fresh one'
+      : 'every page was read this run';
+    document.getElementById('method').innerHTML=
+      '<p>Method: the portfolio list is Miton’s own, seeded from miton.cz/portfolio with the Exit section left out, '+
+      'plus the companies the public page does not list. Each careers page is read by its ATS API where there is one '+
+      '(Recruitee, Ashby, SmartRecruiters, Personio, Recruitis, Greenhouse, Lever, Workable) and by the model reading the '+
+      'page text where there is not. Only roles the page presents as open are counted; open-application forms and '+
+      '“we are always hiring” blurbs are not roles.</p>'+
+      '<p>One requisition is one row: the same job posted in several cities is collapsed and every city is kept in its '+
+      'location. Cross-language copies of one requisition are collapsed only where a company’s configuration says '+
+      'they are the same job. Technical = Engineering &amp; AI, Data &amp; Analytics, Product &amp; Design. '+
+      'A company whose page could not be read keeps its last known roles and is marked unread, because a failed fetch '+
+      'must never look like a company that stopped hiring.</p>';
+  })();
+
+  /* ---- filter controls ---- */
+  document.getElementById('q').addEventListener('input',function(e){S.q=e.target.value.toLowerCase().trim(); render()});
+  big.onclick=function(){S.hideBig=!S.hideBig; big.setAttribute('aria-pressed',S.hideBig?'true':'false');
+    if(S.hideBig&&S.co===BIG)S.co=null; render()};
+  var tb=document.getElementById('techOnly');
+  tb.onclick=function(){S.tech=!S.tech; tb.setAttribute('aria-pressed',S.tech?'true':'false'); render()};
+  var nb=document.getElementById('newOnly');
+  nb.onclick=function(){S.onlyNew=!S.onlyNew; nb.setAttribute('aria-pressed',S.onlyNew?'true':'false'); render()};
+  var cl=document.getElementById('clear');
+  cl.onclick=function(){
+    S.q='';S.co=null;S.fn=null;S.cc=null;S.cat=null;S.hideBig=false;S.tech=false;S.onlyNew=false;
+    document.getElementById('q').value='';
+    big.setAttribute('aria-pressed','false'); tb.setAttribute('aria-pressed','false'); nb.setAttribute('aria-pressed','false');
+    render();
+  };
+
+  function goTo(id){
+    var el=document.getElementById(id);
+    if(el) el.scrollIntoView({behavior:(window.matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'),block:'start'});
+  }
+  Array.prototype.forEach.call(document.querySelectorAll('.kpi'),function(b){
+    b.onclick=function(){
+      var a=b.dataset.act;
+      if(a==='all'){ cl.onclick(); goTo('sec-roles'); }
+      else if(a==='hiring'){ S.co=null; render(); goTo('sec-companies'); }
+      else if(a==='tech'){ S.tech=!S.tech; S.co=null; tb.setAttribute('aria-pressed',S.tech?'true':'false'); render(); goTo('sec-roles'); }
+      else if(a==='new'){ S.onlyNew=!S.onlyNew; S.co=null; nb.setAttribute('aria-pressed',S.onlyNew?'true':'false'); render(); goTo('sec-changes'); }
+    };
+  });
+
+  /* ---- run the scrape ---- */
+  var sbtn=document.getElementById('scrape'), snote=document.getElementById('scrapenote');
+  sbtn.onclick=function(){
+    sbtn.disabled=true; snote.textContent='running, this takes a few minutes…';
+    fetch('/admin/portfolio/scrape',{method:'POST',headers:{'Accept':'application/json'}})
+      .then(function(r){return r.json()})
+      .then(function(d){
+        if(d.started){ snote.textContent='started as run #'+d.run_id+'. Reload when it finishes.'; }
+        else { snote.textContent=d.error||'could not start'; sbtn.disabled=false; }
+      })
+      .catch(function(e){ snote.textContent='could not start: '+e; sbtn.disabled=false; });
+  };
+
+  function render(){
+    Array.prototype.forEach.call(document.querySelectorAll('.kpi'),function(b){
+      var a=b.dataset.act;
+      b.setAttribute('aria-pressed',(a==='tech'&&S.tech)||(a==='new'&&S.onlyNew)?'true':'false');
+    });
+    Array.prototype.forEach.call(catbar.querySelectorAll('.catchip'),function(b){
+      b.setAttribute('aria-pressed', S.cat===b.dataset.cat?'true':'false');
+    });
+    drawGrid();
+    drawBars(document.getElementById('fnBars'),'fn',document.getElementById('fnHint'),FN_ORDER);
+    drawBars(document.getElementById('ccBars'),'cc',document.getElementById('ccHint'),null);
+    drawTable();
+    cl.hidden = !(S.q||S.co||S.fn||S.cc||S.cat||S.hideBig||S.tech||S.onlyNew);
+  }
+  render();
+})();
+</script>
+</body>
+</html>

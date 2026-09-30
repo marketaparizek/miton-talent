@@ -134,7 +134,7 @@ Alister never writes to Miton Talent and never reads from it.
 | Search tables for founders | Notion (80 databases) | Miton Talent `searches` + share pages | phase 1 |
 | Outreach log | Notion | Miton Talent `candidate_events` | phase 1 |
 | Watch list: who and why, outcomes | Alister `watchlist_people` (dev branch) | Miton Talent; Alister keeps only the generic detector | phase 2 |
-| Portfolio hiring digest | claude.ai artifact + Alister `job_postings` | Miton Talent view over Alister's API | phase 2 |
+| Portfolio hiring digest | claude.ai artifact, by hand every week | **done**: Miton Talent scrapes the careers pages itself every Monday (`docs/portfolio-open-roles.md`); it needs nothing from Alister, because the portfolio list is Miton's own | phase 2 |
 | Founder momentum list | claude.ai artifact | Miton Talent, optional | later |
 | HR dashboards | Notion | Miton Talent cards | phase 2 |
 | Alister admin "Watchlist" tab | Alister | removed from Alister once phase 2 lands | phase 2 |

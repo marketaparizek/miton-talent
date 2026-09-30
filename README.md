@@ -11,8 +11,9 @@ three jobs:
    said, who was messaged and when to follow up. Replaces the Notion
    databases "Hledáme chytré lidi", "Full databáze kandidátů",
    "Sdílení searchů" and "Outreach table".
-3. **Monitoring** (planned, moving in from Alister): the TOP 300 watch list
-   and the weekly scrape of open roles across the portfolio.
+3. **Monitoring**: the weekly scrape of open roles across the portfolio
+   (`/admin/portfolio`, see [docs/portfolio-open-roles.md](docs/portfolio-open-roles.md));
+   the TOP 300 watch list still moves in from Alister.
 
 It deliberately is **not** part of [Alister](https://alisterai.com). Alister
 holds facts about the market and is a product. Miton Talent holds Miton's
@@ -29,6 +30,7 @@ backend/                FastAPI service (runs on the Hetzner server next to Alis
   app.py                the chat: prompts, /chat, /submit, e-mail, scoring
   talent/               the back office
     auth.py             sign-in: the handoff from Alister + this service's session cookie
+    portfolio/          portfolio open roles: adapters per ATS, weekly run, dashboard
     models.py           candidates, candidate_events, searches, search_candidates, used_handoff_tokens
     store.py            every write and read path (vocab checks, event log)
     vocab.py            stages, outcomes, event types, chat vocabularies
@@ -38,6 +40,7 @@ backend/                FastAPI service (runs on the Hetzner server next to Alis
   static/               built chat widget + fonts served by the backend
 frontend/               the chat widget (Vite + React)
 scripts/
+  scrape_portfolio.py   the weekly portfolio scrape (cron: Mondays 06:10)
   export_notion.py      dump the Notion databases to JSONL before cancellation
   import_notion_export.py  load that dump into the database (re-runnable)
 deploy/                 Hetzner install: systemd unit, nginx vhost, setup, deploy, backup
@@ -103,6 +106,7 @@ only pull, restart and restore here; code changes happen locally first.
 | `RESEND_API_KEY` or `SMTP_*`, `MAIL_FROM`, `MAIL_TO` | CV e-mail to the recruiter |
 | `ALLOWED_ORIGINS` | miton.cz origins allowed to embed the widget |
 | `SCORING_ENABLED`, `SCORE_MODEL` | automatic candidate scoring after submit |
+| `PORTFOLIO_MODEL`, `PORTFOLIO_CLASSIFY_LLM` | which model reads plain careers pages; `0` turns the title classifier's model call off |
 | `NOTION_TOKEN`, `NOTION_DATABASE_ID` | **transitional**: while set, every submission is also written to Notion. Remove after the Notion import is done. |
 
 ## Migration status
@@ -115,4 +119,5 @@ only pull, restart and restore here; code changes happen locally first.
 - [ ] Admin (Google Sheet mirror first, server-rendered pages next)
 - [ ] Founder share pages (`/s/<token>`)
 - [ ] MCP server for the Claude skills (triage, search tables, outreach)
-- [ ] Watch list and portfolio roles moved in from Alister
+- [x] Portfolio open roles: weekly scrape + dashboard (`/admin/portfolio`)
+- [ ] Watch list moved in from Alister

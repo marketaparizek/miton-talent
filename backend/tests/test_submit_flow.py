@@ -58,7 +58,26 @@ def test_submit_without_consent_is_rejected(client):
         assert store.list_candidates(s) == []
 
 
-def test_diag_reports_database(client):
+def test_diag_requires_a_miton_session(client):
+    r = client.get("/diag", follow_redirects=False)
+    assert r.status_code == 401  # API caller (no text/html accept): plain 401
+    r = client.get("/diag", headers={"Accept": "text/html"}, follow_redirects=False)
+    assert r.status_code == 302 and r.headers["location"].endswith("/talent")
+
+
+def test_diag_reports_database(client, monkeypatch):
+    monkeypatch.setenv("TALENT_HANDOFF_SECRET", "test-handoff-secret-for-diag-32-chars-long")
+    # Sign in the way a browser does: through the callback with a token Alister would mint.
+    import datetime as dt
+    import jwt
+    now = dt.datetime.now(dt.timezone.utc)
+    token = jwt.encode(
+        {"sub": "1", "email": "kolega@miton.cz", "role": "miton", "purpose": "talent-handoff",
+         "aud": "miton-talent", "jti": "diag-1", "iat": now, "exp": now + dt.timedelta(seconds=60)},
+        "test-handoff-secret-for-diag-32-chars-long", algorithm="HS256",
+    )
+    r = client.get(f"/auth/callback?token={token}", follow_redirects=False)
+    assert r.status_code == 302 and r.headers["location"] == "/admin"
     r = client.get("/diag")
     assert r.status_code == 200
     j = r.json()

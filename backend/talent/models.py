@@ -1,6 +1,6 @@
 """Miton Talent schema: the recruiting back office, separate from Alister.
 
-Four tables. They follow the rule in docs/miton-layer-architecture.md: this
+Four data tables plus one for sign-in. They follow the rule in docs/miton-layer-architecture.md: this
 database holds Miton's relationships and decisions, never market facts. A row
 may point at an Alister profile by URL or id, as a plain value, never a foreign
 key, so the two systems stay independent.
@@ -16,6 +16,10 @@ key, so the two systems stay independent.
                       ~80 per-search Notion databases under "Sdílení searchů".
   search_candidates   who was considered for a search, with the founder's
                       rating and comment and the outcome.
+
+  used_handoff_tokens  ids of the one-minute sign-in tokens Alister has handed
+                      over and this service has already accepted, so a token
+                      cannot open two sessions (talent/auth.py).
 
 Lists (area, level, ...) are stored as JSON arrays so the same schema runs on
 SQLite (local, tests) and Postgres (Railway). Vocabularies live in
@@ -217,3 +221,19 @@ class SearchCandidate(Base):
     __table_args__ = (
         UniqueConstraint("search_id", "candidate_id", name="uq_search_candidate"),
     )
+
+
+class UsedHandoffToken(Base):
+    """A handoff token id (``jti``) that has already opened a session.
+
+    Alister mints each token once with a fresh id; the first callback records
+    the id here and a second callback with the same token finds the row and
+    refuses. Rows are dropped an hour after the token's own expiry, when a
+    replay would fail on ``exp`` anyway.
+    """
+
+    __tablename__ = "used_handoff_tokens"
+
+    jti: Mapped[str] = mapped_column(String(64), primary_key=True)
+    expires_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
+    used_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)

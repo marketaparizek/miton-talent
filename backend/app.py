@@ -32,12 +32,13 @@ from email.message import EmailMessage
 from typing import List, Optional
 
 import httpx
-from fastapi import FastAPI, Request, BackgroundTasks, HTTPException
+from fastapi import Depends, FastAPI, Request, BackgroundTasks, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from pydantic import BaseModel
 from anthropic import Anthropic
 
+from talent import auth as tauth
 from talent import db as tdb
 from talent import store as tstore
 
@@ -385,6 +386,18 @@ app.add_middleware(
 )
 
 
+# --- Sign-in (Alister handoff) -----------------------------------------------
+# The back office is for Miton people only. There is no login here: Alister
+# signs people in and hands them over with a one-minute signed token; see
+# talent/auth.py. The chat widget routes below stay public on purpose.
+app.include_router(tauth.router)
+
+
+@app.exception_handler(tauth.LoginRequired)
+async def _login_required(request: Request, exc: tauth.LoginRequired):
+    return tauth.login_required_response(request)
+
+
 @app.middleware("http")
 async def frame_ancestors_header(request: Request, call_next):
     # The embed page may only be iframed from the Miton domains (and same origin).
@@ -410,10 +423,11 @@ def _db_ok() -> bool:
         return False
 
 
-@app.get("/diag")
+@app.get("/diag", dependencies=[Depends(tauth.require_user)])
 def diag():
     """Config self-check for operations. Reports only booleans and status codes,
-    never secret values, so it is safe to expose."""
+    never secret values, but it does say which integrations are wired and how
+    they fail, so it is for signed-in Miton people only."""
     out = {
         "anthropic_key_set": bool(os.environ.get("ANTHROPIC_API_KEY")),
         "model": MODEL,
@@ -502,6 +516,31 @@ def diag():
             out["anthropic_api_status"] = "error"
             out["anthropic_hint"] = type(e).__name__
     return out
+
+
+# --- Back office ------------------------------------------------------------------
+# The landing page after the Alister handoff. The real admin (inbox, candidate,
+# search, share pages) grows from here; every route under /admin depends on
+# tauth.require_user the same way.
+
+
+@app.get("/admin", response_class=HTMLResponse)
+def admin_home(user: dict = Depends(tauth.require_user)):
+    email = _hdr(user["email"]).replace("<", "&lt;")
+    return HTMLResponse(
+        "<!doctype html><html lang='cs'><head><meta charset='utf-8'>"
+        "<meta name='viewport' content='width=device-width,initial-scale=1'>"
+        "<title>Miton Talent</title>"
+        "<style>body{font:16px/1.5 system-ui,sans-serif;margin:0;padding:48px 24px;color:#1b1b1b;background:#f6f3ee}"
+        "main{max-width:640px;margin:0 auto}h1{font-size:28px;margin:0 0 8px}p{margin:0 0 16px;color:#555}"
+        "a{color:#1b1b1b}</style></head><body><main>"
+        "<h1>Miton Talent</h1>"
+        f"<p>Přihlášen(a) jako <strong>{email}</strong> přes Alister.</p>"
+        "<p>Back office (inbox, kandidáti, searche) vzniká tady. Zatím: "
+        "<a href='/diag'>diagnostika</a> · <a href='/auth/logout'>odhlásit</a></p>"
+        "</main></body></html>",
+        headers={"Cache-Control": "no-store"},
+    )
 
 
 # --- Iframe embed -------------------------------------------------------------

@@ -179,6 +179,16 @@ cheapest:
 Start with 1, add 2 when the sheet gets in the way. 3 only if the back
 office becomes something founders use daily.
 
+**Login, decided 2026-09-30:** no Google login and no second login. Alister
+is the only place anyone signs in; it carries three account tiers (`admin`,
+`miton`, `user`) and hands `admin`/`miton` accounts on an `@miton.cz`
+address into Miton Talent with a one-minute signed token
+(`TALENT_HANDOFF_SECRET`, shared by the two services). Miton Talent keeps
+its own session cookie and re-checks the address on every request. This
+keeps the rule in section 4: the only thing the two services share is one
+secret in `.env`. Google sign-in, if it ever comes, goes into Alister and
+the handoff stays as it is. Details: `backend/talent/auth.py`.
+
 ## 8. Decisions
 
 1. Confirm the rule in section 2. Every future table gets sorted by it.

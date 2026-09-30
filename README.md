@@ -28,7 +28,8 @@ the data inventory and migration plan in
 backend/                FastAPI service (runs on the Hetzner server next to Alister)
   app.py                the chat: prompts, /chat, /submit, e-mail, scoring
   talent/               the back office
-    models.py           candidates, candidate_events, searches, search_candidates
+    auth.py             sign-in: the handoff from Alister + this service's session cookie
+    models.py           candidates, candidate_events, searches, search_candidates, used_handoff_tokens
     store.py            every write and read path (vocab checks, event log)
     vocab.py            stages, outcomes, event types, chat vocabularies
     db.py               engine + session; DATABASE_URL or local SQLite
@@ -54,6 +55,19 @@ ANTHROPIC_API_KEY=test .venv/bin/python -m pytest -q tests
 ```
 
 Without `DATABASE_URL` the service uses a local SQLite file.
+
+## Who gets in
+
+There is no login here. Alister holds the accounts (three tiers: `admin`,
+`miton`, `user`) and only `admin` and `miton` on an `@miton.cz` address may
+open Miton Talent. Alister's `/talent` page sends them to `/auth/callback`
+with a one-minute token signed with `TALENT_HANDOFF_SECRET` (shared by the
+two services, nothing else); `talent/auth.py` verifies signature, purpose,
+audience, expiry, role and address, refuses a replayed token, and sets this
+service's own 30-day cookie. Every back-office route (`/admin`, `/diag`)
+depends on `require_user`; a browser without a session is sent back to
+Alister. The chat widget routes stay public: they serve applicants on
+miton.cz. `tests/test_auth.py` is the list of everything that must be refused.
 
 ## Deploy (Hetzner)
 
@@ -97,6 +111,7 @@ only pull, restart and restore here; code changes happen locally first.
 - [x] Chat writes to the database; Notion dual-write while `NOTION_TOKEN` is set
 - [ ] Notion export (`scripts/export_notion.py`, needs `NOTION_TOKEN`)
 - [ ] Notion import into the database
+- [x] Sign-in through Alister (`talent/auth.py`, `/admin` landing page)
 - [ ] Admin (Google Sheet mirror first, server-rendered pages next)
 - [ ] Founder share pages (`/s/<token>`)
 - [ ] MCP server for the Claude skills (triage, search tables, outreach)

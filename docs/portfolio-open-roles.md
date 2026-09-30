@@ -68,7 +68,7 @@ The list is seeded from `backend/talent/portfolio/seed_companies.json` and
 upserted on every deploy, so an edit there plus a release is enough:
 
 ```bash
-# after editing the JSON
+# after editing the JSON (on the server: load .env first, or it seeds SQLite)
 backend/.venv/bin/python scripts/scrape_portfolio.py --seed
 ```
 

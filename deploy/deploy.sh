@@ -17,7 +17,10 @@ systemctl restart miton-talent
 sleep 3
 # The portfolio list (and, the very first time, the 14 Sep 2026 baseline it
 # diffs against). An upsert with no network calls: safe on every release.
-backend/.venv/bin/python scripts/scrape_portfolio.py --seed
+# .env has to be loaded by hand here: the app gets it from systemd, a script
+# started from this shell does not, and without DATABASE_URL it would quietly
+# seed a local SQLite file instead of Postgres.
+( set -a; . ./.env; set +a; backend/.venv/bin/python scripts/scrape_portfolio.py --seed )
 curl -fsS http://127.0.0.1:8200/health && echo " <- healthy"
 curl -fsS http://127.0.0.1:8200/diag
 echo

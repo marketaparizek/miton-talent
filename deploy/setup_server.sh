@@ -88,7 +88,10 @@ echo "backup cron installed (daily 03:15)"
 # Monday morning, before anyone looks at the dashboard or writes the Slack digest.
 # Reads every portfolio company's careers page; unread pages keep last week's
 # roles, so a bad Monday costs a note on the page and nothing else.
-scrape_line="10 6 * * 1 cd ${APP_DIR} && backend/.venv/bin/python scripts/scrape_portfolio.py --actor cron >> logs/portfolio.log 2>&1"
+# cron gets none of the service's environment, so .env is loaded by hand:
+# without DATABASE_URL the run would seed a local SQLite file, and without
+# ANTHROPIC_API_KEY it could not read the careers pages that are not an ATS.
+scrape_line="10 6 * * 1 cd ${APP_DIR} && set -a && . ./.env && set +a && backend/.venv/bin/python scripts/scrape_portfolio.py --actor cron >> logs/portfolio.log 2>&1"
 ( crontab -l 2>/dev/null | grep -v "scripts/scrape_portfolio.py" ; echo "$scrape_line" ) | crontab -
 echo "portfolio scrape cron installed (Mondays 06:10)"
 

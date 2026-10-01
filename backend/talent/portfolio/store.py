@@ -423,8 +423,18 @@ def health(session: Session, run: PortfolioRun | None) -> dict:
     by_status: dict[str, list[str]] = {}
     for crun in cruns:
         by_status.setdefault(crun.status, []).append(names.get(crun.company_id, "?"))
+    # How many times the scraper has actually read the portfolio. The imported
+    # baseline is not one of them, and "new this week" only means anything once
+    # two real runs can be compared: against the hand-built baseline, every row
+    # the artifact never listed looks new.
+    scrapes = session.scalar(
+        select(func.count(PortfolioRun.id)).where(
+            PortfolioRun.status == "done", PortfolioRun.actor != "seed"
+        )
+    ) or 0
     return {
         "ran": True,
+        "scrapes": scrapes,
         "run_id": run.id,
         "started_at": run.started_at.isoformat(),
         "finished_at": run.finished_at.isoformat() if run.finished_at else None,

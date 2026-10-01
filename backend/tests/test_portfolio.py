@@ -271,6 +271,19 @@ def test_seed_gives_every_company_an_adapter_that_exists(session):
             assert comp.adapter in adapters.ADAPTERS
 
 
+def test_the_snapshot_says_how_many_real_scrapes_there_have_been(session):
+    """"New this week" is meaningless until two real runs can be compared: against
+    the imported baseline, every row the artifact never listed looks new."""
+    seed.seed(session)
+    assert store.snapshot(session)["health"]["scrapes"] == 0
+
+    comp = store.company_by_slug(session, "aim")
+    run = store.start_run(session, actor="cron", companies_total=1)
+    store.record_company_result(session, run, comp, status="ok", rows=[row("Head of Growth")])
+    store.finish_run(session, run)
+    assert store.snapshot(session)["health"]["scrapes"] == 1
+
+
 def test_the_first_real_run_after_the_baseline_reports_only_what_changed(session):
     seed.seed(session)
     comp = store.company_by_slug(session, "aim")

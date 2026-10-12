@@ -284,6 +284,32 @@ def test_the_snapshot_says_how_many_real_scrapes_there_have_been(session):
     assert store.snapshot(session)["health"]["scrapes"] == 1
 
 
+def test_the_snapshot_carries_one_history_row_per_finished_run(session):
+    """The hub's stat tiles need "against last week": one row per finished run
+    with the open, technical and hiring counts as they stood at its end."""
+    seed.seed(session)
+    first = store.snapshot(session)["history"]
+    assert len(first) == 1 and first[0]["baseline"] is True
+    base_open = first[0]["open"]
+
+    comp = store.company_by_slug(session, "aim")
+    run = store.start_run(session, actor="cron", companies_total=1)
+    store.record_company_result(
+        session, run, comp, status="ok", adapter="html",
+        rows=[row("Senior Backend Engineer"), row("Head of Growth")],
+    )
+    store.finish_run(session, run)
+
+    hist = store.snapshot(session)["history"]
+    assert [h["run_id"] for h in hist] == [first[0]["run_id"], run.id]
+    assert hist[0]["open"] == base_open, "an earlier row does not move when a later run closes roles"
+    last = hist[1]
+    assert last["baseline"] is False
+    assert last["new"] == 1 and last["open"] == len(store.open_roles(session))
+    assert last["technical"] == sum(1 for r in store.open_roles(session) if r.is_technical)
+    assert last["companies_hiring"] == len({r.company_id for r in store.open_roles(session)})
+
+
 def test_the_first_real_run_after_the_baseline_reports_only_what_changed(session):
     seed.seed(session)
     comp = store.company_by_slug(session, "aim")

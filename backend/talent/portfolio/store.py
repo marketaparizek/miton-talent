@@ -312,6 +312,7 @@ def snapshot(session: Session) -> dict:
         "companies": out_companies,
         "changes": changes(session, run) if run else None,
         "health": health(session, run),
+        "history": history(session),
     }
 
 
@@ -450,6 +451,46 @@ def health(session: Session, run: PortfolioRun | None) -> dict:
             names.get(c.company_id, "?") for c in cruns if c.adapter == "html" and c.status == "ok"
         ),
     }
+
+
+def history(session: Session) -> list[dict]:
+    """One row per finished run, oldest first: what the portfolio looked like
+    at the end of it. The hub draws a delta and a sparkline from this, so a
+    number can carry "against last week" instead of standing alone.
+
+    Counts are reconstructed from the roles' first-seen and closed run ids
+    rather than read off ``roles_total``, so the technical count and the
+    number of companies hiring come out of the same arithmetic as the total.
+    The imported baseline is a run like any other here: it is the first point.
+    """
+    runs = list(session.scalars(
+        select(PortfolioRun).where(PortfolioRun.status == "done").order_by(PortfolioRun.id)
+    ))
+    out = []
+    for run in runs:
+        open_at = (
+            PortfolioRole.first_seen_run_id <= run.id,
+            (PortfolioRole.closed_run_id.is_(None)) | (PortfolioRole.closed_run_id > run.id),
+        )
+        total = session.scalar(select(func.count(PortfolioRole.id)).where(*open_at)) or 0
+        technical = session.scalar(
+            select(func.count(PortfolioRole.id)).where(*open_at, PortfolioRole.is_technical.is_(True))
+        ) or 0
+        hiring = session.scalar(
+            select(func.count(func.distinct(PortfolioRole.company_id))).where(*open_at)
+        ) or 0
+        out.append({
+            "run_id": run.id,
+            "date": run.started_at.date().isoformat(),
+            "baseline": (run.actor or "") == "seed",
+            "open": total,
+            "technical": technical,
+            "companies_hiring": hiring,
+            "new": run.roles_new,
+            "closed": run.roles_closed,
+            "companies_failed": run.companies_failed,
+        })
+    return out
 
 
 def stale_days(session: Session) -> Optional[int]:

@@ -12,9 +12,9 @@
    "note": "Apply via hiring@equilibre.ai, no per-role URLs. equilibretechnologies.com/open-positions 302-redirects to equilibre.ai.",
    "cats": [
     "AI",
-    "Krypto/web3"
+    "Crypto/web3"
    ],
-   "desc": "Equilibre vytváří umělou inteligenci pro algoritmické obchodování na burzách.",
+   "desc": "Equilibre builds artificial intelligence for algorithmic trading on exchanges.",
    "not_on_site": false,
    "group_name": null,
    "roles": [
@@ -74,9 +74,9 @@
    "status": "ok",
    "note": "Counsel role closed. The /about career section is now a pure open-application pitch, no named roles. A Senior DevOps Engineer (Blockchain) trace circulates on LinkedIn (job 4342604548) but cannot be verified; the investor board jobs.dragonfly.xyz shows nothing.",
    "cats": [
-    "Krypto/web3"
+    "Crypto/web3"
    ],
-   "desc": "Nejrychlejší blockchain (~400x rychlejší než Solana) a škálovací řešení nad Ethereem.",
+   "desc": "The fastest blockchain (~400x faster than Solana) and a scaling solution on top of Ethereum.",
    "not_on_site": false,
    "group_name": null,
    "roles": []
@@ -90,9 +90,9 @@
    "status": "no_careers_page",
    "note": "Every path 302-redirects to waitlist.gte.xyz. Wellfound (company/gte-nyc) says no jobs added. Legal entity is Liquid Labs Global Inc. Ignore GTE Financial hits.",
    "cats": [
-    "Krypto/web3"
+    "Crypto/web3"
    ],
-   "desc": "Burza, která ztělesňuje DeFi a zároveň zcela konkuruje CeFi.",
+   "desc": "An exchange that embodies DeFi while competing head-on with CeFi.",
    "not_on_site": false,
    "group_name": null,
    "roles": []
@@ -106,9 +106,9 @@
    "status": "no_careers_page",
    "note": "Homepage fetched this week. No careers page, no jobs link. Alive and shipping; Discord and X are the only public channels.",
    "cats": [
-    "Krypto/web3"
+    "Crypto/web3"
    ],
-   "desc": "Bývalí nejlepší hráči Magicu a Hearthstonu na světě vytvořili novou hru na principech pokeru s elementy trading card games.",
+   "desc": "Former world-best Magic and Hearthstone players made a new game built on poker principles with elements of trading card games.",
    "not_on_site": false,
    "group_name": null,
    "roles": []
@@ -122,9 +122,9 @@
    "status": "no_careers_page",
    "note": "cryptocurrencyjobs.co shows all four engineering/marketing roles as Closed. Funded, not distressed ($7.5M, Pantera). Do not confuse with accountable.eu or accountable.org.",
    "cats": [
-    "Krypto/web3"
+    "Crypto/web3"
    ],
-   "desc": "Accountable transformuje trh s krypto půjčkami tím, že odstraňuje kompromis mezi transparentností a soukromím.",
+   "desc": "Accountable is transforming crypto lending by removing the trade-off between transparency and privacy.",
    "not_on_site": false,
    "group_name": null,
    "roles": []
@@ -138,9 +138,9 @@
    "status": "ok",
    "note": "Page explicitly states no current openings in all three departments. Open applications to careers@firefish.io.",
    "cats": [
-    "Krypto/web3"
+    "Crypto/web3"
    ],
-   "desc": "Non-custodial P2P protokol pro bezpečné bitcoinové půjčky.",
+   "desc": "A non-custodial P2P protocol for safe bitcoin lending.",
    "not_on_site": false,
    "group_name": null,
    "roles": []
@@ -154,9 +154,9 @@
    "status": "ok",
    "note": "Two clinical roles posted Aug 2026. The CEO kliniky role page now 404s.",
    "cats": [
-    "Psychedelika a duševní zdraví"
+    "Psychedelics & mental health"
    ],
-   "desc": "První evropská psychedelická klinika nabízí ketaminem asistovanou psychoterapii.",
+   "desc": "The first European psychedelic clinic, offering ketamine-assisted psychotherapy.",
    "not_on_site": false,
    "group_name": null,
    "roles": [
@@ -189,9 +189,9 @@
    "status": "ok",
    "note": "Page states explicitly: we are currently not hiring. URL now resolves without the trailing slash.",
    "cats": [
-    "Psychedelika a duševní zdraví"
+    "Psychedelics & mental health"
    ],
-   "desc": "Hudební software pro psychedelické kliniky. Wavepaths pomocí AI komponuje hudbu.",
+   "desc": "Music software for psychedelic clinics. Wavepaths composes the music with AI.",
    "not_on_site": false,
    "group_name": null,
    "roles": []
@@ -207,7 +207,7 @@
    "cats": [
     "AI"
    ],
-   "desc": "Aim je AI agent pro kontinuální byznysový briefing, který se přizpůsobuje kontextu svého uživatele.",
+   "desc": "Aim is an AI agent for continuous business briefing that adapts to its user's context.",
    "not_on_site": false,
    "group_name": null,
    "roles": [
@@ -260,7 +260,7 @@
    "cats": [
     "AI"
    ],
-   "desc": "Nabízí AI moduly integrovatelné do firemních systémů pro automatizaci rutinních procesů.",
+   "desc": "Offers AI modules that plug into company systems to automate routine processes.",
    "not_on_site": false,
    "group_name": null,
    "roles": []
@@ -277,7 +277,7 @@
     "AI",
     "E-commerce"
    ],
-   "desc": "AI pro zpracování a obohacení produktových dat e-shopů.",
+   "desc": "AI that processes and enriches e-shops' product data.",
    "not_on_site": false,
    "group_name": null,
    "roles": []
@@ -294,7 +294,7 @@
     "AI",
     "E-commerce"
    ],
-   "desc": "SimilarWeb pro e-commerce. E-shopy mohou získat tržní data od konkurence.",
+   "desc": "SimilarWeb for e-commerce. E-shops can get market data on their competitors.",
    "not_on_site": false,
    "group_name": null,
    "roles": [],
@@ -311,7 +311,7 @@
    "cats": [
     "AI"
    ],
-   "desc": "Komplexní analýzy fyzické infrastruktury pomocí AI. Cílem je učinit fyzický svět stejně prohledatelný jako ten digitální.",
+   "desc": "Comprehensive analysis of physical infrastructure with AI. The goal is to make the physical world as searchable as the digital one.",
    "not_on_site": false,
    "group_name": null,
    "roles": []
@@ -328,7 +328,7 @@
     "AI",
     "E-commerce"
    ],
-   "desc": "AI agenti pro e-commerce. Prvním je agent pro zákaznickou podporu.",
+   "desc": "AI agents for e-commerce. The first one is a customer support agent.",
    "not_on_site": false,
    "group_name": null,
    "roles": []
@@ -345,7 +345,7 @@
     "E-commerce",
     "Consumer"
    ],
-   "desc": "100ks nabízí kurátorovaný výběr uměleckých tisků v limitovaných řadách po sto kusech.",
+   "desc": "100ks offers a curated selection of art prints in limited editions of one hundred.",
    "not_on_site": false,
    "group_name": null,
    "roles": []
@@ -361,7 +361,7 @@
    "cats": [
     "Sport"
    ],
-   "desc": "Platforma pro osobní promo sportovců. Přes Graet se mohou prezentovat podobně jako na LinkedInu.",
+   "desc": "A platform for athletes' personal promotion. On Graet they can present themselves much like on LinkedIn.",
    "not_on_site": false,
    "group_name": null,
    "roles": []
@@ -375,10 +375,10 @@
    "status": "no_careers_page",
    "note": "No careers page, no ATS profile. The Ambassadors link is a brand programme, not a job.",
    "cats": [
-    "Cestování",
+    "Travel",
     "Consumer"
    ],
-   "desc": "Průvodce po nejkrásnějších, ručně vybraných evropských místech pro karavaning a camping.",
+   "desc": "A guide to the most beautiful hand-picked places in Europe for caravanning and camping.",
    "not_on_site": false,
    "group_name": null,
    "roles": []
@@ -395,7 +395,7 @@
     "E-commerce",
     "Consumer"
    ],
-   "desc": "Přední evropský online supermarket a první český startupový jednorožec působí také v Německu, Rakousku a Maďarsku.",
+   "desc": "A leading European online supermarket and the first Czech startup unicorn, also operating in Germany, Austria and Hungary.",
    "not_on_site": false,
    "group_name": null,
    "roles": [
@@ -930,7 +930,7 @@
     "E-commerce",
     "Re-commerce"
    ],
-   "desc": "Re-commerce marketplace pro knihy z druhé ruky ročně prodá přes 2 miliony knih a meziročně roste o více než 100 %.",
+   "desc": "A re-commerce marketplace for second-hand books that sells over 2 million books a year and grows more than 100 % year on year.",
    "not_on_site": false,
    "group_name": null,
    "roles": [
@@ -990,10 +990,10 @@
    "status": "ok",
    "note": "Java Backend Developer closed. The Koho ted hledame section is now an empty heading, verified twice. All three StartupJobs mirrors expired.",
    "cats": [
-    "Krypto/web3",
+    "Crypto/web3",
     "Consumer"
    ],
-   "desc": "Největší česká krypto burza. Od svého založení v roce 2014 Coinmate zprostředkovalo obchody za 42 miliard korun.",
+   "desc": "The largest Czech crypto exchange. Since its founding in 2014 Coinmate has brokered trades worth CZK 42 billion.",
    "not_on_site": false,
    "group_name": null,
    "roles": []
@@ -1007,10 +1007,10 @@
    "status": "ok",
    "note": "Recruitee board, five roles. Java Developer is new. Departments are not exposed at list level. The two Account Executive rows are separate listings, do not dedupe.",
    "cats": [
-    "Krypto/web3",
+    "Crypto/web3",
     "SaaS"
    ],
-   "desc": "Kryptoměnová platební brána pro globální businessy založená v roce 2014.",
+   "desc": "A cryptocurrency payment gateway for global businesses, founded in 2014.",
    "not_on_site": false,
    "group_name": null,
    "roles": [
@@ -1070,10 +1070,10 @@
    "status": "no_careers_page",
    "note": "jobs.solana.com now says this company has no jobs on the board. The eight roles on web3.career are 2-5 year old archive rows; that site never delists.",
    "cats": [
-    "Krypto/web3",
+    "Crypto/web3",
     "Consumer"
    ],
-   "desc": "Marinade zajišťuje bezpečnost a decentralizaci krypto sítě Solana.",
+   "desc": "Marinade secures and decentralises the Solana crypto network.",
    "not_on_site": false,
    "group_name": null,
    "roles": []
@@ -1090,7 +1090,7 @@
     "E-commerce",
     "Consumer"
    ],
-   "desc": "Farmářské trhy online. Marketplace Scuk přináší kvalitní lokální potraviny.",
+   "desc": "Farmers' markets online. The Scuk marketplace brings quality local food.",
    "not_on_site": false,
    "group_name": null,
    "roles": []
@@ -1104,9 +1104,9 @@
    "status": "no_careers_page",
    "note": "jobs.cz employer page states the company has no job offers. sensearena.com/careers could not be fetched (provenance), so absence is inferred not confirmed. Two TeamWork Online rows are stale US-entity archive listings.",
    "cats": [
-    "VR a trénink"
+    "VR & training"
    ],
-   "desc": "VR, jež nabízí realistické prostředí, které simuluje hokejový a tenisový trénink.",
+   "desc": "VR that offers a realistic environment simulating hockey and tennis training.",
    "not_on_site": false,
    "group_name": null,
    "roles": []
@@ -1123,7 +1123,7 @@
     "Gastrotech",
     "SaaS"
    ],
-   "desc": "Platba v restauraci bez obsluhy. Stačí načíst QR kód na stole.",
+   "desc": "Paying in a restaurant without waiting for staff. Just scan the QR code on the table.",
    "not_on_site": false,
    "group_name": "Piano Group",
    "roles": []
@@ -1140,7 +1140,7 @@
     "Gastrotech",
     "HR Tech"
    ],
-   "desc": "Personál jako služba (Workforce-as-a-Service), která pomáhá firmám najít a najímat flexibilní pracovníky.",
+   "desc": "Workforce-as-a-Service that helps companies find and hire flexible workers.",
    "not_on_site": false,
    "group_name": "Piano Group",
    "roles": []
@@ -1156,7 +1156,7 @@
    "cats": [
     "Gastrotech"
    ],
-   "desc": "B2B online platforma, která propojuje restaurace s dodavateli.",
+   "desc": "A B2B online platform connecting restaurants with suppliers.",
    "not_on_site": false,
    "group_name": "Piano Group",
    "roles": [
@@ -1198,10 +1198,10 @@
    "status": "ok",
    "note": "profesia.sk now returns zero offers, so last week's mirror is dead. The same role is live on kariera.zoznam.sk, posted 27.07.2026, fed from the Slovak labour office. Workable board and Glassdoor both empty.",
    "cats": [
-    "Cestování",
+    "Travel",
     "Consumer"
    ],
-   "desc": "Nabízí jednoduchou službu pro booking lodí, podobně jako Booking pro rezervaci hotelů.",
+   "desc": "A simple boat booking service, like Booking for hotel reservations.",
    "not_on_site": false,
    "group_name": null,
    "roles": [
@@ -1225,10 +1225,10 @@
    "status": "no_careers_page",
    "note": "No careers page. Dokempu was acquired by Campiri in Dec 2021 and runs as a Campiri-owned brand, which is why it has no hiring entity of its own.",
    "cats": [
-    "Cestování",
+    "Travel",
     "Consumer"
    ],
-   "desc": "Online průvodce kempy po České republice s uživatelsky přívětivým vyhledáváním.",
+   "desc": "An online guide to campsites in the Czech Republic with user-friendly search.",
    "not_on_site": false,
    "group_name": null,
    "roles": []
@@ -1244,7 +1244,7 @@
    "cats": [
     "Real Estate Tech"
    ],
-   "desc": "Realitní marketplace orientovaný na nákup, prodej a porovnávání cen.",
+   "desc": "A real estate marketplace focused on buying, selling and comparing prices.",
    "not_on_site": false,
    "group_name": null,
    "roles": [
@@ -1308,7 +1308,7 @@
     "E-commerce",
     "Consumer"
    ],
-   "desc": "Módní vyhledávač Glami působí ve 14 evropských zemích. Měsíčně ho navštíví bezmála 50 mil. uživatelů.",
+   "desc": "The fashion search engine Glami operates in 14 European countries, with almost 50 million users a month.",
    "not_on_site": false,
    "group_name": null,
    "roles": [
@@ -1335,7 +1335,7 @@
     "E-commerce",
     "Consumer"
    ],
-   "desc": "S miliardovými tržbami a přítomností v 11 zemích je Bonami významným evropským hráčem v segmentu nábytku online.",
+   "desc": "With revenue in the billions and a presence in 11 countries, Bonami is a major European player in online furniture.",
    "not_on_site": false,
    "group_name": null,
    "roles": []
@@ -1352,7 +1352,7 @@
     "E-commerce",
     "Consumer"
    ],
-   "desc": "Vyhledávač, díky kterému je konečně snadné nalézt nábytek ze stovek e-shopů.",
+   "desc": "A search engine that finally makes it easy to find furniture across hundreds of e-shops.",
    "not_on_site": false,
    "group_name": null,
    "roles": [],
@@ -1370,7 +1370,7 @@
     "E-commerce",
     "Consumer"
    ],
-   "desc": "Přední globální marketplace pro vysoce kvalitní kovové plakáty s unikátní technologií vlastní výroby.",
+   "desc": "A leading global marketplace for high-quality metal posters, with its own unique production technology.",
    "not_on_site": false,
    "group_name": null,
    "roles": [
@@ -1567,7 +1567,7 @@
    "cats": [
     "Gastrotech"
    ],
-   "desc": "Provozní systém restaurace (ERP) neboli POS. S více než tisícovkou klientů.",
+   "desc": "A restaurant operating system (ERP), or POS, with more than a thousand clients.",
    "not_on_site": false,
    "group_name": "Piano Group",
    "roles": []
@@ -1583,7 +1583,7 @@
    "cats": [
     "Real Estate Tech"
    ],
-   "desc": "Největší inzertní portál na pronájmy. Zisková společnost s meziročním růstem tržeb přes 50 %.",
+   "desc": "The largest listing portal for rentals. A profitable company with revenue growing over 50 % a year.",
    "not_on_site": false,
    "group_name": null,
    "roles": [
@@ -1636,7 +1636,7 @@
    "cats": [
     "HR Tech"
    ],
-   "desc": "Kariérní portál, který se stal nedílnou součástí českého startupového prostředí.",
+   "desc": "A job portal that has become an integral part of the Czech startup scene.",
    "not_on_site": false,
    "group_name": null,
    "roles": [],
@@ -1653,7 +1653,7 @@
    "cats": [
     "Gastrotech"
    ],
-   "desc": "Systém pro efektivní řízení provozu velkých gastro provozů, řetězců a cateringových služeb.",
+   "desc": "A system for running large gastro operations, chains and catering services efficiently.",
    "not_on_site": false,
    "group_name": "Piano Group",
    "roles": []
@@ -1669,7 +1669,7 @@
    "cats": [
     "Gastrotech"
    ],
-   "desc": "Hardware a software řešení pro pokladní systémy.",
+   "desc": "Hardware and software for point-of-sale systems.",
    "not_on_site": false,
    "group_name": "Piano Group",
    "roles": []
@@ -1685,7 +1685,7 @@
    "cats": [
     "Gastrotech"
    ],
-   "desc": "Protel Systems je smluvním distributorem hotelového systému Protel pro Česko a Slovensko.",
+   "desc": "Protel Systems is the contracted distributor of the Protel hotel system for the Czech Republic and Slovakia.",
    "not_on_site": false,
    "group_name": "Piano Group",
    "roles": [
@@ -1711,7 +1711,7 @@
    "cats": [
     "Gastrotech"
    ],
-   "desc": "Pokladní systém, který zároveň funguje jako restaurační a hotelový systém.",
+   "desc": "A point-of-sale system that also works as a restaurant and hotel system.",
    "not_on_site": false,
    "group_name": "Piano Group",
    "roles": []
@@ -1725,9 +1725,9 @@
    "status": "ok",
    "note": "Zero active offers. Their StartupJobs slug is /startup/miton-klidna-sila, not /meriton, and is not guessable.",
    "cats": [
-    "Holding a investice"
+    "Holding & investment"
    ],
-   "desc": "Samostatný holding a součást širší skupiny Miton. Investuje do projektů s hmatatelnými aktivy.",
+   "desc": "A standalone holding and part of the wider Miton group. Invests in projects with tangible assets.",
    "not_on_site": false,
    "group_name": null,
    "roles": [],

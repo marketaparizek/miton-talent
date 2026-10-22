@@ -5,17 +5,54 @@ Wants=postgresql.service
 
 [Service]
 Type=simple
-WorkingDirectory=/root/live/miton-talent/backend
-EnvironmentFile=/root/live/miton-talent/.env
-Environment=PATH=/root/live/miton-talent/backend/.venv/bin:/root/.local/bin:/usr/local/bin:/usr/bin:/bin
+# Own unprivileged user since Oct 2026 (it ran as root). The code tree is
+# root-owned and only readable by this user, so a compromised process cannot
+# rewrite the app it runs. Moving from /root/live/miton-talent:
+# github-sourcing docs/operations/infra-hardening-runbook.md, step 7.
+User=miton-talent
+Group=miton-talent
+WorkingDirectory=/srv/miton-talent/backend
+# Read by systemd as root before the switch to the user, so .env stays root:root 600.
+EnvironmentFile=/srv/miton-talent/.env
+Environment=PATH=/srv/miton-talent/backend/.venv/bin:/usr/local/bin:/usr/bin:/bin
+Environment=HOME=/var/lib/miton-talent
+Environment=PYTHONDONTWRITEBYTECODE=1
 # Migrations first, then the app. A failed migration keeps the old process down
 # rather than serving against a half-upgraded schema.
-ExecStartPre=/root/live/miton-talent/backend/.venv/bin/alembic upgrade head
-ExecStart=/root/live/miton-talent/backend/.venv/bin/uvicorn app:app --host 127.0.0.1 --port 8200 --workers 2 --proxy-headers --forwarded-allow-ips=127.0.0.1
+ExecStartPre=/srv/miton-talent/backend/.venv/bin/alembic upgrade head
+ExecStart=/srv/miton-talent/backend/.venv/bin/uvicorn app:app --host 127.0.0.1 --port 8200 --workers 2 --proxy-headers --forwarded-allow-ips=127.0.0.1
 Restart=always
 RestartSec=3
-StandardOutput=append:/root/live/miton-talent/logs/app.log
-StandardError=append:/root/live/miton-talent/logs/app.log
+StandardOutput=append:/srv/miton-talent/logs/app.log
+StandardError=append:/srv/miton-talent/logs/app.log
+
+# --- sandbox ----------------------------------------------------------------
+# The whole filesystem is read-only to the service except what it writes:
+# its log, the submissions.jsonl fallback the chat appends to (backend/app.py,
+# relative to WorkingDirectory) and its own state dir (HOME, for any library
+# cache). The leading "-" lets the unit start if the file does not exist yet.
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+ReadWritePaths=/srv/miton-talent/logs -/srv/miton-talent/backend/submissions.jsonl
+StateDirectory=miton-talent
+UMask=0027
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+ProtectClock=true
+ProtectHostname=true
+RestrictSUIDSGID=true
+RestrictRealtime=true
+RestrictNamespaces=true
+LockPersonality=true
+CapabilityBoundingSet=
+AmbientCapabilities=
+SystemCallArchitectures=native
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
 
 [Install]
 WantedBy=multi-user.target

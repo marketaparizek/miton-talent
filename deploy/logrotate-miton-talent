@@ -1,0 +1,17 @@
+# /etc/logrotate.d/miton-talent  (installed by deploy/setup_server.sh)
+#
+# app.log is written by systemd (StandardOutput=append:), backup.log and
+# portfolio.log by root's cron with >>. None of them reopens its file, hence
+# copytruncate. `su` because logs/ belongs to the service user, and logrotate
+# refuses a directory that root does not own unless told whose it is.
+/srv/miton-talent/logs/*.log {
+    su miton-talent miton-talent
+    weekly
+    rotate 8
+    maxsize 100M
+    compress
+    delaycompress
+    missingok
+    notifempty
+    copytruncate
+}

@@ -20,9 +20,19 @@ key, so the two systems stay independent.
   used_handoff_tokens  ids of the one-minute sign-in tokens Alister has handed
                       over and this service has already accepted, so a token
                       cannot open two sessions (talent/auth.py).
+  admin_sessions      one row per signed-in back-office browser, so a session
+                      can be revoked (logout, role removed) before it expires.
+
+  chat_conversations  the public chat as the server saw it: what the visitor
+                      wrote and what the model answered. The model only ever
+                      sees this history, never one the browser claims.
+  rate_counters       fixed-window counters shared by every worker: the chat
+                      limit per visitor network and the daily model budget.
+  job_locks           a named lock in the database, so one portfolio scrape
+                      runs at a time across workers and cron.
 
 Lists (area, level, ...) are stored as JSON arrays so the same schema runs on
-SQLite (local, tests) and Postgres (Railway). Vocabularies live in
+SQLite (local, tests) and Postgres (Hetzner). Vocabularies live in
 talent/vocab.py and are enforced in code, not by the database.
 """
 
@@ -104,6 +114,9 @@ class Candidate(Base):
     # consent (GDPR)
     consent: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     consent_text: Mapped[Optional[str]] = mapped_column(Text)
+    # Which wording the person agreed to, from talent/consent.py. The text above
+    # is the server's copy of that wording, never what the browser sent.
+    consent_version: Mapped[Optional[str]] = mapped_column(String(32))
     consent_at: Mapped[Optional[dt.datetime]] = mapped_column(DateTime(timezone=True))
 
     # evaluation (automatic scoring; see app.py SCORE_*)
@@ -237,6 +250,68 @@ class UsedHandoffToken(Base):
     jti: Mapped[str] = mapped_column(String(64), primary_key=True)
     expires_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
     used_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+
+
+class AdminSession(Base):
+    """A back-office session. The cookie carries only ``id`` (signed); the
+    identity lives here, so deleting or revoking the row ends the session on
+    the next request, whatever the cookie says."""
+
+    __tablename__ = "admin_sessions"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    user_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    email: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    role: Mapped[str] = mapped_column(String(16), nullable=False)
+    created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+    expires_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
+    revoked_at: Mapped[Optional[dt.datetime]] = mapped_column(DateTime(timezone=True))
+
+
+class ChatConversation(Base):
+    """One public chat, as the server saw it.
+
+    ``turns`` holds the visitor's messages and the replies the model actually
+    produced, in order. The next model call is built from this list plus the
+    one new message, so a browser cannot slip in assistant turns of its own,
+    and ``user_turns`` is the turn cap the browser cannot reset. A conversation
+    that never becomes a submission is deleted after CHAT_RETENTION_DAYS.
+    """
+
+    __tablename__ = "chat_conversations"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=new_uid)
+    lang: Mapped[str] = mapped_column(String(8), nullable=False, default="cs")
+    turns: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    user_turns: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    profile: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    summary: Mapped[Optional[str]] = mapped_column(Text)
+    stage: Mapped[str] = mapped_column(String(32), nullable=False, default="exploring")
+    created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+    updated_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow, index=True)
+
+
+class RateCounter(Base):
+    """How many times ``key`` happened in the window starting at ``window_start``
+    (unix seconds). Shared by every worker, unlike a dict in memory."""
+
+    __tablename__ = "rate_counters"
+
+    key: Mapped[str] = mapped_column(String(128), primary_key=True)
+    window_start: Mapped[int] = mapped_column(Integer, primary_key=True)
+    count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
+
+class JobLock(Base):
+    """A named lock held by one process until it lets go or ``expires_at``
+    passes (a crashed holder cannot block the next run forever)."""
+
+    __tablename__ = "job_locks"
+
+    name: Mapped[str] = mapped_column(String(64), primary_key=True)
+    holder: Mapped[str] = mapped_column(String(64), nullable=False)
+    acquired_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+    expires_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
 
 # --- Portfolio open roles -----------------------------------------------------

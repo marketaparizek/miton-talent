@@ -62,6 +62,9 @@ const T = {
     notePlaceholder: "Chceš dodat něco dalšího?",
     cvLabel: "Životopis (nepovinné)",
     cvTooBig: `Soubor je moc velký (max ${MAX_CV_MB} MB).`,
+    cvWrongType: "Pošli prosím životopis jako PDF nebo DOCX.",
+    // Must match the server's wording for this id (backend/talent/consent.py).
+    consentId: "chat-2025-cs",
     consent: "Souhlasím se zpracováním osobních údajů za účelem oslovení s pracovní nabídkou.",
     privacy: "Zásady zpracování.",
     submit: "Odeslat",
@@ -83,6 +86,8 @@ const T = {
     notePlaceholder: "Anything else you'd like to add?",
     cvLabel: "CV (optional)",
     cvTooBig: `File is too large (max ${MAX_CV_MB} MB).`,
+    cvWrongType: "Please send your CV as a PDF or DOCX.",
+    consentId: "chat-2025-en",
     consent: "I agree to the processing of my personal data so that I can be contacted about job opportunities.",
     privacy: "Privacy notice.",
     submit: "Submit",
@@ -119,6 +124,8 @@ export default function MitonTalentChat({
   const initialLang = defaultLang === "en" ? "en" : "cs";
   const [lang, setLang] = useState(initialLang);
   const [messages, setMessages] = useState([]);
+  // The server keeps the conversation; this is its id (empty until the first reply).
+  const [conversationId, setConversationId] = useState("");
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -195,6 +202,7 @@ export default function MitonTalentChat({
     if (next === lang) return;
     setLang(next);
     setMessages([]);
+    setConversationId("");
     setProfile({ area: "", level: "", workMode: "", status: "" });
     setSummary("");
     setStage("exploring");
@@ -215,16 +223,15 @@ export default function MitonTalentChat({
     setLoading(true);
     setError("");
 
-    const payloadMessages = next.map((m) => ({ role: m.role, content: m.content }));
-
     try {
       const res = await fetch(`${backendUrl}/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: payloadMessages, lang }),
+        body: JSON.stringify({ conversation_id: conversationId, message: text, lang }),
       });
       if (!res.ok) throw new Error("HTTP " + res.status);
       const data = await res.json();
+      if (data.conversation_id) setConversationId(data.conversation_id);
 
       setMessages((m) => [...m, { role: "assistant", content: data.reply || "..." }]);
 
@@ -257,6 +264,11 @@ export default function MitonTalentChat({
   async function pickFile(e) {
     const file = e.target.files && e.target.files[0];
     if (!file) return;
+    if (!/\.(pdf|docx)$/i.test(file.name)) {
+      setError(t.cvWrongType);
+      e.target.value = "";
+      return;
+    }
     if (file.size > MAX_CV_MB * 1024 * 1024) {
       setError(t.cvTooBig);
       e.target.value = "";
@@ -287,9 +299,9 @@ export default function MitonTalentChat({
           summary,
           contact,
           consent,
-          consent_text: t.consent,
+          consent_id: t.consentId,
+          conversation_id: conversationId,
           cv: cvFile,
-          messages: messages.map((m) => ({ role: m.role, content: m.content })),
         }),
       });
     } catch {
@@ -417,7 +429,7 @@ export default function MitonTalentChat({
                       <UploadIcon />
                       <span>{cvFile ? cvFile.name : t.cvLabel}</span>
                     </button>
-                    <input ref={fileRef} type="file" accept=".pdf,.doc,.docx" style={{ display: "none" }} onChange={pickFile} />
+                    <input ref={fileRef} type="file" accept=".pdf,.docx" style={{ display: "none" }} onChange={pickFile} />
 
                     <div style={S.consentRow} onClick={() => setConsent(!consent)}>
                       <div style={S.checkbox}>{consent && <CheckSmall />}</div>

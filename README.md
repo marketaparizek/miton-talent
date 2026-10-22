@@ -67,10 +67,37 @@ open Miton Talent. Alister's `/talent` page sends them to `/auth/callback`
 with a one-minute token signed with `TALENT_HANDOFF_SECRET` (shared by the
 two services, nothing else); `talent/auth.py` verifies signature, purpose,
 audience, expiry, role and address, refuses a replayed token, and sets this
-service's own 30-day cookie. Every back-office route (`/admin`, `/diag`)
-depends on `require_user`; a browser without a session is sent back to
-Alister. The chat widget routes stay public: they serve applicants on
-miton.cz. `tests/test_auth.py` is the list of everything that must be refused.
+service's own 12-hour session: a row in `admin_sessions`, with only its
+signed id in the cookie. Logout (`POST /auth/logout`) revokes the row, and
+`python -m talent.admin_cli revoke-sessions <email>` cuts every session of an
+address at once (use it when Alister takes a role away). Every back-office
+route (`/admin`, `/diag`) depends on `require_user`; a browser without a
+session is sent back to Alister. The chat widget routes stay public: they
+serve applicants on miton.cz. `tests/test_auth.py` is the list of everything
+that must be refused.
+
+## Personal data: erasure and retention
+
+Erasure of one person (a GDPR request), admin role only:
+
+    cd backend && .venv/bin/python -m talent.admin_cli erase --email someone@example.com        # counts
+    cd backend && .venv/bin/python -m talent.admin_cli erase --email someone@example.com --yes  # erases
+
+or `POST /admin/candidates/erase {"email": ...}` with an admin session. It
+deletes the candidate rows (events and search links cascade) and the person's
+lines in `submissions.jsonl`, and answers with the steps it cannot do itself:
+the Notion page while the dual-write runs, the CV e-mail in the recruiter
+inbox, the Resend log. Database backups age out after `RETENTION_DAYS`.
+
+What is kept and for how long:
+
+| Data | Kept | Enforced by |
+|---|---|---|
+| Chats never submitted | `CHAT_RETENTION_DAYS` (7) | the chat route purges them |
+| Submitted chat | moved into the candidate row, not kept twice | `/submit` |
+| `submissions.jsonl` | written only when the database write failed | `/submit` |
+| Rate counters (no personal data, a /64 or IPv4 key) | 2 days | `talent/limits.py` |
+| Candidates | **proposal**: 24 months after the last event, unless hired or the person renewed consent | not automated yet |
 
 ## Deploy (Hetzner)
 
@@ -102,9 +129,14 @@ only pull, restart and restore here; code changes happen locally first.
 | Variable | Purpose |
 |---|---|
 | `ANTHROPIC_API_KEY`, `MODEL` | the chat model |
-| `DATABASE_URL` | Postgres on the server (`deploy/env.example`); omitted locally |
+| `DATABASE_URL` | Postgres on the server (`deploy/env.example`); omitted locally. In production (https `APP_BASE_URL`) the app refuses to start without it |
 | `RESEND_API_KEY` or `SMTP_*`, `MAIL_FROM`, `MAIL_TO` | CV e-mail to the recruiter |
-| `ALLOWED_ORIGINS` | miton.cz origins allowed to embed the widget |
+| `ALLOWED_ORIGINS` | miton.cz origins allowed to call the chat API (CORS) |
+| `FRAME_ANCESTORS` | origins allowed to iframe the chat page (defaults to `ALLOWED_ORIGINS`); nothing else may be framed |
+| `SESSION_SECRET` | signs the back-office cookie; **required in production**, must differ from `TALENT_HANDOFF_SECRET` |
+| `SESSION_MAX_AGE_HOURS` | back-office session length, default 12 |
+| `LLM_DAILY_BUDGET` | model calls per UTC day, chat and scoring together (default 1000) |
+| `CHAT_RETENTION_DAYS` | unsubmitted chats are deleted after this many days (default 7) |
 | `SCORING_ENABLED`, `SCORE_MODEL` | automatic candidate scoring after submit |
 | `PORTFOLIO_MODEL`, `PORTFOLIO_CLASSIFY_LLM` | which model reads plain careers pages; `0` turns the title classifier's model call off |
 | `NOTION_TOKEN`, `NOTION_DATABASE_ID` | **transitional**: while set, every submission is also written to Notion. Remove after the Notion import is done. |

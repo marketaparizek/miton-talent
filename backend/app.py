@@ -3,7 +3,8 @@ Miton talent chat - backend.
 
 A small server that:
   POST /chat    takes the conversation, calls Claude, returns reply + extracted profile
-  POST /submit  writes the submitted contact as a row in Notion, emails the CV, backs it up to a file
+  POST /submit  stores the submitted contact in the database, emails the CV, and (while the
+                migration runs) writes a row in Notion
   GET  /health  checks that the server is running
 
 Run:
@@ -13,21 +14,25 @@ Run:
   uvicorn app:app --reload --port 8000
 
 NOTION_DATABASE_ID is pre-filled to the "Hledame chytre lidi" database.
-Without NOTION_TOKEN, contacts are stored only in submissions.jsonl.
+The database is the system of record. submissions.jsonl is written only when the
+database write fails, as a last copy to recover from (and talent/erase.py scrubs it).
 The CV file is kept in memory only. It is emailed as an attachment and never written to disk.
 """
 
 import io
 import os
+import re
 import ssl
 import json
 import time
 import base64
+import random
 import uuid
 import logging
 import smtplib
-import threading
+import zipfile
 import datetime
+import unicodedata
 from email.message import EmailMessage
 from typing import List, Optional
 
@@ -39,7 +44,11 @@ from pydantic import BaseModel
 from anthropic import Anthropic
 
 from talent import auth as tauth
+from talent import consent as tconsent
+from talent import conversations as tconv
 from talent import db as tdb
+from talent import erase as terase
+from talent import limits as tlimits
 from talent import store as tstore
 from talent import company_tiers
 from talent.portfolio import view as portfolio_view
@@ -50,6 +59,11 @@ STATIC_DIR = os.path.join(HERE, "static")
 # Log failures loudly (Notion, SMTP, model). Never log personal data or message contents.
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 log = logging.getLogger("miton-talent")
+
+# Production (APP_BASE_URL on https) refuses to start half-configured: without
+# its own SESSION_SECRET, or without DATABASE_URL (which would mean SQLite).
+tauth.check_production_config()
+tdb.database_url()
 
 MODEL = os.environ.get("MODEL", "claude-sonnet-4-6")
 SUBMISSIONS_FILE = "submissions.jsonl"
@@ -70,23 +84,22 @@ MAX_MSG_CHARS = 2000    # trim a single overly long message
 MAX_HISTORY = 20        # send the model only the last part of the history
 MAX_CV_BYTES = 8 * 1024 * 1024  # reject CV attachments larger than 8 MB
 
-# Rate limit per visitor IP, so nobody can spam the chat (burns Claude tokens) or the
-# form. Counted in memory per process. Tune via env without touching code. A normal
-# conversation is capped at MAX_USER_TURNS messages, so these leave room for a couple
-# of chats. Behind Render/Railway the real visitor IP comes from X-Forwarded-For.
+# Rate limits per visitor network, so nobody can spam the chat (burns Claude tokens)
+# or the form, plus one daily budget of model calls for the whole service. All of
+# it is counted in the database (talent/limits.py), so every worker shares the
+# same numbers, and IPv6 is counted per /64. A normal conversation is capped at
+# MAX_USER_TURNS messages, so the per-network limit leaves room for a couple of
+# chats. Tune via env without touching code.
 CHAT_RATE_LIMIT = int(os.environ.get("CHAT_RATE_LIMIT", "30"))      # messages
 CHAT_RATE_WINDOW = int(os.environ.get("CHAT_RATE_WINDOW", "600"))   # per this many seconds (10 min)
 SUBMIT_RATE_LIMIT = int(os.environ.get("SUBMIT_RATE_LIMIT", "5"))   # submissions
 SUBMIT_RATE_WINDOW = int(os.environ.get("SUBMIT_RATE_WINDOW", "600"))
 
-_hits = {}               # (endpoint, ip) -> list of recent timestamps
-_hits_lock = threading.Lock()
-
 
 def _client_ip(request: Request) -> str:
-    # Behind Render/Railway the platform proxy APPENDS the real visitor IP to
-    # X-Forwarded-For, so the LAST entry is trustworthy. Earlier entries can be
-    # spoofed by the client and must not be used for rate limiting.
+    # nginx on the box APPENDS the address it saw to X-Forwarded-For, so the LAST
+    # entry is trustworthy. Earlier entries can be spoofed by the client and must
+    # not be used for rate limiting.
     fwd = request.headers.get("x-forwarded-for", "")
     if fwd:
         return fwd.split(",")[-1].strip()
@@ -94,21 +107,7 @@ def _client_ip(request: Request) -> str:
 
 
 def _rate_limited(endpoint: str, ip: str, limit: int, window: int) -> bool:
-    now = time.time()
-    key = (endpoint, ip)
-    with _hits_lock:
-        # occasional sweep so stale IPs do not accumulate in memory forever
-        if len(_hits) > 500:
-            cutoff = now - max(CHAT_RATE_WINDOW, SUBMIT_RATE_WINDOW)
-            for k in [k for k, v in _hits.items() if not v or v[-1] < cutoff]:
-                del _hits[k]
-        stamps = [t for t in _hits.get(key, []) if now - t < window]
-        if len(stamps) >= limit:
-            _hits[key] = stamps
-            return True
-        stamps.append(now)
-        _hits[key] = stamps
-        return False
+    return tlimits.over_limit(f"{endpoint}:{tlimits.network_key(ip)}", limit, window)
 
 
 RATE_MSG = {
@@ -119,6 +118,13 @@ RATE_MSG = {
 CLOSING = {
     "cs": "Díky moc za pokec. Nech mi prosím kontakt (e-mail, klidně i LinkedIn nebo životopis). Rozhodíme sítě napříč naším portfoliem, jestli je něco, co by ti mohlo sedět, a spojíme se s tebou. A kdyby cokoliv, napiš naší kolegyni Markétě Pařízek na marketa.parizek@miton.cz.",
     "en": "Thanks for the chat. Please leave me your contact (email, and feel free to add LinkedIn or a CV). We will cast the net across our portfolio to see if there is something that could fit you, and we will get in touch. And if you need anything, write to our colleague Markéta Pařízek at marketa.parizek@miton.cz.",
+}
+
+# The day's model budget is spent. The visitor can still leave a contact, so the
+# reply moves them there instead of asking them to come back.
+BUDGET_MSG = {
+    "cs": "Teď mám toho na srdci víc, než stihnu. Nech mi prosím kontakt (e-mail, klidně i LinkedIn nebo životopis) a ozveme se ti. A kdyby cokoliv, napiš naší kolegyni Markétě Pařízek na marketa.parizek@miton.cz.",
+    "en": "I am a bit overloaded right now. Please leave me your contact (email, and feel free to add LinkedIn or a CV) and we will get in touch. And if you need anything, write to our colleague Markéta Pařízek at marketa.parizek@miton.cz.",
 }
 
 ERR_MSG = {
@@ -145,10 +151,33 @@ def _hdr(value: str) -> str:
 
 client = Anthropic()  # reads the key from ANTHROPIC_API_KEY
 
-# --- CORS -------------------------------------------------------------------
-# Restrict to the Miton domains. Override with ALLOWED_ORIGINS (comma-separated) if needed.
+# --- CORS and framing ---------------------------------------------------------
+# Two lists, both from the environment:
+#   ALLOWED_ORIGINS  sites whose pages may call /chat and /submit from their own
+#                    origin (CORS). The Miton domains.
+#   FRAME_ANCESTORS  sites that may show the chat page (/) in an iframe: the
+#                    Miton domains plus Alister's /miton hub. Defaults to
+#                    ALLOWED_ORIGINS. Only the embed page gets this list; every
+#                    other route (admin, auth, API) may not be framed at all.
+# In production plain-http origins are dropped. A dev or staging site belongs
+# in the dev deployment's env, not in production's.
 _DEFAULT_ORIGINS = "https://www.miton.cz,https://miton.cz"
-ALLOWED_ORIGINS = [o.strip() for o in os.environ.get("ALLOWED_ORIGINS", _DEFAULT_ORIGINS).split(",") if o.strip()]
+
+
+def _origin_list(env: str, default: str) -> List[str]:
+    out = [o.strip().rstrip("/") for o in os.environ.get(env, default).split(",") if o.strip()]
+    if tdb.is_production():
+        dropped = [o for o in out if not o.startswith("https://")]
+        if dropped:
+            log.warning("%s: ignoring non-https origins in production: %s", env, dropped)
+        out = [o for o in out if o.startswith("https://")]
+    return out
+
+
+ALLOWED_ORIGINS = _origin_list("ALLOWED_ORIGINS", _DEFAULT_ORIGINS)
+FRAME_ANCESTORS = _origin_list("FRAME_ANCESTORS", ",".join(ALLOWED_ORIGINS))
+# The routes that are meant to sit in someone else's iframe.
+EMBED_PATHS = {"/", "/embed-test"}
 
 # --- Notion -----------------------------------------------------------------
 # A dedicated integration for the Miton website (separate from Alister).
@@ -165,7 +194,7 @@ SMTP_PASS = os.environ.get("SMTP_PASS", "")
 MAIL_FROM = os.environ.get("MAIL_FROM", SMTP_USER)
 MAIL_TO = os.environ.get("MAIL_TO", "marketa.parizek@miton.cz")
 
-# Some PaaS providers (Railway trial among them) block outbound SMTP ports entirely.
+# Some hosts block outbound SMTP ports entirely.
 # When the configured secret is a Resend API key (re_...), deliver over Resend's
 # HTTPS API on port 443 instead of SMTP. RESEND_API_KEY can also be set explicitly.
 RESEND_API_KEY = os.environ.get("RESEND_API_KEY", "") or (SMTP_PASS if SMTP_PASS.startswith("re_") else "")
@@ -370,7 +399,13 @@ class Msg(BaseModel):
 
 
 class ChatIn(BaseModel):
-    messages: List[Msg]
+    # The server keeps the conversation (talent/conversations.py). The widget
+    # sends the id it got back last time and its newest message. ``messages``
+    # is the older protocol: only its last user message is read, never the
+    # assistant turns, so a browser cannot put words in the model's mouth.
+    conversation_id: str = ""
+    message: str = ""
+    messages: List[Msg] = []
     lang: str = "cs"
 
 
@@ -382,16 +417,25 @@ class CVIn(BaseModel):
 
 class SubmitIn(BaseModel):
     lang: str = "cs"
+    conversation_id: str = ""  # the transcript, profile and summary are read from here
     profile: dict = {}
     contact: dict = {}
     summary: str = ""
     consent: bool = False
-    consent_text: str = ""
+    consent_id: str = ""     # a version from talent/consent.py; the text is the server's
+    consent_text: str = ""   # ignored, kept so an older widget still validates
     cv: Optional[CVIn] = None
-    messages: List[Msg] = []  # chat transcript, stored with the candidate row
+    messages: List[Msg] = []  # ignored when conversation_id is known; else user turns only
 
 
-app = FastAPI()
+class EraseIn(BaseModel):
+    uid: str = ""
+    email: str = ""
+
+
+# No /docs, /redoc or /openapi.json: the API is for the widget and the back
+# office, and a public map of every route helps nobody else.
+app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
 
 app.add_middleware(
     CORSMiddleware,
@@ -422,10 +466,15 @@ async def _login_required(request: Request, exc: tauth.LoginRequired):
 
 @app.middleware("http")
 async def frame_ancestors_header(request: Request, call_next):
-    # The embed page may only be iframed from the Miton domains (and same origin).
-    # Prevents anyone else from embedding the chat on their site and burning tokens.
+    # The embed page may only be iframed from FRAME_ANCESTORS (and same origin),
+    # so nobody else can put the chat on their site and burn tokens. Everything
+    # else, the back office above all, may not be framed by anyone (clickjacking).
     response = await call_next(request)
-    response.headers["Content-Security-Policy"] = "frame-ancestors 'self' " + " ".join(ALLOWED_ORIGINS)
+    if request.url.path in EMBED_PATHS:
+        response.headers["Content-Security-Policy"] = "frame-ancestors 'self' " + " ".join(FRAME_ANCESTORS)
+    else:
+        response.headers["Content-Security-Policy"] = "frame-ancestors 'none'"
+        response.headers["X-Frame-Options"] = "DENY"
     return response
 
 
@@ -560,7 +609,10 @@ def admin_home(user: dict = Depends(tauth.require_user)):
         f"<p>Přihlášen(a) jako <strong>{email}</strong> přes Alister.</p>"
         "<p>Back office (inbox, kandidáti, searche) vzniká tady. Zatím: "
         "<a href='/admin/portfolio'>portfolio hiring</a> · "
-        "<a href='/diag'>diagnostika</a> · <a href='/auth/logout'>odhlásit</a></p>"
+        "<a href='/diag'>diagnostika</a> · "
+        "<form method='post' action='/auth/logout' style='display:inline'>"
+        "<button type='submit' style='font:inherit;background:none;border:0;padding:0;color:#1b1b1b;"
+        "text-decoration:underline;cursor:pointer'>odhlásit</button></form></p>"
         "</main></body></html>",
         headers={"Cache-Control": "no-store"},
     )
@@ -636,29 +688,66 @@ def _parse_model_json(raw: str, lang: str) -> dict:
     return {"reply": clean or fallback, "profile": {}, "summary": "", "stage": "exploring"}
 
 
+def _chat_out(reply, conversation_id="", profile=None, summary="", stage="exploring"):
+    return {"reply": reply, "profile": profile or {}, "summary": summary or "", "stage": stage,
+            "conversation_id": conversation_id}
+
+
+def _newest_user_message(body: ChatIn) -> str:
+    if body.message.strip():
+        return body.message.strip()[:MAX_MSG_CHARS]
+    for m in reversed(body.messages):
+        if m.role == "user" and (m.content or "").strip():
+            return m.content.strip()[:MAX_MSG_CHARS]
+    return ""
+
+
 @app.post("/chat")
 def chat(body: ChatIn, request: Request):
     lang = "en" if body.lang == "en" else "cs"
+    text = _newest_user_message(body)
+    if not text:
+        raise HTTPException(status_code=400, detail="empty message")
 
-    # per-IP rate limit: if exceeded, answer politely without calling the model
-    if _rate_limited("chat", _client_ip(request), CHAT_RATE_LIMIT, CHAT_RATE_WINDOW):
-        return {"reply": RATE_MSG[lang], "profile": {}, "summary": "", "stage": "exploring"}
+    # The limits and the conversation live in the database. If it is down the
+    # chat stops rather than calling the model without a cap.
+    try:
+        # per-network rate limit: if exceeded, answer politely without calling the model
+        if _rate_limited("chat", _client_ip(request), CHAT_RATE_LIMIT, CHAT_RATE_WINDOW):
+            return _chat_out(RATE_MSG[lang], body.conversation_id)
+        with tdb.session() as s:
+            conv = tconv.get(s, body.conversation_id) or tconv.start(s, lang)
+            cid, history, done_turns = conv.id, list(conv.turns or []), conv.user_turns or 0
+            if random.random() < 0.01:
+                tconv.purge_stale(s)
+    except Exception:
+        log.exception("chat bookkeeping failed")
+        return _chat_out(ERR_MSG[lang], body.conversation_id)
 
-    # keep only valid roles and trim overly long messages so input tokens do not grow
-    msgs = [{"role": m.role, "content": (m.content or "")[:MAX_MSG_CHARS]}
-            for m in body.messages if m.role in ("user", "assistant")]
+    # turn cap, counted by the server: after MAX_USER_TURNS close the conversation
+    # politely without calling the model
+    if done_turns >= MAX_USER_TURNS:
+        return _chat_out(CLOSING[lang], cid, stage="collect_contact")
 
-    # turn cap: after MAX_USER_TURNS close the conversation politely without calling the model
-    user_turns = sum(1 for m in msgs if m["role"] == "user")
-    if user_turns > MAX_USER_TURNS:
-        return {"reply": CLOSING[lang], "profile": {}, "summary": "", "stage": "collect_contact"}
+    # daily budget for the whole service (chat + scoring)
+    try:
+        within_budget = tlimits.take_llm_call()
+    except Exception:
+        log.exception("budget check failed")
+        return _chat_out(ERR_MSG[lang], cid)
+    if not within_budget:
+        log.warning("daily model budget (%s calls) used up; chat answered without the model",
+                    tlimits.daily_budget())
+        return _chat_out(BUDGET_MSG[lang], cid, stage="collect_contact")
 
-    # send the model only the last part of the history; it must start with a user message
-    msgs = msgs[-MAX_HISTORY:]
+    # the model sees the server's history plus the new message, and only the last
+    # part of it; it must start with a user message
+    msgs = (history + [{"role": "user", "content": text}])[-MAX_HISTORY:]
     while msgs and msgs[0]["role"] != "user":
         msgs = msgs[1:]
 
     # soft close: from SOFT_CLOSE_TURNS on, order the model to wrap up right now
+    user_turns = done_turns + 1
     system = SYSTEM[lang]
     if user_turns >= SOFT_CLOSE_TURNS:
         system = system + WRAP_UP[lang]
@@ -674,7 +763,7 @@ def chat(body: ChatIn, request: Request):
         )
     except Exception:
         log.exception("model call failed")
-        return {"reply": ERR_MSG[lang], "profile": {}, "summary": "", "stage": "exploring"}
+        return _chat_out(ERR_MSG[lang], cid)
 
     parsed = None
     for block in resp.content:
@@ -686,12 +775,22 @@ def chat(body: ChatIn, request: Request):
         raw = "".join(b.text for b in resp.content if b.type == "text")
         parsed = _parse_model_json(raw, lang)
 
-    return {
-        "reply": parsed.get("reply", ""),
-        "profile": parsed.get("profile", {}) or {},
-        "summary": parsed.get("summary", "") or "",
-        "stage": parsed.get("stage", "exploring"),
-    }
+    out = _chat_out(
+        parsed.get("reply", ""), cid,
+        profile=parsed.get("profile", {}) or {},
+        summary=parsed.get("summary", "") or "",
+        stage=parsed.get("stage", "exploring"),
+    )
+    # Only now, with a real reply, does the exchange enter the server's record.
+    try:
+        with tdb.session() as s:
+            conv = tconv.get(s, cid)
+            if conv is not None:
+                tconv.record_exchange(conv, text, out["reply"], profile=out["profile"],
+                                      summary=out["summary"], stage=out["stage"])
+    except Exception:
+        log.exception("could not store chat turn for %s", cid)
+    return out
 
 
 def _coerce_list(value):
@@ -748,8 +847,41 @@ def _build_notion_properties(profile, contact, consent, cv_name, summary, lang):
     return props
 
 
+CV_TYPES = {
+    "pdf": "application/pdf",
+    "docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+}
+
+
+def _cv_kind(blob: bytes) -> Optional[str]:
+    """What the bytes really are, whatever the name and the browser say: "pdf",
+    "docx", or None for anything else (old .doc, images, executables, zips)."""
+    if blob.startswith(b"%PDF-"):
+        return "pdf"
+    if blob.startswith(b"PK\x03\x04"):
+        try:
+            with zipfile.ZipFile(io.BytesIO(blob)) as z:
+                names = set(z.namelist())
+        except Exception:
+            return None
+        if "word/document.xml" in names and "[Content_Types].xml" in names:
+            return "docx"
+    return None
+
+
+def _safe_filename(name: str, kind: str) -> str:
+    """A plain file name for the attachment: no path, no control or header
+    characters, at most 80 characters, and the extension of the real type."""
+    base = unicodedata.normalize("NFKC", (name or "").replace("\\", "/")).split("/")[-1]
+    stem = os.path.splitext(base)[0]
+    stem = re.sub(r"[^\w .()-]+", "_", stem).strip(" ._")[:80]
+    return f"{stem or 'cv'}.{kind}"
+
+
 def _decode_cv(cv: Optional[CVIn]):
-    """Return (filename, raw_bytes, mime) or (None, None, None). CV stays in memory only."""
+    """Return (filename, raw_bytes, mime) or (None, None, None). CV stays in memory only.
+    Only a real PDF or DOCX passes; the type is read from the bytes, never from
+    the name or the type the browser sent."""
     if not cv or not cv.data:
         return None, None, None
     raw = cv.data
@@ -761,7 +893,22 @@ def _decode_cv(cv: Optional[CVIn]):
         return None, None, None
     if not blob or len(blob) > MAX_CV_BYTES:
         return None, None, None
-    return (cv.name or "cv"), blob, (cv.type or "application/octet-stream")
+    kind = _cv_kind(blob)
+    if kind is None:
+        return None, None, None
+    return _safe_filename(cv.name, kind), blob, CV_TYPES[kind]
+
+
+_EMAIL_RE = re.compile(r"^[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?)+$")
+
+
+def _reply_to(contact: dict) -> str:
+    """The candidate's address as a Reply-To, or "" when it is not one plain
+    address (a list, a display name, header tricks)."""
+    addr = (contact.get("email") or "").strip() if isinstance(contact.get("email"), str) else ""
+    if len(addr) > 254 or not _EMAIL_RE.match(addr):
+        return ""
+    return addr
 
 
 def _cv_to_text(blob, mime, filename) -> str:
@@ -863,20 +1010,20 @@ def _send_cv_email(profile, contact, cv: Optional[CVIn], summary, lang) -> bool:
     body_text = "\n".join(str(x) for x in lines)
 
     if RESEND_API_KEY:
-        return _send_via_resend(subject, body_text, _hdr(contact.get("email")), filename, blob)
+        return _send_via_resend(subject, body_text, _reply_to(contact), filename, blob)
 
     msg = EmailMessage()
     msg["Subject"] = subject
     msg["From"] = MAIL_FROM
     msg["To"] = MAIL_TO
-    reply_to = _hdr(contact.get("email"))
+    reply_to = _reply_to(contact)
     if reply_to:
         msg["Reply-To"] = reply_to
     msg.set_content(body_text)
 
     if blob:
-        maintype, _, subtype = (mime or "application/octet-stream").partition("/")
-        msg.add_attachment(blob, maintype=maintype or "application", subtype=subtype or "octet-stream", filename=filename)
+        maintype, _, subtype = mime.partition("/")  # one of CV_TYPES, set by _decode_cv
+        msg.add_attachment(blob, maintype=maintype, subtype=subtype, filename=filename)
 
     try:
         ctx = ssl.create_default_context()
@@ -948,6 +1095,14 @@ def _append_notion_blocks(page_id: str, blocks: list) -> bool:
     return False
 
 
+def _role(m) -> str:
+    return (m.get("role") if isinstance(m, dict) else getattr(m, "role", "")) or ""
+
+
+def _content(m) -> str:
+    return (m.get("content") if isinstance(m, dict) else getattr(m, "content", "")) or ""
+
+
 def _transcript_blocks(messages, lang):
     """Turn the chat transcript into Notion page-body blocks (one paragraph per turn)."""
     if not messages:
@@ -956,11 +1111,11 @@ def _transcript_blocks(messages, lang):
     blocks = [{"object": "block", "type": "heading_2",
                "heading_2": {"rich_text": [{"text": {"content": heading}}]}}]
     for m in messages[:60]:  # Notion allows max 100 blocks per create request
-        role = getattr(m, "role", "")
+        role = _role(m)
         if role not in ("user", "assistant"):
             continue
         who = ("Kandidát" if lang != "en" else "Candidate") if role == "user" else "Miton"
-        text = (getattr(m, "content", "") or "")[:1900]
+        text = (_content(m) or "")[:1900]
         if not text:
             continue
         blocks.append({"object": "block", "type": "paragraph",
@@ -1010,9 +1165,12 @@ def _write_notion(profile, contact, consent, cv_name, summary, lang, messages=No
 
 def _score_candidate(cv_text, profile, summary, messages, lang):
     """Call Claude to score the candidate. Returns the record_score dict, or None."""
+    if not tlimits.take_llm_call():
+        log.warning("daily model budget used up; scoring skipped")
+        return None
     transcript = "\n".join(
-        f"{'Kandidát' if getattr(m, 'role', '') == 'user' else 'Miton'}: {getattr(m, 'content', '')}"
-        for m in (messages or []) if getattr(m, "role", "") in ("user", "assistant")
+        f"{'Kandidát' if _role(m) == 'user' else 'Miton'}: {_content(m)}"
+        for m in (messages or []) if _role(m) in ("user", "assistant")
     )[:8000]
     user_input = "\n\n".join([
         f"Profil z chatu: {json.dumps(profile or {}, ensure_ascii=False)}",
@@ -1161,15 +1319,21 @@ def _run_scoring(uid, page_id, cv: Optional[CVIn], profile, summary, messages, l
         _append_notion_blocks(page_id, _score_blocks(score, lang))
 
 
-def _write_database(uid, profile, contact, consent, consent_text, cv_name, summary, lang, messages) -> bool:
+def _write_database(uid, profile, contact, consent, consent_version, consent_text, cv_name,
+                    summary, lang, messages, conversation_id=None) -> bool:
     """Store the submission in the Miton Talent database. Idempotent on uid. Returns
-    True when the row exists afterwards (created now or already there)."""
+    True when the row exists afterwards (created now or already there). The chat's
+    server-side record moves into the candidate row in the same transaction."""
     try:
         with tdb.session() as s:
             _, created = tstore.create_from_submission(
                 s, uid=uid, profile=profile, contact=contact, summary=summary, consent=consent,
-                consent_text=consent_text, cv_name=cv_name, lang=lang, messages=messages,
+                consent_text=consent_text, consent_version=consent_version, cv_name=cv_name,
+                lang=lang, messages=messages,
             )
+            conv = tconv.get(s, conversation_id)
+            if conv is not None:
+                s.delete(conv)
         log.info("candidate %s %s", uid, "stored" if created else "already stored")
         return True
     except Exception:
@@ -1177,13 +1341,30 @@ def _write_database(uid, profile, contact, consent, consent_text, cv_name, summa
         return False
 
 
-def _deliver_submission(uid, profile, contact, cv: Optional[CVIn], summary, consent, consent_text,
-                        cv_name, lang, messages=None):
+def _write_fallback_file(record: dict) -> None:
+    """Last copy of a submission the database refused. Personal data on disk, so
+    only on failure, and talent/erase.py scrubs it on request."""
+    try:
+        with open(SUBMISSIONS_FILE, "a", encoding="utf-8") as fh:
+            fh.write(json.dumps(record, ensure_ascii=False) + "\n")
+    except Exception:
+        log.exception("failed to write submissions fallback")
+
+
+def _deliver_submission(uid, profile, contact, cv: Optional[CVIn], summary, consent, consent_version,
+                        consent_text, cv_name, lang, messages=None, conversation_id=None):
     """Database + email + Notion delivery, run in the background so the visitor never
     waits. Order: the database first (it is the system of record), then the CV e-mail,
     then Notion while NOTION_TOKEN is still set (dual-write during the migration).
     Scoring runs after the candidate is safely written and never affects the save."""
-    db_ok = _write_database(uid, profile, contact, consent, consent_text, cv_name, summary, lang, messages)
+    db_ok = _write_database(uid, profile, contact, consent, consent_version, consent_text, cv_name,
+                            summary, lang, messages, conversation_id)
+    if not db_ok:
+        _write_fallback_file({
+            "uid": uid, "ts": _utcnow().isoformat().replace("+00:00", "Z"), "lang": lang,
+            "profile": profile, "contact": contact, "summary": summary, "cv_name": cv_name,
+            "consent": bool(consent), "consent_version": consent_version, "messages": messages or [],
+        })
     email_ok = _send_cv_email(profile, contact, cv, summary, lang)
     page_id = _write_notion(profile, contact, consent, cv_name, summary, lang, messages)
     if not db_ok and not email_ok and not page_id:
@@ -1197,39 +1378,66 @@ def _deliver_submission(uid, profile, contact, cv: Optional[CVIn], summary, cons
 
 @app.post("/submit")
 def submit(body: SubmitIn, request: Request, background: BackgroundTasks):
-    # per-IP rate limit: stop repeated submissions from the same visitor
-    if _rate_limited("submit", _client_ip(request), SUBMIT_RATE_LIMIT, SUBMIT_RATE_WINDOW):
+    lang = "en" if body.lang == "en" else "cs"
+    # per-network rate limit: stop repeated submissions from the same visitor. A
+    # submission costs no model call, so if the counter cannot be read the contact
+    # is still taken (losing an applicant is worse than one extra row).
+    try:
+        limited = _rate_limited("submit", _client_ip(request), SUBMIT_RATE_LIMIT, SUBMIT_RATE_WINDOW)
+    except Exception:
+        log.exception("submit rate limit check failed; accepting the submission")
+        limited = False
+    if limited:
         return {"ok": True, "rate_limited": True}
 
-    # GDPR: consent is enforced server-side, not just by the form in the browser
+    # GDPR: consent is enforced server-side, not just by the form in the browser,
+    # and the wording on record is the server's versioned copy (talent/consent.py)
     if not body.consent:
         raise HTTPException(status_code=400, detail="consent required")
+    consent_version, consent_text = tconsent.resolve(body.consent_id, lang)
 
-    cv_name = (body.cv.name if body.cv else "") or ""
+    # The transcript, profile and summary come from the server's record of the
+    # chat. Without one (an older widget), only what the visitor wrote is kept:
+    # assistant turns from the browser are not the model's words.
+    profile, summary = body.profile or {}, body.summary
+    messages = [{"role": "user", "content": (m.content or "")[:MAX_MSG_CHARS]}
+                for m in body.messages if m.role == "user" and m.content]
+    conversation_id = None
+    try:
+        with tdb.session() as s:
+            conv = tconv.get(s, body.conversation_id)
+            if conv is not None:
+                conversation_id = conv.id
+                messages = list(conv.turns or [])
+                profile = conv.profile or profile
+                summary = conv.summary or summary
+    except Exception:
+        log.exception("could not read the conversation; submitting with the visitor's own turns")
+
+    filename, _, _ = _decode_cv(body.cv)
+    if body.cv and body.cv.data and not filename:
+        log.warning("CV dropped: not a PDF or DOCX, or too large")
+    cv = body.cv if filename else None
+    cv_name = filename or ""
     uid = uuid.uuid4().hex  # stable id of this submission across database, e-mail and logs
 
-    # local backup just in case (filename only, never the CV bytes)
-    record = {
-        "uid": uid,
-        "ts": _utcnow().isoformat().replace("+00:00", "Z"),
-        "lang": body.lang,
-        "profile": body.profile,
-        "contact": body.contact,
-        "summary": body.summary,
-        "cv_name": cv_name,
-        "consent": bool(body.consent),
-        "consent_text": body.consent_text,
-    }
-    try:
-        with open(SUBMISSIONS_FILE, "a", encoding="utf-8") as fh:
-            fh.write(json.dumps(record, ensure_ascii=False) + "\n")
-    except Exception:
-        log.exception("failed to write submissions backup")
-
-    # deliver by email + Notion in the background; the visitor gets the thank-you immediately
+    # deliver in the background; the visitor gets the thank-you immediately
     background.add_task(
         _deliver_submission,
-        uid, body.profile or {}, body.contact or {}, body.cv, body.summary,
-        bool(body.consent), body.consent_text, cv_name, body.lang, body.messages or [],
+        uid, profile, body.contact or {}, cv, summary,
+        True, consent_version, consent_text, cv_name, lang, messages, conversation_id,
     )
-    return {"ok": True, "queued": True}
+    return {"ok": True, "queued": True, "cv_accepted": bool(filename) if body.cv and body.cv.data else None}
+
+
+@app.post("/admin/candidates/erase")
+def erase_candidate(body: EraseIn, user: dict = Depends(tauth.require_admin)):
+    """GDPR erasure of one person (admin role only). Removes the database rows
+    and the fallback file lines; the answer lists what a person must still do
+    by hand (Notion, the inbox, Resend). See talent/erase.py."""
+    if not body.uid.strip() and not body.email.strip():
+        raise HTTPException(status_code=400, detail="uid or email required")
+    with tdb.session() as s:
+        out = terase.erase(s, uid=body.uid.strip() or None, email=body.email.strip() or None,
+                           submissions_file=SUBMISSIONS_FILE, actor=user["email"])
+    return JSONResponse(out, headers={"Cache-Control": "no-store"})

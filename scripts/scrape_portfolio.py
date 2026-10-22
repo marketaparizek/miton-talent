@@ -71,7 +71,11 @@ def main() -> int:
                 print(f"    - {row['title']}  [{row.get('location') or '-'}]")
         return 0
 
-    summary = scrape.run(actor=args.actor, only=only, parallel=args.parallel)
+    try:
+        summary = scrape.run(actor=args.actor, only=only, parallel=args.parallel)
+    except scrape.AlreadyRunning:
+        print("another portfolio scrape is running (job_locks); not starting a second one")
+        return 1
     if args.json:
         print(json.dumps(summary, ensure_ascii=False, indent=1))
     else:

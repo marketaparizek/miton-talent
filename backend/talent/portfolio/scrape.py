@@ -11,12 +11,13 @@ read keeps last week's roles; see store.record_company_result.
 
 from __future__ import annotations
 
+import datetime as dt
 import logging
 import time
 from concurrent.futures import ThreadPoolExecutor
 from typing import Optional
 
-from talent import db
+from talent import db, locks
 from talent.models import PortfolioCompany, PortfolioRun
 from talent.portfolio import adapters, store
 
@@ -24,10 +25,35 @@ log = logging.getLogger("miton-talent.portfolio.scrape")
 
 MAX_PARALLEL_FETCHES = 6
 
+# One run at a time across the web workers and cron (talent/locks.py). A run
+# takes minutes; the expiry only matters if a holder died without letting go.
+LOCK_NAME = "portfolio-scrape"
+LOCK_TTL = dt.timedelta(hours=3)
+
+
+class AlreadyRunning(Exception):
+    """Another process holds the scrape lock."""
+
 
 def run(*, actor: str = "cron", only: Optional[list[str]] = None,
-        classify: bool = True, parallel: int = MAX_PARALLEL_FETCHES) -> dict:
-    """Scrape the portfolio and return a summary dict (also written to the run row)."""
+        classify: bool = True, parallel: int = MAX_PARALLEL_FETCHES, lock: bool = True) -> dict:
+    """Scrape the portfolio and return a summary dict (also written to the run row).
+
+    Takes the database lock itself unless the caller already holds it
+    (``lock=False``, the admin button does that so it can answer 409 at once).
+    Raises AlreadyRunning when another run has it."""
+    if not lock:
+        return _run(actor=actor, only=only, classify=classify, parallel=parallel)
+    holder = locks.acquire(LOCK_NAME, LOCK_TTL)
+    if holder is None:
+        raise AlreadyRunning(LOCK_NAME)
+    try:
+        return _run(actor=actor, only=only, classify=classify, parallel=parallel)
+    finally:
+        locks.release(LOCK_NAME, holder)
+
+
+def _run(*, actor: str, only: Optional[list[str]], classify: bool, parallel: int) -> dict:
     with db.session() as session:
         targets = [c for c in store.companies(session) if not only or c.slug in only]
         plan = [

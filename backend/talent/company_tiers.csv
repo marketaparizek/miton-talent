@@ -1,0 +1,227 @@
+tier,reason,name,aliases
+# Miton company tier catalog. Source of truth for the rule: Notion page "Scorecardy: fit a kvalita kandidátů".
+# T1 top Czech startups/scaleups and international tech leaders; T2 known scaleups and strong tech companies;
+# T3 ordinary established companies; T4 unknown or very small companies with no signal (never listed here).
+# Corporates without startup DNA (automotive, telco, banks, FMCG) are T3 at most, whatever the size of the brand.
+# Seeded from Alister's ranked-companies.csv (T1 kept, corporates re-tiered). Names match after normalisation
+# (case, diacritics, legal suffixes, "group", country words, .cz/.com), so list a name once plus real aliases.
+# Lines starting with # are comments.
+T1,cz_startup,Rohlik,Rohlik Group|Rohlík|Knuspr|Gurkerl|Sezamo
+T1,cz_startup,Productboard,
+T1,cz_startup,Rossum,
+T1,cz_startup,Mews,Mews Systems
+T1,cz_startup,Make,Integromat|Make.com
+T1,cz_startup,Prusa Research,Prusa Development|Průša Research
+T1,cz_startup,Apify,
+T1,cz_startup,Pricefx,
+T1,cz_startup,Codasip,
+T1,cz_startup,DataSentics,
+T1,cz_startup,Keboola,
+T1,cz_startup,Quantlane,
+T1,cz_startup,Oddin.gg,Oddin
+T1,cz_startup,Momence,
+T1,cz_startup,MANTA,Manta Tools|MANTA - Unified Lineage Platform|Manta, an IBM Company
+T1,cz_startup,Better Stack,
+T1,cz_startup,Deepnote,
+T1,cz_startup,Resistant AI,
+T1,cz_startup,Apiary,
+T1,cz_startup,Upheal,
+T1,cz_startup,Qminers,
+T1,cz_startup,Supernova.io,Supernova
+T1,cz_startup,duvo.ai,Duvo
+T1,cz_startup,E2B,
+T1,cz_startup,EquiLibre Technologies,Equilibre
+T1,cz_startup,Outreach,
+T1,cz_startup,SentinelOne,
+T1,tech_leader,Google,Alphabet|Google Cloud|DeepMind|Google DeepMind|YouTube
+T1,tech_leader,Stripe,
+T1,tech_leader,Revolut,
+T1,tech_leader,Microsoft,
+T1,tech_leader,Meta,Facebook|Meta Platforms
+T1,tech_leader,Apple,
+T1,tech_leader,Amazon,Amazon Web Services|AWS
+T1,tech_leader,Netflix,
+T1,tech_leader,Spotify,
+T1,tech_leader,Airbnb,
+T1,tech_leader,Booking.com,
+T1,tech_leader,NVIDIA,
+T1,tech_leader,Twilio,
+T1,tech_leader,Palo Alto Networks,
+T1,tech_leader,Atlassian,
+T1,tech_leader,Elastic,
+T1,tech_leader,GitLab,
+T1,tech_leader,GitHub,
+T1,tech_leader,Datadog,
+T1,tech_leader,Databricks,
+T1,tech_leader,Cloudflare,
+T1,tech_leader,Palantir,Palantir Technologies
+T1,tech_leader,Notion,
+T1,tech_leader,Figma,
+T1,tech_leader,Shopify,
+T1,tech_leader,Wise,TransferWise
+T1,tech_leader,UiPath,
+T1,tech_leader,Workday,
+T1,tech_leader,DocPlanner,DocPlanner.com|Znanylekarz
+T1,tech_leader,Scale AI,
+T1,ai_frontier,OpenAI,
+T1,ai_frontier,Anthropic,
+T1,ai_frontier,Mistral,Mistral AI
+T1,ai_frontier,Hugging Face,
+T1,ai_frontier,ElevenLabs,
+T1,ai_frontier,Midjourney,
+T1,ai_frontier,SpaceX,
+T2,cz_scaleup,Seznam.cz,Seznam|Mapy.cz
+T2,cz_scaleup,Avast,AVG|AVG Technologies|Gen|Gen Digital
+T2,cz_scaleup,Kiwi.com,Kiwi|SkyPicker
+T2,cz_scaleup,Alza,Alza.cz
+T2,cz_scaleup,Notino,
+T2,cz_scaleup,Livesport,
+T2,cz_scaleup,Mall Group,MallGroup|Mall.cz|Internet Mall
+T2,cz_scaleup,Slevomat,
+T2,cz_scaleup,FTMO,
+T2,cz_scaleup,Packeta,Zásilkovna
+T2,cz_scaleup,DODO,
+T2,cz_scaleup,Trezor,SatoshiLabs
+T2,cz_scaleup,Dáme jídlo,Damejidlo
+T2,cz_scaleup,Footshop,
+T2,cz_scaleup,Pilulka,Pilulka.cz
+T2,cz_scaleup,GoodData,
+T2,cz_scaleup,STRV,
+T2,cz_scaleup,Ataccama,
+T2,cz_scaleup,Y Soft,
+T2,cz_scaleup,Vendavo,
+T2,cz_scaleup,Bohemia Interactive,Bohemia Interactive Simulations
+T2,cz_scaleup,Warhorse Studios,
+T2,cz_scaleup,Emplifi,Socialbakers
+T2,cz_scaleup,Kentico,Kentico Software|Kontent.ai
+T2,cz_scaleup,Applifting,
+T2,cz_scaleup,Bloomreach,Exponea
+T2,cz_scaleup,Smartlook,
+T2,cz_scaleup,Spaceti,
+T2,cz_scaleup,ROI Hunter,
+T2,cz_scaleup,Creative Dock,
+T2,cz_scaleup,JetBrains,
+T2,cz_scaleup,Liftago,
+T2,cz_scaleup,Twisto,
+T2,cz_scaleup,Pipedrive,
+T2,cz_scaleup,Slido,Sli.do
+T2,cz_scaleup,Bolt,
+T2,cz_scaleup,Wolt,
+T2,cz_scaleup,Showmax,
+T2,strong_tech,Red Hat,
+T2,strong_tech,Veeam,Veeam Software
+T2,strong_tech,Pure Storage,
+T2,strong_tech,SolarWinds,
+T2,strong_tech,Wrike,
+T2,strong_tech,Cisco,Cisco Systems
+T2,strong_tech,Intel,Intel Corporation
+T2,strong_tech,eBay,
+T2,strong_tech,Expedia,Expedia Group
+T2,strong_tech,Groupon,
+T2,strong_tech,Uber,
+T2,strong_tech,Salesforce,
+T2,strong_tech,Oracle NetSuite,NetSuite
+# Corporates without startup DNA: T3 at most, whatever the brand.
+T3,automotive,Škoda Auto,Skoda|Škoda|Škoda Auto DigiLab|Škoda Group|Škoda Transportation|Škoda Electric|Škoda Power|Doosan Škoda Power|Škoda JS|Škoda Praha|Škoda X|Škoda Digital|Škoda ICT|Škoda Motorsport
+T3,automotive,Volkswagen,Volkswagen Group|VW|Volkswagen Group Services
+T3,automotive,Porsche Engineering,Porsche
+T3,automotive,Digiteq Automotive,
+T3,automotive,Hyundai,Hyundai Motor Manufacturing Czech
+T3,automotive,Toyota,TPCA|Toyota Peugeot Citroën Automobile
+T3,automotive,Valeo,
+T3,automotive,Continental,
+T3,automotive,Bosch,Robert Bosch
+T3,automotive,ZF,ZF Group|ZF Engineering Pilsen
+T3,automotive,HELLA,
+T3,automotive,Lear Corporation,Lear
+T3,automotive,Faurecia,Forvia
+T3,automotive,BMW,
+T3,automotive,Mercedes-Benz,Daimler
+T3,automotive,Stellantis,
+T3,telco,O2 Czech Republic,O2|Telefónica O2|Telefonica O2 Czech Republic|O2 IT Services|O2 Slovakia|Telefónica
+T3,telco,T-Mobile,T-Mobile Czech Republic|Deutsche Telekom|T-Mobile International
+T3,telco,Vodafone,Vodafone Czech Republic
+T3,telco,CETIN,
+T3,telco,AT&T,
+T3,telco,Verizon,
+T3,telco,Ericsson,
+T3,telco,Nokia,Nokia Siemens Networks
+T3,bank,Komerční banka,KB|Société Générale
+T3,bank,Česká spořitelna,Erste|Erste Group
+T3,bank,ČSOB,CSOB|KBC|KBC Group|KBC Global Services
+T3,bank,Raiffeisenbank,Raiffeisen
+T3,bank,UniCredit,UniCredit Bank
+T3,bank,Moneta Money Bank,Moneta
+T3,bank,Air Bank,
+T3,bank,Fio banka,Fio
+T3,bank,Barclays,
+T3,bank,Commerzbank,
+T3,bank,Deutsche Börse,
+T3,bank,Deutsche Bank,
+T3,bank,ING,
+T3,bank,Citi,Citibank
+T3,bank,J.P. Morgan,JPMorgan|JPMorgan Chase
+T3,bank,Goldman Sachs,
+T3,bank,Home Credit,
+T3,bank,FNZ,
+T3,bank,GE Money Bank,
+T3,fmcg,AB InBev,Anheuser-Busch InBev|Anheuser-Busch
+T3,fmcg,Plzeňský Prazdroj,Pilsner Urquell|Asahi
+T3,fmcg,Kofola,Kofola ČeskoSlovensko
+T3,fmcg,Procter & Gamble,P&G
+T3,fmcg,Unilever,
+T3,fmcg,Nestlé,Nestle
+T3,fmcg,Mondelez,Mondelēz International
+T3,fmcg,Heineken,
+T3,fmcg,Coca-Cola,Coca-Cola HBC
+T3,fmcg,PepsiCo,
+T3,fmcg,L'Oréal,LOreal
+T3,fmcg,Henkel,
+T3,fmcg,Philip Morris,Philip Morris International|PMI
+T3,fmcg,Red Bull,
+T3,fmcg,Agrofert,
+T3,retail,Kaufland,
+T3,retail,Lidl,
+T3,retail,Tesco,
+T3,retail,Albert,Ahold Delhaize
+T3,retail,IKEA,
+T3,energy,ČEZ,CEZ|ČEZ Distribuce|ČEZ ICT Services
+T3,state,Česká pošta,
+T3,enterprise,Siemens,Siemens Energy|Siemens Healthineers
+T3,enterprise,Honeywell,
+T3,enterprise,ABB,
+T3,enterprise,Thermo Fisher Scientific,Thermo Fisher
+T3,enterprise,MSD,Merck
+T3,enterprise,Novartis,
+T3,enterprise,Zentiva,
+T3,enterprise,Foxconn,
+T3,enterprise,Thales,
+T3,enterprise,DHL,DHL IT Services
+T3,it_services,IBM,Kyndryl
+T3,it_services,Accenture,
+T3,it_services,Oracle,
+T3,it_services,SAP,SAP Concur
+T3,it_services,Tieto,Tietoevry
+T3,it_services,EPAM,EPAM Systems
+T3,it_services,CGI,
+T3,it_services,Capgemini,
+T3,it_services,Infosys,
+T3,it_services,DXC Technology,DXC
+T3,it_services,Hewlett Packard Enterprise,HPE|Hewlett-Packard|HP
+T3,it_services,Dell,Dell Technologies
+T3,it_services,Unicorn,Unicorn Systems
+T3,it_services,EmbedIT,
+T3,it_services,Cleverlance,
+T3,it_services,Trask,Trask solutions
+T3,it_services,Profinit,
+T3,it_services,CertiCon,
+T3,it_services,Adastra,
+T3,it_services,Aricoma,
+T3,it_services,Seyfor,
+T3,consulting,Deloitte,
+T3,consulting,EY,Ernst & Young
+T3,consulting,PwC,PricewaterhouseCoopers
+T3,consulting,KPMG,
+T3,consulting,McKinsey & Company,McKinsey
+T3,consulting,Boston Consulting Group,BCG
+T3,consulting,Bain & Company,Bain

@@ -41,6 +41,7 @@ from anthropic import Anthropic
 from talent import auth as tauth
 from talent import db as tdb
 from talent import store as tstore
+from talent import company_tiers
 from talent.portfolio import view as portfolio_view
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -303,7 +304,15 @@ SCORE_TOOL = {
         "type": "object",
         "properties": {
             "company_tier": {"type": "string", "enum": ALLOWED_COMPANY_TIER,
-                             "description": "Tier of the companies the candidate worked at or built. T4 if none/weak."},
+                             "description": "Tier of the best company in the candidate's history, by the company tier rule. T4 if unknown or none."},
+            "companies": {"type": "array",
+                          "description": "Every company in the candidate's work history (employers and companies they founded), most recent first.",
+                          "items": {"type": "object", "properties": {
+                              "name": {"type": "string", "description": "Company name as commonly known, without legal suffix (e.g. 'Škoda Auto', 'Rohlik')."},
+                              "end_year": {"type": ["integer", "null"], "description": "Year the candidate left; null if they are still there."},
+                              "tier": {"type": "string", "enum": ALLOWED_COMPANY_TIER, "description": "Tier of this company by the company tier rule."},
+                              "corporate": {"type": "boolean", "description": "True for a corporate without startup DNA (automotive, telco, bank, FMCG or similar), whatever the size of the brand."},
+                          }, "required": ["name", "tier", "corporate"]}},
             "education": {"type": "string", "enum": ALLOWED_EDUCATION,
                           "description": "Tier of the candidate's education. T3 if weak/unclear/none."},
             "ownership": {"type": "integer", "minimum": 0, "maximum": 3,
@@ -317,7 +326,7 @@ SCORE_TOOL = {
             "reasoning": {"type": "string",
                           "description": "Short scorecard for the recruiter: one to two sentence snapshot, then the per-signal notes and why the tiers. Plain text, concise, no filler."},
         },
-        "required": ["company_tier", "education", "ownership", "impact", "depth"],
+        "required": ["company_tier", "companies", "education", "ownership", "impact", "depth"],
     },
 }
 
@@ -325,20 +334,25 @@ SCORE_TOOL = {
 # the final score/recommendation are computed in code from the fields below.
 SCORE_SYSTEM = """You are an evaluator for the investment group Miton. You classify a candidate for fit with Miton's startup portfolio so a recruiter can triage them. You receive the chat profile, the running summary, the chat transcript, and (when available) the text of the candidate's CV. The CV or chat may be in Czech or English; handle either. This works for ALL roles (marketing, finance, ops, product, engineering, etc.), not only technical ones.
 
-Assign these, weighting recent and notable experience most:
+Assign these:
 
-Company tier - quality and prestige of the companies the candidate worked at or built:
-- T1: top global innovators, well-known scaleups or unicorns, big tech, AI-frontier labs, or Czech companies with real global reach (the calibre of Rohlik, Productboard, Mews, SentinelOne). A founder of a real, funded, notable company is also T1.
-- T2: established and respected companies, strong enterprises, solid scaleups, recognisable brands.
-- T3: average or smaller local firms, an unremarkable employer, or unclear.
-- T4: weak or none - no meaningful company history, very junior.
+Company tier. Rate the best company in the candidate's history.
+- T1: top Czech startups and scaleups (Rohlik, Productboard, Rossum, Mews)
+      and international tech leaders (Google, Stripe, Revolut)
+- T2: known scaleups and strong tech companies
+- T3: ordinary established companies
+- T4: unknown or very small companies with no signal
+Corporates without startup DNA (automotive, telco, banks, FMCG) get T3 at most,
+whatever the size of the brand.
+
+companies: list every company in the work history (employers and companies the candidate founded), most recent first, each with its tier by the rule above, the year they left (null if current) and whether it is a corporate without startup DNA. Founding a company does not by itself make it T1: rate the company like any other. company_tier is the best tier among them. Known companies are re-rated from Miton's catalog in code, so rate honestly and do not guess a high tier for a company you do not recognise.
 
 Education tier:
 - T1: a top university (roughly QS top 100, or a top, highly relevant Czech programme).
 - T2: a solid university degree, average to good school.
 - T3: weak, unclear, or no higher education.
 
-Scorecard, each 0 to 3 (from CV and chat):
+Scorecard, each 0 to 3 (from CV and chat), weighting recent and notable experience most:
 - ownership: real owned outcomes (built, led, shipped, decided), not just participation.
 - impact: concrete achievements with scale or results (numbers, growth, launches).
 - depth: depth in their field and level of responsibility/seniority.
@@ -1021,8 +1035,22 @@ def _score_candidate(cv_text, profile, summary, messages, lang):
         return None
     for block in resp.content:
         if block.type == "tool_use" and block.name == "record_score":
-            return block.input or {}
+            return _resolve_company_tier(block.input or {})
     return None
+
+
+def _resolve_company_tier(verdict, now_year=None):
+    """Re-rate the company history from Miton's catalog (talent/company_tiers.py).
+    company_tier becomes the best company after the catalog and the corporate cap;
+    _company_points is the decayed company value the Score uses. No history listed ->
+    the model's overall tier stands."""
+    now_year = now_year or datetime.date.today().year
+    rated = company_tiers.rate_history(verdict.get("companies"), COMPANY_TIER_POINTS, now_year)
+    if rated:
+        verdict["company_tier"] = rated["tier"]
+        verdict["_company_points"] = rated["points"]
+        verdict["_companies"] = rated["rows"]
+    return verdict
 
 
 def _clamp03(v) -> int:
@@ -1036,7 +1064,9 @@ def _compute_score(verdict) -> int:
     """Deterministic 0-100 score from the classified tiers + track-record scorecard.
     Company + education tiers are the backbone (github-sourcing career-quality method),
     the conversation scorecard adds the rest."""
-    company = COMPANY_TIER_POINTS.get(verdict.get("company_tier"), 0.0)
+    company = verdict.get("_company_points")
+    if company is None:
+        company = COMPANY_TIER_POINTS.get(verdict.get("company_tier"), 0.0)
     education = EDUCATION_TIER_POINTS.get(verdict.get("education"), 0.0)
     track = (_clamp03(verdict.get("ownership")) + _clamp03(verdict.get("impact"))
              + _clamp03(verdict.get("depth"))) / 9.0
@@ -1087,6 +1117,10 @@ def _score_blocks(verdict, lang) -> list:
          "paragraph": {"rich_text": [{"text": {"content": breakdown},
                                       "annotations": {"bold": True}}]}},
     ]
+    if verdict.get("_companies"):
+        label = "Firmy" if lang != "en" else "Companies"
+        blocks.append({"object": "block", "type": "paragraph",
+                       "paragraph": {"rich_text": [{"text": {"content": f"{label}: {company_tiers.describe(verdict['_companies'])}"[:1900]}}]}})
     for para in [p.strip() for p in (verdict.get("reasoning") or "").split("\n") if p.strip()][:40]:
         blocks.append({"object": "block", "type": "paragraph",
                        "paragraph": {"rich_text": [{"text": {"content": para[:1900]}}]}})
@@ -1115,7 +1149,8 @@ def _run_scoring(uid, page_id, cv: Optional[CVIn], profile, summary, messages, l
                         reasoning=score.get("reasoning"),
                         breakdown=(f"company {score.get('company_tier', '?')} · education {score.get('education', '?')} · "
                                    f"ownership {_clamp03(score.get('ownership'))}/3 · impact {_clamp03(score.get('impact'))}/3 · "
-                                   f"depth {_clamp03(score.get('depth'))}/3"),
+                                   f"depth {_clamp03(score.get('depth'))}/3"
+                                   + (f" · firmy: {company_tiers.describe(score['_companies'])}" if score.get("_companies") else "")),
                     )
         except Exception:
             log.exception("scoring write to database failed for %s", uid)

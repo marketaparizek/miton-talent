@@ -121,6 +121,8 @@ def collapse(rows: list[dict], aliases: dict | None = None) -> list[dict]:
         else:
             key = f"{fp}\x00{row.get('url') or ''}"
         loc = (row.get("location") or "").strip()
+        if is_channel(loc):
+            loc = ""
         existing = out.get(key)
         if existing is None:
             merged = dict(row)
@@ -128,10 +130,13 @@ def collapse(rows: list[dict], aliases: dict | None = None) -> list[dict]:
             merged["fingerprint"] = fp
             merged["locations"] = [loc] if loc else []
             merged["aliased"] = aliased
+            merged["external_ids"] = [row["external_id"]] if row.get("external_id") else []
             out[key] = merged
             continue
         if loc and loc not in existing["locations"]:
             existing["locations"].append(loc)
+        if row.get("external_id") and row["external_id"] not in existing["external_ids"]:
+            existing["external_ids"].append(row["external_id"])
         for field_name in ("team", "employment_type", "url", "fn", "cc"):
             if not existing.get(field_name) and row.get(field_name):
                 existing[field_name] = row[field_name]
@@ -163,3 +168,81 @@ def collapse(rows: list[dict], aliases: dict | None = None) -> list[dict]:
             used.add(candidate)
             row["fingerprint"] = candidate
     return rows_out
+
+
+# Ashby lets a company list "where else this posting is advertised" as extra
+# locations. They are distribution channels, not places, and must not split or
+# label a role.
+_CHANNELS = re.compile(r"^(group career pages?|jobs\.cz|ejobs\.ro|profesia\.sk|linkedin|startupjobs(\.cz)?)$",
+                       re.IGNORECASE)
+
+
+def is_channel(location: str | None) -> bool:
+    return bool(_CHANNELS.match((location or "").strip()))
+
+
+def _plain(text: str) -> str:
+    return strip_diacritics(text or "").lower()
+
+
+def group_requisitions(rows: list[dict], rules: dict) -> list[dict]:
+    """Postings to requisitions, for a company whose board lists one job many times.
+
+    Rohlik posts one requisition once per country board, once per language and
+    once per contract (a full-time and a 20-hour twin), so its board count is a
+    posting count. With ``config.requisitions`` set, postings collapse further:
+
+    * ``same_job``: ``[[regex, label], ...]`` matched against the plain title.
+      Titles that match one pattern are one job whatever their language
+      ("Customer Care Specialist (German)", "... s němčinou", the part-time
+      twin). Anything that matches no pattern is the job its fingerprint names.
+    * ``sites``: names of places that hire separately (warehouses). Two postings
+      of one job at two sites are two requisitions; at one site, or at no site
+      (an office role posted on the Prague, Munich and Vienna boards), one.
+
+    Each requisition keeps every posting's id in ``external_ids`` and the number
+    of postings in ``postings``, so the count says how it was reached.
+    """
+    patterns = [(re.compile(p, re.IGNORECASE), label) for p, label in (rules.get("same_job") or [])]
+    sites = [(s, _plain(s)) for s in (rules.get("sites") or [])]
+
+    def job_of(row: dict) -> str:
+        title = _plain(row.get("title"))
+        for pattern, label in patterns:
+            if pattern.search(title):
+                return label
+        return row["fingerprint"].split("#", 1)[0]
+
+    def sites_of(row: dict) -> tuple:
+        places = _plain(" | ".join(row.get("locations") or [row.get("location") or ""]))
+        return tuple(sorted({name for name, plain in sites if plain in places}))
+
+    out: dict[tuple, dict] = {}
+    for row in rows:
+        key = (job_of(row), sites_of(row))
+        ids = list(row.get("external_ids") or ([row["external_id"]] if row.get("external_id") else []))
+        existing = out.get(key)
+        if existing is None:
+            merged = dict(row)
+            merged["external_ids"] = ids
+            merged["postings"] = 1
+            merged["requisition"] = True
+            merged["fingerprint"] = key[0] + (("#" + "+".join(_NONWORD.sub("-", _plain(s)).strip("-")
+                                                              for s in key[1])) if key[1] else "")
+            merged["locations"] = list(row.get("locations") or [])
+            out[key] = merged
+            continue
+        existing["postings"] += 1
+        for i in ids:
+            if i not in existing["external_ids"]:
+                existing["external_ids"].append(i)
+        for loc in row.get("locations") or []:
+            if loc not in existing["locations"]:
+                existing["locations"].append(loc)
+        for field_name in ("team", "employment_type", "url", "fn", "cc"):
+            if not existing.get(field_name) and row.get(field_name):
+                existing[field_name] = row[field_name]
+    for row in out.values():
+        row["location"] = " / ".join(row["locations"]) if row["locations"] else None
+        row["fingerprint"] = row["fingerprint"][:255]
+    return list(out.values())

@@ -390,7 +390,7 @@
    "website": "https://www.rohlik.group/",
    "careers_url": "https://career.rohlik.group/group/jobs",
    "status": "ok",
-   "note": "Pulled from career.rohlik.group/api/jobs in four slices; the HTML board caps at ~20 rows. 57 requisitions after collapsing cross-locale and cross-language duplicates (~80 raw rows). Ashby mirror is a JS shell and unusable.",
+   "note": "Read from the Ashby board, which lists one job once per country board, language and contract. The count is requisitions: postings of one job are grouped (config.requisitions), and a job at two warehouses is two requisitions.",
    "cats": [
     "E-commerce",
     "Consumer"
@@ -914,7 +914,46 @@
     }
    ],
    "config": {
-    "board": "rohlik"
+    "board": "rohlik",
+    "requisitions": {
+     "sites": [
+      "Chrastany",
+      "Liboc",
+      "Horni Pocernice",
+      "Brno FC",
+      "Ostrava FC",
+      "Opatovice",
+      "Garching",
+      "Bischofsheim",
+      "Schonefeld",
+      "Biatorbagy",
+      "Budapest FC",
+      "Stefanesti",
+      "Vienna FC"
+     ],
+     "same_job": [
+      [
+       "(customer care|zakaznick).*(german|nemc)",
+       "customer care specialist german"
+      ],
+      [
+       "^warehouse trainer",
+       "warehouse trainer"
+      ],
+      [
+       "kommissionierer|lagerhelfer|lagermitarbeiter",
+       "lager picker"
+      ],
+      [
+       "obst ?& ?gemuse",
+       "obst gemuse quality"
+      ],
+      [
+       "^techni(cian|ker)\\b",
+       "technician"
+      ]
+     ]
+    }
    },
    "adapter": "ashby"
   },
@@ -1303,7 +1342,7 @@
    "website": "https://glami.group/",
    "careers_url": "https://careers.smartrecruiters.com/GLAMI1",
    "status": "ok",
-   "note": "Junior Account Manager closed. The one remaining listing is a talent pool, counted only because SmartRecruiters lists it as an open job. glami.cz/info/volna-mista is robots-blocked.",
+   "note": "The one listing is a talent pool (Marketing and Fashion Enthusiasts). It counts as a role by decision of 26 Oct 2026: SmartRecruiters lists it as an open requisition. glami.cz/info/volna-mista is robots-blocked.",
    "cats": [
     "E-commerce",
     "Consumer"

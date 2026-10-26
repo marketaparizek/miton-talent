@@ -750,3 +750,61 @@ def test_the_scrape_button_starts_one_run_at_a_time(client, monkeypatch):
     assert second.status_code == 409
     gate.set()
     assert calls and calls[0]["actor"] == "kolega@miton.cz"
+
+
+# --- requisitions: postings of one job grouped (Rohlik) -----------------------
+
+ROHLIK_RULES = {
+    "sites": ["Chrastany", "Brno FC", "Garching", "Bischofsheim"],
+    "same_job": [["(customer care|zakaznick).*(german|nemc)", "customer care specialist german"]],
+}
+
+
+def test_postings_of_one_job_become_one_requisition():
+    from talent.portfolio.collapse import group_requisitions
+    rows = collapse([
+        row("Customer Care Specialist (German)", "Prague", external_id="ashby:1", url="u1"),
+        row("Customer Care Specialist (German) - PART-TIME 20hrs/week", "Prague", external_id="ashby:2", url="u2"),
+        row("Specialista/ka zákaznické péče s němčinou", "Prague", external_id="ashby:3", url="u3"),
+        row("Head of Applied Science", "Prague", external_id="ashby:4", url="u4"),
+        row("Head of Applied Science", "München", external_id="ashby:5", url="u5"),
+        row("Vedoucí směny", "Chrášťany - Prague", external_id="ashby:6", url="u6"),
+        row("Vedoucí směny", "Brno FC", external_id="ashby:7", url="u7"),
+        row("Staplerfahrer (m/w/d)", "Bischofsheim bei Frankfurt", external_id="ashby:8", url="u8"),
+        row("Staplerfahrer (m/w/d)", "Bischofsheim bei Frankfurt", external_id="ashby:9", url="u9"),
+        row("Account Executive", "Group career pages", external_id="ashby:10", url="u10"),
+    ])
+    grouped = group_requisitions(rows, ROHLIK_RULES)
+    assert len(grouped) == 6
+    out = {r["title"]: r for r in grouped}
+    assert out["Customer Care Specialist (German)"]["postings"] == 3
+    assert out["Head of Applied Science"]["locations"] == ["Prague", "München"]
+    assert sum(1 for r in grouped if r["title"] == "Vedoucí směny") == 2
+    assert out["Staplerfahrer (m/w/d)"]["external_ids"] == ["ashby:8", "ashby:9"]
+    assert out["Account Executive"]["locations"] == []          # a channel, not a place
+
+
+def test_grouping_postings_already_stored_is_not_a_wave_of_closures(session):
+    comp = company(session, slug="rohlik")
+    postings = [row("Head of Applied Science", "Prague", external_id="ashby:4", url="https://jobs.ashbyhq.com/r/4"),
+                row("Head of Applied Science", "München", external_id="ashby:5", url="https://jobs.ashbyhq.com/r/5")]
+    scrape_rows(session, comp, postings)
+    assert session.query(PortfolioRole).filter_by(closed_at=None).count() == 2
+    comp.config = {"requisitions": ROHLIK_RULES}
+    session.flush()
+    run2, outcome = scrape_rows(session, comp, postings)
+    assert (outcome["roles"], outcome["new"], outcome["closed"]) == (1, 0, 0)
+    diff = store.changes(session, run2)
+    assert diff["new"] == diff["closed"] == diff["relisted"] == []
+    # and the week after is quiet too
+    _, outcome = scrape_rows(session, comp, postings)
+    assert (outcome["new"], outcome["closed"]) == (0, 0)
+
+
+def test_a_retitled_posting_inside_a_requisition_keeps_its_role(session):
+    comp = company(session, slug="rohlik", config={"requisitions": ROHLIK_RULES})
+    scrape_rows(session, comp, [row("Flow Lead", "Garching", external_id="ashby:1")])
+    _, outcome = scrape_rows(session, comp, [row("Flow Lead - Romanian Speaking", "Garching", external_id="ashby:1")])
+    assert (outcome["new"], outcome["closed"]) == (0, 0)
+    role = session.query(PortfolioRole).filter_by(closed_at=None).one()
+    assert role.key_tier == "req" and [h["title"] for h in role.title_history] == ["Flow Lead"]

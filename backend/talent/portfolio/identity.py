@@ -14,8 +14,11 @@ can say how sure it is:
                                      to this one role on this run
     heur   ``heur:<fingerprint>``    the normalised title (collapse.fingerprint)
 
-``alias`` is a fourth, manual kind: rows a company's config merges on purpose
-are keyed by the merged fingerprint, because no single id stands for them.
+Two more kinds are keyed by the fingerprint because no single id stands for
+them: ``alias`` (rows a company's config merges by hand) and ``req`` (a
+requisition made of several postings, collapse.group_requisitions). Both still
+carry every posting id in ``external_ids``, and the store matches a role by any
+of those ids too, so a retitled posting inside a requisition keeps its role.
 """
 
 from __future__ import annotations
@@ -77,13 +80,19 @@ def assign_keys(rows: list[dict], *, careers_url: str | None = None) -> list[dic
     page = normalise_url(careers_url)
     url_counts = Counter(normalise_url(r.get("url")) for r in rows)
     for row in rows:
+        ids = [i for i in (row.get("external_ids") or []) if i]
+        if not ids:
+            found = row.get("external_id") or id_from_url(row.get("url"))
+            ids = [found] if found else []
+        row["external_ids"] = ids
+        if row.get("requisition"):
+            row["role_key"], row["key_tier"] = f"req:{row['fingerprint']}", "req"
+            continue
         if row.get("aliased"):
             row["role_key"], row["key_tier"] = f"alias:{row['fingerprint']}", "alias"
             continue
-        ext = row.get("external_id") or id_from_url(row.get("url"))
-        if ext:
-            row["external_id"] = ext
-            row["role_key"], row["key_tier"] = f"ats:{ext}", "ats"
+        if ids:
+            row["role_key"], row["key_tier"] = f"ats:{ids[0]}", "ats"
             continue
         norm = normalise_url(row.get("url"))
         if norm and norm != page and url_counts[norm] == 1:
@@ -91,3 +100,14 @@ def assign_keys(rows: list[dict], *, careers_url: str | None = None) -> list[dic
             continue
         row["role_key"], row["key_tier"] = f"heur:{row['fingerprint']}", "heur"
     return rows
+
+
+def ids_of(role) -> set[str]:
+    """Every posting id a stored role is known by. A role written before ids
+    were stored still has its posting URL, and most URLs carry the id."""
+    ids = set(role.external_ids or [])
+    if not ids:
+        found = id_from_url(role.url)
+        if found:
+            ids.add(found)
+    return ids

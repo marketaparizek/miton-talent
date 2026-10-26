@@ -373,7 +373,9 @@ class PortfolioRole(Base):
     # rows written before identity existed; the next run adopts them by title.
     role_key: Mapped[Optional[str]] = mapped_column(String(600), index=True)
     key_tier: Mapped[Optional[str]] = mapped_column(String(8))
-    external_id: Mapped[Optional[str]] = mapped_column(String(255))
+    # Every board posting this role is known by ("ashby:<uuid>", ...). One for
+    # an ordinary role, several for a requisition posted on several boards.
+    external_ids: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
     title: Mapped[str] = mapped_column(String(500), nullable=False)
     # Earlier titles of the same posting, oldest first: [{"title", "until"}].
     title_history: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
@@ -403,6 +405,9 @@ class PortfolioRole(Base):
     replaces_role_id: Mapped[Optional[int]] = mapped_column(Integer)
     first_seen_original_at: Mapped[Optional[dt.datetime]] = mapped_column(DateTime(timezone=True))
     relist_reason: Mapped[Optional[str]] = mapped_column(String(32))  # same_title / same_slot / repost
+    # Closed because its postings now count as part of another role (a run that
+    # starts grouping postings into requisitions). Not a closure in the diff.
+    merged_into_role_id: Mapped[Optional[int]] = mapped_column(Integer)
     raw: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
 
     company: Mapped["PortfolioCompany"] = relationship("PortfolioCompany", back_populates="roles")

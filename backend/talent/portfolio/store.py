@@ -23,7 +23,7 @@ from talent.models import (
     utcnow,
 )
 from talent.portfolio import classify, identity
-from talent.portfolio.collapse import apply_aliases, collapse, fingerprint
+from talent.portfolio.collapse import collapse, group_requisitions
 
 log = logging.getLogger("miton-talent.portfolio.store")
 
@@ -95,7 +95,8 @@ def _closed_in(run_id: int):
     replaced_now = select(replacer.replaces_role_id).where(
         replacer.first_seen_run_id == run_id, replacer.replaces_role_id.is_not(None)
     )
-    return (PortfolioRole.closed_run_id == run_id, PortfolioRole.id.not_in(replaced_now))
+    return (PortfolioRole.closed_run_id == run_id, PortfolioRole.id.not_in(replaced_now),
+            PortfolioRole.merged_into_role_id.is_(None))
 
 
 def _relisted_in(run_id: int):
@@ -173,6 +174,8 @@ def record_company_result(
 
     if status in READ_STATUSES:
         rows = collapse(rows, aliases)
+        if (company.config or {}).get("requisitions"):
+            rows = group_requisitions(rows, company.config["requisitions"])
         if classify_rows:
             classify.classify_rows(rows, company=company.name)
         new_count, closed_count = _apply_rows(session, run, company, rows)
@@ -215,6 +218,7 @@ def _apply_rows(session: Session, run: PortfolioRun, company: PortfolioCompany,
     existing = open_roles(session, company.id)
     by_key = {r.role_key: r for r in existing if r.role_key}
     matched: dict[int, dict] = {}       # role id -> row
+    merged: dict[int, int] = {}         # role id -> the role id it folded into
     unmatched_rows: list[dict] = []
     seen_keys: set[str] = set()
 
@@ -228,11 +232,38 @@ def _apply_rows(session: Session, run: PortfolioRun, company: PortfolioCompany,
         else:
             unmatched_rows.append(row)
 
+    # By posting id: a requisition whose title or grouping changed, or a role
+    # stored before identity existed, is still the posting it was.
+    ids_by_role = {r.id: identity.ids_of(r) for r in existing}
+    rest = []
+    for row in unmatched_rows:
+        ids = set(row.get("external_ids") or [])
+        hit = next((r for r in existing if r.id not in matched and ids & ids_by_role[r.id]), None)
+        if hit is not None:
+            matched[hit.id] = row
+        else:
+            rest.append(row)
+    unmatched_rows = rest
+
+    # Several stored roles can be postings of what is now one requisition (the
+    # first run that groups Rohlik's board). They fold into the matched role;
+    # that is a change in counting, not a closure.
+    row_owner = {id(row): rid for rid, row in matched.items()}
+    for role in existing:
+        if role.id in matched:
+            continue
+        for row in rows:
+            owner = row_owner.get(id(row))
+            if owner is not None and ids_by_role[role.id] & set(row.get("external_ids") or []):
+                merged[role.id] = owner
+                break
+
     # Adoption by fingerprint: only for a role whose identity is weaker than a
     # board id (no key yet, a URL, or the title). Two different board ids under
     # one title are two postings; whether they are one job is _pair_relisted's
     # question, and it never merges them silently.
-    leftovers = [r for r in existing if r.id not in matched and r.key_tier != "ats"]
+    leftovers = [r for r in existing if r.id not in matched and r.id not in merged
+                 and r.key_tier not in ("ats", "req")]
     by_fp = {}
     for role in leftovers:
         by_fp.setdefault(role.fingerprint, role)
@@ -250,6 +281,9 @@ def _apply_rows(session: Session, run: PortfolioRun, company: PortfolioCompany,
         _write_role(roles_by_id[role_id], row, run, now)
 
     to_close = [r for r in existing if r.id not in matched]
+    for role in to_close:
+        if role.id in merged:
+            role.merged_into_role_id = merged[role.id]
     new_roles = []
     for row in still_unmatched:
         role = PortfolioRole(
@@ -267,11 +301,11 @@ def _apply_rows(session: Session, run: PortfolioRun, company: PortfolioCompany,
         role.closed_run_id = run.id
     session.flush()
 
-    _pair_relisted(session, company, new_roles, to_close)
+    _pair_relisted(session, company, new_roles, [r for r in to_close if r.id not in merged])
     session.flush()
     replaced = {r.replaces_role_id for r in new_roles if r.replaces_role_id}
     return (sum(1 for r in new_roles if not r.replaces_role_id),
-            sum(1 for r in to_close if r.id not in replaced))
+            sum(1 for r in to_close if r.id not in replaced and r.id not in merged))
 
 
 def _write_role(role: PortfolioRole, row: dict, run: PortfolioRun, now: dt.datetime) -> None:
@@ -283,7 +317,7 @@ def _write_role(role: PortfolioRole, row: dict, run: PortfolioRun, now: dt.datet
     role.title = title
     role.role_key = row["role_key"]
     role.key_tier = row["key_tier"]
-    role.external_id = row.get("external_id")
+    role.external_ids = list(row.get("external_ids") or [])
     role.location = row.get("location")
     role.locations = row.get("locations") or ([row["location"]] if row.get("location") else [])
     role.team = row.get("team")
@@ -297,7 +331,8 @@ def _write_role(role: PortfolioRole, row: dict, run: PortfolioRun, now: dt.datet
     role.last_seen_at = now
     role.last_seen_run_id = run.id
     role.raw = {k: v for k, v in row.items()
-                if k not in {"fingerprint", "locations", "role_key", "key_tier", "aliased"}}
+                if k not in {"fingerprint", "locations", "role_key", "key_tier", "aliased",
+                             "external_ids", "requisition"}}
 
 
 # A posting that closes and comes back inside this window is the same job
@@ -380,7 +415,7 @@ def _pair_relisted(session: Session, company: PortfolioCompany,
         for old in recent:
             if old.id in closed_now:
                 continue
-            same_id = new.external_id and new.external_id == old.external_id
+            same_id = bool(set(new.external_ids or []) & identity.ids_of(old))
             if same_id or base_fp(old.fingerprint) == base_fp(new.fingerprint):
                 link(new, old, "repost")
                 break

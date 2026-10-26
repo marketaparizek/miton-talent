@@ -37,6 +37,13 @@ button on the page.
    the same job have two postings. Every city is kept in the role's locations.
    Cross-language copies of one requisition (a German and a Czech version of the
    same job) only merge when a company's `config.aliases` says they are the same.
+   A company with `config.requisitions` (Rohlik) goes one step further and
+   counts **positions, not postings**: the same job on several country boards,
+   in two languages or as a full-time and part-time twin is one requisition.
+   `same_job` lists title patterns that are one job; `sites` lists places that
+   hire separately, so a shift lead at two warehouses stays two. Ashby's
+   "Group career pages" and "Jobs.cz" are channels, not places, and are dropped
+   from locations everywhere.
 3. **Classify**: function bucket and country from keyword rules; the model is
    asked, in one batched call, only about titles the rules cannot place. Every
    role records which of the two decided it (`fn_source`), so a wrong bucket is
@@ -97,6 +104,7 @@ Per-company knobs live in `config`:
 |---|---|
 | `board` | the ATS board name when the URL does not carry it (`{"board": "rohlik"}`) |
 | `aliases` | merge two fingerprints into one requisition (cross-language copies) |
+| `requisitions` | `{"sites": [...], "same_job": [[regex, label], ...]}`: count positions, not postings |
 | `fallback_html` | `false` turns off "if the ATS board fails, read the page" |
 | `skip` | do not scrape this company at all |
 
@@ -123,9 +131,8 @@ leaves unknown titles in "Other".
 * Eight portfolio companies were merged into the gastro holding Piano Group in
   early 2026 and still show separately, because miton.cz lists them
   separately; they carry `group_name = "Piano Group"`.
-* A company's own board can be narrower than the ATS behind it. Rohlik's Ashby
-  board carries every warehouse posting, so its count is higher than the
-  hand-collapsed 57 the artifact reported in September 2026. The number here is
-  what the board publishes, per posting.
+* Rohlik's number is positions (68 on 26 Oct 2026 from 93 postings). The
+  grouping is by rules, not by Rohlik's own requisition id, which its public
+  board does not publish. A new language variant needs a `same_job` pattern.
 * The model reads a page as text. It cannot see a board that renders only in a
   browser; such a page is reported as blocked rather than as zero.

@@ -61,6 +61,24 @@ button on the page.
    `changes.relisted`, not to new or closed, and the new posting keeps the
    original first-seen date. Nothing is merged, so a wrong pair stays visible.
 
+### When the model is down, the run fails, not the companies
+
+A page read by the model that fails because of **our** provider (no credit, a
+bad key, an outage, rate limits) is not a company whose page stopped loading.
+So:
+
+* before reading anything, a run makes one tiny model call. If the provider
+  refuses, the run stops and is recorded as `failed`; nothing is read or written;
+* if the provider drops out mid-run, the companies already read are written (an
+  ATS board is true whatever the model does), those it could not read get
+  `model_unavailable` and keep their roles, and the run is recorded as `failed`;
+* the page always serves the last run that finished `done`, so a reader never
+  sees "didn't load" for our outage, and a failed run is not a point in the trend;
+* the script exits 1 and the log says once what failed. Fix the cause (top up
+  credit, fix the key) and run again.
+
+A role first seen in a failed run is never listed as "new" in a later week.
+
 ### How old a role is
 
 Every open role carries `open_since`, `age_days` and `open_since_source`;

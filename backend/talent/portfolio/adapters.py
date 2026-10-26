@@ -9,6 +9,8 @@ now" - and returns the same shape:
            "no_careers_page"  there is nothing to read
            "blocked"          the host answered but refused us, or served a shell
            "failed"           fetch or parse broke; the count means nothing
+           "model_unavailable" the page was fetched but our model provider refused
+                              us (credit, key, outage): our failure, not the page's
 
 A row is {title, location, team, employment_type, url, external_id}. The id is
 the board's own id for the posting, ``<adapter>:<id>``, and it is what keeps a
@@ -383,6 +385,9 @@ def html(url: str, config: dict) -> Result:
                       error="page rendered client-side: no readable text to judge")
     try:
         rows, note = extract.roles_from_text(text, url=url, company=config.get("company_name", ""))
+    except extract.ModelUnavailable as exc:
+        return Result("model_unavailable", adapter="html", source_url=url, http_status=r.status_code,
+                      error=str(exc))
     except extract.ExtractorUnavailable as exc:
         return Result("failed", adapter="html", source_url=url, http_status=r.status_code, error=str(exc))
     return Result("ok", rows, "html", url, r.status_code, raw_rows=len(rows), note=note)

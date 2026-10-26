@@ -59,6 +59,61 @@ class ExtractorUnavailable(RuntimeError):
     """No model key, or the model call failed: the page was NOT read."""
 
 
+class ModelUnavailable(ExtractorUnavailable):
+    """The model provider refused us for reasons that have nothing to do with
+    the page: no credit, a bad key, an outage, rate limits. Every page read
+    through the model fails the same way, so this is our outage, not 19
+    companies that stopped loading, and the run is marked failed (scrape.py)."""
+
+
+_BILLING = re.compile(r"credit balance|billing|quota|insufficient", re.I)
+
+
+def is_provider_failure(exc: BaseException) -> bool:
+    """True when an exception from the anthropic client is about our account or
+    the service, not about this page's request."""
+    try:
+        import anthropic
+    except ImportError:  # pragma: no cover
+        return False
+    if isinstance(exc, (anthropic.AuthenticationError, anthropic.PermissionDeniedError,
+                        anthropic.RateLimitError, anthropic.APIConnectionError)):
+        return True
+    status = getattr(exc, "status_code", None)
+    if isinstance(status, int) and status >= 500:
+        return True
+    if isinstance(exc, anthropic.BadRequestError) and _BILLING.search(str(exc)):
+        return True
+    return False
+
+
+def _model_name() -> str:
+    return os.environ.get("PORTFOLIO_MODEL") or os.environ.get("MODEL", "claude-sonnet-4-6")
+
+
+def check_model() -> None:
+    """One tiny call before a run. Raises ModelUnavailable when the provider
+    will not answer, so the run stops before it writes anything."""
+    if not os.environ.get("ANTHROPIC_API_KEY"):
+        return  # a deliberate ATS-only run (--no-llm); nothing to check
+    import anthropic
+
+    try:
+        anthropic.Anthropic().messages.create(
+            model=_model_name(), max_tokens=1, messages=[{"role": "user", "content": "ok"}],
+        )
+    except Exception as exc:
+        if is_provider_failure(exc):
+            raise ModelUnavailable(_short(exc)) from exc
+        raise
+
+
+def _short(exc: BaseException) -> str:
+    message = getattr(exc, "message", None) or str(exc)
+    match = re.search(r"'message': '([^']+)'", message)
+    return f"{type(exc).__name__}: {match.group(1) if match else message}"[:300]
+
+
 def readable_text(raw_html: str) -> str:
     text = _SCRIPTS.sub(" ", raw_html or "")
     text = _TAGS.sub("\n", text)
@@ -83,11 +138,13 @@ def roles_from_text(text: str, *, url: str, company: str = "") -> tuple[list[dic
     client = anthropic.Anthropic()
     try:
         reply = client.messages.create(
-            model=os.environ.get("PORTFOLIO_MODEL") or os.environ.get("MODEL", "claude-sonnet-4-6"),
+            model=_model_name(),
             max_tokens=4000,
             messages=[{"role": "user", "content": prompt}],
         )
     except Exception as exc:
+        if is_provider_failure(exc):
+            raise ModelUnavailable(_short(exc)) from exc
         raise ExtractorUnavailable(f"{type(exc).__name__}: {exc}"[:300]) from exc
 
     answer = "".join(b.text for b in reply.content if getattr(b, "type", "") == "text")

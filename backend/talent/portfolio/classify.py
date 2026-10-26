@@ -126,8 +126,12 @@ def classify_rows(rows: list[dict], *, company: str = "", use_model: bool | None
     if unknown and (use_model if use_model is not None else model_enabled()):
         try:
             answers = ask_model(unknown, company=company)
-        except Exception:
-            log.exception("function classification by model failed; leaving %d rows as Other", len(unknown))
+        except Exception as exc:
+            # One line, not a traceback per company: when the provider is down
+            # the run says so once (scrape.py), and these rows are reclassified
+            # on the next run anyway.
+            log.warning("function classification by model failed (%s); leaving %d rows as Other",
+                        type(exc).__name__, len(unknown))
             answers = {}
         for row in unknown:
             fn = answers.get(row.get("title", ""))

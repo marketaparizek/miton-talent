@@ -919,3 +919,80 @@ def test_a_page_that_reads_fine_ignores_the_hand_check(session):
     comp = company(session, config={"manual_check": {"date": today, "roles": 0}})
     _, outcome = scrape_into(session, comp, ["Engineer"])
     assert outcome["status"] == "ok" and outcome["roles"] == 1
+
+
+# --- our model provider failing is our outage, not the portfolio's ------------
+
+
+def _api_error(cls, status, message):
+    import anthropic
+    import httpx
+    response = httpx.Response(status, request=httpx.Request("POST", "https://api.anthropic.test/v1/messages"))
+    return cls(message, response=response, body={"error": {"message": message}})
+
+
+def test_provider_failures_are_told_apart_from_page_failures():
+    import anthropic
+    credit = _api_error(anthropic.BadRequestError, 400,
+                        "Your credit balance is too low to access the Anthropic API.")
+    assert extract.is_provider_failure(credit)
+    assert extract.is_provider_failure(_api_error(anthropic.AuthenticationError, 401, "invalid x-api-key"))
+    assert extract.is_provider_failure(_api_error(anthropic.InternalServerError, 529, "Overloaded"))
+    assert not extract.is_provider_failure(_api_error(anthropic.BadRequestError, 400, "prompt is too long"))
+    assert not extract.is_provider_failure(ValueError("page"))
+
+
+@pytest.fixture()
+def two_companies(session):
+    a = company(session, slug="ats-co", careers_url="https://ats.test")
+    b = company(session, slug="page-co", careers_url="https://page.test")
+    good = store.start_run(session, actor="cron", companies_total=2)
+    store.record_company_result(session, good, a, status="ok", rows=[row("Backend Engineer")],
+                                 adapter="recruitee", source_url=a.careers_url)
+    store.record_company_result(session, good, b, status="ok", rows=[row("Designer")],
+                                 adapter="html", source_url=b.careers_url)
+    store.finish_run(session, good)
+    session.commit()
+    return good.id
+
+
+def test_a_provider_down_before_the_run_stops_it_and_keeps_last_week(two_companies, session, monkeypatch):
+    from talent.portfolio import scrape
+
+    def down():
+        raise extract.ModelUnavailable("BadRequestError: Your credit balance is too low")
+    monkeypatch.setattr(extract, "check_model", down)
+    fetched = []
+    monkeypatch.setattr(adapters, "read", lambda *a, **k: fetched.append(1))
+    summary = scrape.run(actor="cron", parallel=1)
+    assert summary["status"] == "failed" and "credit balance" in summary["error"]
+    assert fetched == []
+    session.expire_all()
+    snap = store.snapshot(session)
+    assert snap["run_id"] == two_companies
+    assert {c["slug"]: len(c["roles"]) for c in snap["companies"]} == {"ats-co": 1, "page-co": 1}
+
+
+def test_a_provider_dropping_out_mid_run_fails_the_run_but_keeps_true_reads(two_companies, session, monkeypatch):
+    from talent.portfolio import scrape
+
+    monkeypatch.setattr(extract, "check_model", lambda: None)
+
+    def read(url, adapter=None, config=None):
+        if "ats" in url:
+            return adapters.Result("ok", [row("Backend Engineer"), row("Data Engineer")], "recruitee", url, 200)
+        return adapters.Result("model_unavailable", [], "html", url, 200,
+                               error="BadRequestError: Your credit balance is too low")
+    monkeypatch.setattr(adapters, "read", read)
+    summary = scrape.run(actor="cron", parallel=1)
+    assert summary["status"] == "failed" and "Page-Co" in summary["error"]
+    session.expire_all()
+    snap = store.snapshot(session)
+    # the page keeps the last good run's statuses ...
+    assert snap["run_id"] == two_companies
+    assert all(c["verified"] for c in snap["companies"])
+    # ... nothing the model could not read is closed, and what the board said is kept
+    roles = {c["slug"]: sorted(r["title"] for r in c["roles"]) for c in snap["companies"]}
+    assert roles == {"ats-co": ["Backend Engineer", "Data Engineer"], "page-co": ["Designer"]}
+    # and the failed run is not a point in the trend
+    assert [h["run_id"] for h in snap["history"]][-1] == two_companies

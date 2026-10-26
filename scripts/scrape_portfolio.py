@@ -74,11 +74,15 @@ def main() -> int:
     summary = scrape.run(actor=args.actor, only=only, parallel=args.parallel)
     if args.json:
         print(json.dumps(summary, ensure_ascii=False, indent=1))
+    elif summary.get("status") == "failed":
+        print(f"run #{summary['run_id']} FAILED: {summary['error']}")
+        print("The page keeps showing the last good run. Fix the cause and run again.")
     else:
         print(f"run #{summary['run_id']}: {summary['roles_total']} open roles, "
               f"+{summary['roles_new']} new, -{summary['roles_closed']} closed, "
               f"{summary['companies_failed']} of {summary['companies']} companies unread")
-    return 0
+    # Non-zero so cron's log and anyone running it by hand see the failure.
+    return 1 if summary.get("status") == "failed" else 0
 
 
 if __name__ == "__main__":

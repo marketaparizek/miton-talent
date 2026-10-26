@@ -872,3 +872,19 @@ def test_a_role_on_a_page_that_stopped_loading_is_not_new(session):
     roles = {r["title"]: r for r in next(c for c in store.snapshot(session)["companies"]
                                          if c["slug"] == "acme")["roles"]}
     assert roles["Designer"]["new"] is False
+
+
+@pytest.mark.parametrize("title,fn", [
+    ("Senior Analyst Finance Planning & Analysis", "Finance & Legal"),
+    ("Senior Finance/Accounting Automation Specialist", "Finance & Legal"),
+    ("QA Inspektor HK", "Ops & Logistics"),
+    ("EHS and Security Specialist", "Ops & Logistics"),
+    ("Process Engineer (m/f/d)", "Ops & Logistics"),
+    ("Senior Backend Engineer", "Engineering & AI"),
+    ("Data Analyst", "Data & Analytics"),
+    ("QA Engineer", "Engineering & AI"),
+])
+def test_titles_that_only_look_technical(title, fn):
+    rows = [{"title": title}]
+    classify.classify_rows(rows, company="Acme")
+    assert rows[0]["fn"] == fn

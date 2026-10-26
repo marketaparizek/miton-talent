@@ -38,6 +38,13 @@ TECHNICAL = {"Engineering & AI", "Data & Analytics", "Product & Design"}
 # (data, product) come before the broad ones (engineering).
 _RULES: list[tuple[str, str]] = [
     ("Clinical", r"\b(psychiatr|psycholog|lekar|doktor|klinick|clinical|therapist|terapeut|nurse|sestra|pacient)"),
+    # Before the technical buckets, because their words ("analyst", "QA",
+    # "security", "engineer") also appear in these titles: a finance analyst is
+    # finance, and warehouse safety, goods inspection and process roles are
+    # operations. The technical count is what sourcing reads, so a false
+    # technical role costs more than a missed one.
+    ("Finance & Legal", r"\b(finance|financn|fp&a|planning & analysis|accounting|ucetn|controlling)"),
+    ("Ops & Logistics", r"\b(ehs|bozp|health (and|&) safety|inspektor|inspector|quality (control|selector)|qualitat|kvalit|process (engineer|manager))"),
     ("Data & Analytics", r"\b(data (scientist|engineer|analyst|analytics)|analytics engineer|bi |business intelligence|datov|analytik|analyst)"),
     ("Product & Design", r"\b(product (manager|owner|designer|lead|director)|produktov|ux|ui|graphic|designer|design lead|brand designer)"),
     ("Engineering & AI", r"\b(engineer|developer|programator|vyvojar|devops|sre|qa|tester|architect|cto|machine learning|ml |ai |research scientist|quant|infrastructure|security|backend|frontend|fullstack|full.stack|mobile|ios|android|robot|it specialist|sysadmin|administrator systemu|technical (lead|domain))"),

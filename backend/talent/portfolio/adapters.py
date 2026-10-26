@@ -12,7 +12,9 @@ now" - and returns the same shape:
 
 A row is {title, location, team, employment_type, url, external_id}. The id is
 the board's own id for the posting, ``<adapter>:<id>``, and it is what keeps a
-renamed posting the same role (identity.py). Classification and
+renamed posting the same role (identity.py). Boards that say when a posting
+went up add ``posted_at`` (an ISO date), which is how old a role really is,
+including the weeks before this scraper first saw it. Classification and
 collapsing happen later (classify.py, collapse.py), so an adapter only reads.
 
 Most portfolio companies sit on an ATS with a public JSON board, which is exact
@@ -80,7 +82,7 @@ def _client() -> httpx.Client:
     )
 
 
-def _row(title, location=None, team=None, employment_type=None, url=None, *, ext=None) -> dict:
+def _row(title, location=None, team=None, employment_type=None, url=None, *, ext=None, posted=None) -> dict:
     return {
         "title": (title or "").strip(),
         "location": (location or "").strip() or None,
@@ -88,7 +90,20 @@ def _row(title, location=None, team=None, employment_type=None, url=None, *, ext
         "employment_type": (employment_type or "").strip() or None,
         "url": (url or "").strip() or None,
         "external_id": ext,
+        "posted_at": _date(posted),
     }
+
+
+def _date(value) -> str | None:
+    """A board's publish timestamp as YYYY-MM-DD. Accepts ISO strings,
+    "2026-10-15 09:38:10 UTC" and epoch milliseconds (Lever)."""
+    if value in (None, ""):
+        return None
+    if isinstance(value, (int, float)):
+        import datetime as _dt
+        return _dt.datetime.fromtimestamp(value / 1000, _dt.timezone.utc).date().isoformat()
+    match = re.match(r"(\d{4}-\d{2}-\d{2})", str(value).strip())
+    return match.group(1) if match else None
 
 
 def _ext(adapter: str, value) -> str | None:
@@ -125,7 +140,7 @@ def recruitee(url: str, config: dict) -> Result:
              o.get("department"),
              o.get("employment_type_code"),
              o.get("careers_url") or o.get("careers_apply_url"),
-             ext=_ext("recruitee", o.get("id")))
+             ext=_ext("recruitee", o.get("id")), posted=o.get("published_at") or o.get("created_at"))
         for o in offers
         if str(o.get("status", "published")).lower() == "published"
     ]
@@ -158,7 +173,8 @@ def ashby(url: str, config: dict) -> Result:
         for loc in locations or [None]:
             name = loc.get("location") if isinstance(loc, dict) else loc
             rows.append(_row(j.get("title"), name, j.get("team") or j.get("department"),
-                             j.get("employmentType"), j.get("jobUrl"), ext=_ext("ashby", j.get("id"))))
+                             j.get("employmentType"), j.get("jobUrl"), ext=_ext("ashby", j.get("id")),
+                             posted=j.get("publishedAt")))
     return Result("ok", rows, "ashby", api, r.status_code, raw_rows=len(jobs))
 
 
@@ -185,7 +201,7 @@ def smartrecruiters(url: str, config: dict) -> Result:
                                  (p.get("department") or {}).get("label") or (p.get("function") or {}).get("label"),
                                  (p.get("typeOfEmployment") or {}).get("label"),
                                  f"https://jobs.smartrecruiters.com/{board}/{p.get('id')}",
-                                 ext=_ext("smartrecruiters", p.get("id"))))
+                                 ext=_ext("smartrecruiters", p.get("id")), posted=p.get("releasedDate")))
             total = data.get("totalFound", len(rows))
             offset += len(content)
             if not content or offset >= (total or 0):
@@ -204,7 +220,8 @@ def greenhouse(url: str, config: dict) -> Result:
     jobs = r.json().get("jobs", [])
     rows = [_row(j.get("title"), (j.get("location") or {}).get("name"),
                  ", ".join(d.get("name", "") for d in (j.get("departments") or [])) or None,
-                 None, j.get("absolute_url"), ext=_ext("greenhouse", j.get("id"))) for j in jobs]
+                 None, j.get("absolute_url"), ext=_ext("greenhouse", j.get("id")),
+                 posted=j.get("first_published")) for j in jobs]
     return Result("ok", rows, "greenhouse", api, r.status_code, raw_rows=len(jobs))
 
 
@@ -220,7 +237,7 @@ def lever(url: str, config: dict) -> Result:
     rows = [_row(j.get("text"), (j.get("categories") or {}).get("location"),
                  (j.get("categories") or {}).get("team"),
                  (j.get("categories") or {}).get("commitment"), j.get("hostedUrl"),
-                 ext=_ext("lever", j.get("id"))) for j in jobs]
+                 ext=_ext("lever", j.get("id")), posted=j.get("createdAt")) for j in jobs]
     return Result("ok", rows, "lever", api, r.status_code, raw_rows=len(jobs))
 
 
@@ -235,7 +252,8 @@ def workable(url: str, config: dict) -> Result:
     jobs = r.json().get("jobs", [])
     rows = [_row(j.get("title"), j.get("location") or j.get("city"), j.get("department"),
                  j.get("type"), j.get("url") or j.get("application_url"),
-                 ext=_ext("workable", j.get("shortcode"))) for j in jobs]
+                 ext=_ext("workable", j.get("shortcode")),
+                 posted=j.get("published_on") or j.get("created_at")) for j in jobs]
     return Result("ok", rows, "workable", api, r.status_code, raw_rows=len(jobs))
 
 
@@ -262,7 +280,7 @@ def personio(url: str, config: dict) -> Result:
         rows.append(_row(text("name"), text("office"), text("department"),
                          text("employmentType"),
                          f"https://{sub}.jobs.personio.com/job/{text('id')}" if text("id") else None,
-                         ext=_ext("personio", text("id"))))
+                         ext=_ext("personio", text("id")), posted=text("createdAt")))
     return Result("ok", rows, "personio", api, r.status_code, raw_rows=len(positions))
 
 

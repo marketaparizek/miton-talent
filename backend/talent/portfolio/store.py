@@ -318,6 +318,10 @@ def _write_role(role: PortfolioRole, row: dict, run: PortfolioRun, now: dt.datet
     role.role_key = row["role_key"]
     role.key_tier = row["key_tier"]
     role.external_ids = list(row.get("external_ids") or [])
+    if row.get("posted_at"):
+        posted = dt.date.fromisoformat(row["posted_at"])
+        # A requisition is as old as its oldest posting, so this only moves back.
+        role.posted_at = min(role.posted_at, posted) if role.posted_at else posted
     role.location = row.get("location")
     role.locations = row.get("locations") or ([row["location"]] if row.get("location") else [])
     role.team = row.get("team")
@@ -331,7 +335,7 @@ def _write_role(role: PortfolioRole, row: dict, run: PortfolioRun, now: dt.datet
     role.last_seen_at = now
     role.last_seen_run_id = run.id
     role.raw = {k: v for k, v in row.items()
-                if k not in {"fingerprint", "locations", "role_key", "key_tier", "aliased",
+                if k not in {"fingerprint", "locations", "role_key", "key_tier", "aliased", "posted_at",
                              "external_ids", "requisition"}}
 
 
@@ -433,7 +437,34 @@ def _company_run_map(session: Session, run_id: int | None) -> dict[int, Portfoli
     return {r.company_id: r for r in rows}
 
 
-def role_dict(role: PortfolioRole) -> dict:
+def open_since(role: PortfolioRole, *, baseline_run_id: int | None = None) -> tuple[dt.date | None, str]:
+    """When this role opened, and how we know.
+
+    ``board``    the employer's own board dated the posting (posted_at)
+    ``seen``     the first run that saw it (or the job it relisted)
+    ``before``   it was already open in the 14 Sep 2026 baseline, so the date
+                 is a floor: "open since at least"
+    The board date wins whenever it is older than what we saw, because it also
+    covers the time before this scraper existed.
+    """
+    seen = role.first_seen_original_at or role.first_seen_at
+    seen_day = seen.date() if seen else None
+    if role.posted_at and (seen_day is None or role.posted_at <= seen_day):
+        return role.posted_at, "board"
+    if baseline_run_id is not None and role.first_seen_run_id == baseline_run_id \
+            and not role.first_seen_original_at:
+        return seen_day, "before"
+    return seen_day, "seen"
+
+
+def _days(since: dt.date | None, until: dt.date | None = None) -> int | None:
+    if since is None:
+        return None
+    return ((until or utcnow().date()) - since).days
+
+
+def role_dict(role: PortfolioRole, *, baseline_run_id: int | None = None) -> dict:
+    since, how = open_since(role, baseline_run_id=baseline_run_id)
     return {
         "title": role.title,
         "location": role.location or "—",
@@ -450,6 +481,10 @@ def role_dict(role: PortfolioRole) -> dict:
         if role.first_seen_at else None,
         "new": role.first_seen_run_id is not None and role.last_seen_run_id == role.first_seen_run_id
         and not role.replaces_role_id,
+        # How long the role has been open. "before" means at least this long.
+        "open_since": since.isoformat() if since else None,
+        "open_since_source": how,
+        "age_days": _days(since),
     }
 
 
@@ -457,6 +492,7 @@ def snapshot(session: Session) -> dict:
     """Everything the dashboard needs, in one dict, shaped like the artifact's DATA."""
     run = last_run(session)
     cruns = _company_run_map(session, run.id if run else None)
+    baseline_id = _baseline_run_id(session)
     roles_by_company: dict[int, list[PortfolioRole]] = {}
     for role in open_roles(session):
         roles_by_company.setdefault(role.company_id, []).append(role)
@@ -483,7 +519,7 @@ def snapshot(session: Session) -> dict:
             # nothing to read and is not a failed fetch.
             "verified": bool(crun and crun.status in VERIFIED_STATUSES),
             "checked_at": crun.run.started_at.isoformat() if crun and crun.run else None,
-            "roles": [role_dict(r) for r in roles],
+            "roles": [role_dict(r, baseline_run_id=baseline_id) for r in roles],
         })
 
     return {
@@ -518,6 +554,10 @@ def _company_note(company: PortfolioCompany, crun: PortfolioCompanyRun | None) -
     return " · ".join(parts) or None
 
 
+def _baseline_run_id(session: Session) -> int | None:
+    return session.scalar(select(func.min(PortfolioRun.id)).where(PortfolioRun.actor == "seed"))
+
+
 def changes(session: Session, run: PortfolioRun) -> dict:
     """New and closed since the run before this one, plus who started and stopped."""
     prev = previous_run(session, run)
@@ -541,9 +581,15 @@ def changes(session: Session, run: PortfolioRun) -> dict:
         )
     }
     names = {c.id: c.name for c in companies(session, active_only=False)}
+    baseline_id = _baseline_run_id(session)
 
     def out(role: PortfolioRole) -> dict:
+        since, how = open_since(role, baseline_run_id=baseline_id)
+        until = role.closed_at.date() if role.closed_at else None
         return {
+            # For a closed role: how long it was open (time to close).
+            "open_days": _days(since, until),
+            "open_since_source": how,
             "title": role.title,
             "company": names.get(role.company_id, "?"),
             "location": role.location or "—",

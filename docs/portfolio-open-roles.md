@@ -61,6 +61,20 @@ button on the page.
    `changes.relisted`, not to new or closed, and the new posting keeps the
    original first-seen date. Nothing is merged, so a wrong pair stays visible.
 
+### How old a role is
+
+Every open role carries `open_since`, `age_days` and `open_since_source`;
+a closed role in the diff carries `open_days` (time to close).
+
+* `board`: the ATS dated the posting (`posted_at`; Ashby, SmartRecruiters,
+  Recruitee, Greenhouse, Lever, Workable, Personio). This reaches back before
+  the scraper existed. A requisition takes its oldest posting's date.
+* `seen`: no board date, so the first run that saw it (or the job it relisted).
+* `before`: already open in the 14 Sep 2026 baseline; the age is a floor.
+
+A repost on the board resets the board's own date; a relisting caught here
+(`relisted`) keeps the original.
+
 ### The rule that matters
 
 **A page that could not be read closes nothing.** A 403, a timeout, a parse

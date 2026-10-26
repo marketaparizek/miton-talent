@@ -35,6 +35,7 @@ from typing import Optional
 from sqlalchemy import (
     JSON,
     Boolean,
+    Date,
     DateTime,
     ForeignKey,
     Index,
@@ -391,6 +392,9 @@ class PortfolioRole(Base):
     is_technical: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     cc: Mapped[Optional[str]] = mapped_column(String(8))
 
+    # When the board says the posting went up (oldest posting of a requisition).
+    # Only ATS boards say; for the rest, age runs from first_seen.
+    posted_at: Mapped[Optional[dt.date]] = mapped_column(Date)
     first_seen_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
     first_seen_run_id: Mapped[Optional[int]] = mapped_column(Integer, index=True)
     last_seen_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)

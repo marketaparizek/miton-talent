@@ -1,4 +1,4 @@
-"""portfolio roles: identity by board id, title history, relisted and merged postings
+"""portfolio roles: identity by board id, title history, relisted and merged postings, posting date
 
 Revision ID: d3e4f5a6b7c8
 Revises: c2d3e4f5a6b7
@@ -29,12 +29,13 @@ def upgrade() -> None:
         t.add_column(sa.Column('first_seen_original_at', sa.DateTime(timezone=True), nullable=True))
         t.add_column(sa.Column('relist_reason', sa.String(length=32), nullable=True))
         t.add_column(sa.Column('merged_into_role_id', sa.Integer(), nullable=True))
+        t.add_column(sa.Column('posted_at', sa.Date(), nullable=True))
         t.create_index('ix_portfolio_roles_role_key', ['role_key'])
 
 
 def downgrade() -> None:
     with op.batch_alter_table('portfolio_roles') as t:
         t.drop_index('ix_portfolio_roles_role_key')
-        for col in ('merged_into_role_id', 'relist_reason', 'first_seen_original_at', 'replaces_role_id',
+        for col in ('posted_at', 'merged_into_role_id', 'relist_reason', 'first_seen_original_at', 'replaces_role_id',
                     'title_history', 'external_ids', 'key_tier', 'role_key'):
             t.drop_column(col)

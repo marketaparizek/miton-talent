@@ -808,3 +808,50 @@ def test_a_retitled_posting_inside_a_requisition_keeps_its_role(session):
     assert (outcome["new"], outcome["closed"]) == (0, 0)
     role = session.query(PortfolioRole).filter_by(closed_at=None).one()
     assert role.key_tier == "req" and [h["title"] for h in role.title_history] == ["Flow Lead"]
+
+
+# --- how long a role has been open --------------------------------------------
+
+
+def test_board_dates_parse():
+    assert adapters._date("2026-10-23T12:37:47.594+00:00") == "2026-10-23"
+    assert adapters._date("2026-10-15 09:38:10 UTC") == "2026-10-15"
+    assert adapters._date(1760000000000) == "2025-10-09"
+    assert adapters._date(None) is None and adapters._date("soon") is None
+
+
+def test_age_comes_from_the_board_when_it_is_older_than_our_first_sighting(session):
+    comp = company(session)
+    scrape_rows(session, comp, [row("Java Developer", external_id="x:1", posted_at="2026-04-16")])
+    entry = next(c for c in store.snapshot(session)["companies"] if c["slug"] == "acme")
+    r = entry["roles"][0]
+    assert (r["open_since"], r["open_since_source"]) == ("2026-04-16", "board")
+    assert r["age_days"] >= 190
+
+
+def test_a_requisition_is_as_old_as_its_oldest_posting(session):
+    from talent.portfolio.collapse import group_requisitions
+    rows = group_requisitions(collapse([
+        row("Head of Applied Science", "Prague", external_id="a:1", posted_at="2026-09-01"),
+        row("Head of Applied Science", "München", external_id="a:2", posted_at="2026-06-01"),
+    ]), ROHLIK_RULES)
+    assert rows[0]["posted_at"] == "2026-06-01"
+
+
+def test_without_a_board_date_age_runs_from_first_seen_and_baseline_is_a_floor(session):
+    comp = company(session)
+    scrape_into(session, comp, ["Recruiter"], run_actor="seed")
+    scrape_into(session, comp, ["Recruiter", "Designer"])
+    roles = {r["title"]: r for r in next(c for c in store.snapshot(session)["companies"]
+                                         if c["slug"] == "acme")["roles"]}
+    assert roles["Recruiter"]["open_since_source"] == "before"
+    assert roles["Designer"]["open_since_source"] == "seen"
+    assert roles["Designer"]["age_days"] == 0
+
+
+def test_a_closed_role_reports_how_long_it_was_open(session):
+    comp = company(session)
+    scrape_rows(session, comp, [row("Analyst", external_id="x:1", posted_at="2026-09-01")])
+    run2, _ = scrape_rows(session, comp, [])
+    closed = store.changes(session, run2)["closed"][0]
+    assert closed["open_days"] == (dt.datetime.now(dt.timezone.utc).date() - dt.date(2026, 9, 1)).days

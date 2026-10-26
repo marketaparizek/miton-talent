@@ -140,6 +140,9 @@ def collapse(rows: list[dict], aliases: dict | None = None) -> list[dict]:
         for field_name in ("team", "employment_type", "url", "fn", "cc"):
             if not existing.get(field_name) and row.get(field_name):
                 existing[field_name] = row[field_name]
+        # The requisition is as old as its oldest posting.
+        if row.get("posted_at") and (not existing.get("posted_at") or row["posted_at"] < existing["posted_at"]):
+            existing["posted_at"] = row["posted_at"]
     for row in out.values():
         row["location"] = " / ".join(row["locations"]) if row["locations"] else None
 
@@ -242,6 +245,9 @@ def group_requisitions(rows: list[dict], rules: dict) -> list[dict]:
         for field_name in ("team", "employment_type", "url", "fn", "cc"):
             if not existing.get(field_name) and row.get(field_name):
                 existing[field_name] = row[field_name]
+        # The requisition is as old as its oldest posting.
+        if row.get("posted_at") and (not existing.get("posted_at") or row["posted_at"] < existing["posted_at"]):
+            existing["posted_at"] = row["posted_at"]
     for row in out.values():
         row["location"] = " / ".join(row["locations"]) if row["locations"] else None
         row["fingerprint"] = row["fingerprint"][:255]

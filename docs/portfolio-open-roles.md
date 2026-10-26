@@ -119,6 +119,7 @@ Per-company knobs live in `config`:
 | `board` | the ATS board name when the URL does not carry it (`{"board": "rohlik"}`) |
 | `aliases` | merge two fingerprints into one requisition (cross-language copies) |
 | `requisitions` | `{"sites": [...], "same_job": [[regex, label], ...]}`: count positions, not postings |
+| `manual_check` | `{"date": "YYYY-MM-DD", "roles": 0, "by": "..."}`: a person checked a page we cannot read and found nothing open. For 28 days that page counts as a known zero (status `manual`), then it is unread again |
 | `fallback_html` | `false` turns off "if the ATS board fails, read the page" |
 | `skip` | do not scrape this company at all |
 

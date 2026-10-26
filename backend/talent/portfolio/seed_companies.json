@@ -194,7 +194,14 @@
    "desc": "Music software for psychedelic clinics. Wavepaths composes the music with AI.",
    "not_on_site": false,
    "group_name": null,
-   "roles": []
+   "roles": [],
+   "config": {
+    "manual_check": {
+     "date": "2026-10-26",
+     "roles": 0,
+     "by": "marketa"
+    }
+   }
   },
   {
    "slug": "aim",
@@ -314,7 +321,14 @@
    "desc": "Comprehensive analysis of physical infrastructure with AI. The goal is to make the physical world as searchable as the digital one.",
    "not_on_site": false,
    "group_name": null,
-   "roles": []
+   "roles": [],
+   "config": {
+    "manual_check": {
+     "date": "2026-10-26",
+     "roles": 0,
+     "by": "marketa"
+    }
+   }
   },
   {
    "slug": "whisper",
@@ -1035,7 +1049,14 @@
    "desc": "The largest Czech crypto exchange. Since its founding in 2014 Coinmate has brokered trades worth CZK 42 billion.",
    "not_on_site": false,
    "group_name": null,
-   "roles": []
+   "roles": [],
+   "config": {
+    "manual_check": {
+     "date": "2026-10-26",
+     "roles": 0,
+     "by": "marketa"
+    }
+   }
   },
   {
    "slug": "confirmo",

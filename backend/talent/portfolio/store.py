@@ -27,11 +27,33 @@ from talent.portfolio.collapse import collapse, group_requisitions
 
 log = logging.getLogger("miton-talent.portfolio.store")
 
-# A run read this company's page and may close its roles.
-READ_STATUSES = {"ok"}
+# A run read this company's page and may close its roles. "manual" is a page
+# the scraper cannot read but a person checked recently (MANUAL_CHECK_VALID):
+# their "nothing open" is positive evidence, as good as a read.
+READ_STATUSES = {"ok", "manual"}
 # The count can be trusted: either the page was read, or there is no page to
 # read and the zero is a known zero. Everything else is last week's number.
-VERIFIED_STATUSES = {"ok", "no_careers_page"}
+VERIFIED_STATUSES = {"ok", "no_careers_page", "manual"}
+# How long a person's "checked the page, nothing open" stands in for a read.
+# After that the company is unread again, so a hand check cannot go stale
+# without anyone noticing.
+MANUAL_CHECK_VALID = dt.timedelta(days=28)
+
+
+def _manual_check(company: PortfolioCompany) -> dt.date | None:
+    """The date of a recent hand check that found nothing open, if any.
+
+    Set in seed_companies.json: ``"config": {"manual_check": {"date": "2026-10-26",
+    "roles": 0, "by": "marketa"}}``. Only a zero is supported: a person
+    listing roles by hand belongs in a careers page we can read."""
+    check = (company.config or {}).get("manual_check") or {}
+    try:
+        day = dt.date.fromisoformat(check.get("date", ""))
+    except ValueError:
+        return None
+    if check.get("roles", 0) != 0:
+        return None
+    return day if utcnow().date() - day <= MANUAL_CHECK_VALID else None
 
 
 # --- companies ---------------------------------------------------------------
@@ -171,6 +193,11 @@ def record_company_result(
     """
     rows = list(rows or [])
     aliases = (company.config or {}).get("aliases") or {}
+
+    checked = _manual_check(company) if status in {"blocked", "failed"} else None
+    if checked:
+        note = f"Checked by hand on {checked.isoformat()}: nothing open"
+        status, rows = "manual", []
 
     if status in READ_STATUSES:
         rows = collapse(rows, aliases)

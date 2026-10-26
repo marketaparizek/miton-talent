@@ -888,3 +888,34 @@ def test_titles_that_only_look_technical(title, fn):
     rows = [{"title": title}]
     classify.classify_rows(rows, company="Acme")
     assert rows[0]["fn"] == fn
+
+
+# --- a page we cannot read, checked by hand ------------------------------------
+
+
+def test_a_recent_hand_check_turns_a_blocked_page_into_a_known_zero(session):
+    today = dt.datetime.now(dt.timezone.utc).date()
+    comp = company(session, config={"manual_check": {"date": today.isoformat(), "roles": 0}})
+    scrape_into(session, comp, ["Old Role"])
+    _, outcome = scrape_into(session, comp, [], status="blocked")
+    assert outcome["status"] == "manual" and outcome["closed"] == 1
+    entry = next(c for c in store.snapshot(session)["companies"] if c["slug"] == "acme")
+    assert entry["verified"] is True and entry["roles"] == []
+    assert "Checked by hand" in entry["note"]
+
+
+def test_an_old_hand_check_does_not_vouch_for_the_page(session):
+    old = (dt.datetime.now(dt.timezone.utc).date() - dt.timedelta(days=40)).isoformat()
+    comp = company(session, config={"manual_check": {"date": old, "roles": 0}})
+    scrape_into(session, comp, ["Old Role"])
+    _, outcome = scrape_into(session, comp, [], status="blocked")
+    assert outcome["status"] == "blocked" and outcome["closed"] == 0
+    entry = next(c for c in store.snapshot(session)["companies"] if c["slug"] == "acme")
+    assert entry["verified"] is False
+
+
+def test_a_page_that_reads_fine_ignores_the_hand_check(session):
+    today = dt.datetime.now(dt.timezone.utc).date().isoformat()
+    comp = company(session, config={"manual_check": {"date": today, "roles": 0}})
+    _, outcome = scrape_into(session, comp, ["Engineer"])
+    assert outcome["status"] == "ok" and outcome["roles"] == 1

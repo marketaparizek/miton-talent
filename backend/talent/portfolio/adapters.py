@@ -10,7 +10,9 @@ now" - and returns the same shape:
            "blocked"          the host answered but refused us, or served a shell
            "failed"           fetch or parse broke; the count means nothing
 
-A row is {title, location, team, employment_type, url}. Classification and
+A row is {title, location, team, employment_type, url, external_id}. The id is
+the board's own id for the posting, ``<adapter>:<id>``, and it is what keeps a
+renamed posting the same role (identity.py). Classification and
 collapsing happen later (classify.py, collapse.py), so an adapter only reads.
 
 Most portfolio companies sit on an ATS with a public JSON board, which is exact
@@ -78,14 +80,20 @@ def _client() -> httpx.Client:
     )
 
 
-def _row(title, location=None, team=None, employment_type=None, url=None) -> dict:
+def _row(title, location=None, team=None, employment_type=None, url=None, *, ext=None) -> dict:
     return {
         "title": (title or "").strip(),
         "location": (location or "").strip() or None,
         "team": (team or "").strip() or None,
         "employment_type": (employment_type or "").strip() or None,
         "url": (url or "").strip() or None,
+        "external_id": ext,
     }
+
+
+def _ext(adapter: str, value) -> str | None:
+    value = str(value).strip() if value is not None else ""
+    return f"{adapter}:{value.lower()}" if value else None
 
 
 def _slug_from_path(url: str, *, index: int = 0) -> str:
@@ -116,7 +124,8 @@ def recruitee(url: str, config: dict) -> Result:
              o.get("city") or o.get("location") or ("Remote" if o.get("remote") else None),
              o.get("department"),
              o.get("employment_type_code"),
-             o.get("careers_url") or o.get("careers_apply_url"))
+             o.get("careers_url") or o.get("careers_apply_url"),
+             ext=_ext("recruitee", o.get("id")))
         for o in offers
         if str(o.get("status", "published")).lower() == "published"
     ]
@@ -149,7 +158,7 @@ def ashby(url: str, config: dict) -> Result:
         for loc in locations or [None]:
             name = loc.get("location") if isinstance(loc, dict) else loc
             rows.append(_row(j.get("title"), name, j.get("team") or j.get("department"),
-                             j.get("employmentType"), j.get("jobUrl")))
+                             j.get("employmentType"), j.get("jobUrl"), ext=_ext("ashby", j.get("id"))))
     return Result("ok", rows, "ashby", api, r.status_code, raw_rows=len(jobs))
 
 
@@ -175,7 +184,8 @@ def smartrecruiters(url: str, config: dict) -> Result:
                 rows.append(_row(p.get("name"), where,
                                  (p.get("department") or {}).get("label") or (p.get("function") or {}).get("label"),
                                  (p.get("typeOfEmployment") or {}).get("label"),
-                                 f"https://jobs.smartrecruiters.com/{board}/{p.get('id')}"))
+                                 f"https://jobs.smartrecruiters.com/{board}/{p.get('id')}",
+                                 ext=_ext("smartrecruiters", p.get("id"))))
             total = data.get("totalFound", len(rows))
             offset += len(content)
             if not content or offset >= (total or 0):
@@ -194,7 +204,7 @@ def greenhouse(url: str, config: dict) -> Result:
     jobs = r.json().get("jobs", [])
     rows = [_row(j.get("title"), (j.get("location") or {}).get("name"),
                  ", ".join(d.get("name", "") for d in (j.get("departments") or [])) or None,
-                 None, j.get("absolute_url")) for j in jobs]
+                 None, j.get("absolute_url"), ext=_ext("greenhouse", j.get("id"))) for j in jobs]
     return Result("ok", rows, "greenhouse", api, r.status_code, raw_rows=len(jobs))
 
 
@@ -209,7 +219,8 @@ def lever(url: str, config: dict) -> Result:
     jobs = r.json()
     rows = [_row(j.get("text"), (j.get("categories") or {}).get("location"),
                  (j.get("categories") or {}).get("team"),
-                 (j.get("categories") or {}).get("commitment"), j.get("hostedUrl")) for j in jobs]
+                 (j.get("categories") or {}).get("commitment"), j.get("hostedUrl"),
+                 ext=_ext("lever", j.get("id"))) for j in jobs]
     return Result("ok", rows, "lever", api, r.status_code, raw_rows=len(jobs))
 
 
@@ -223,7 +234,8 @@ def workable(url: str, config: dict) -> Result:
                       error=f"HTTP {r.status_code}")
     jobs = r.json().get("jobs", [])
     rows = [_row(j.get("title"), j.get("location") or j.get("city"), j.get("department"),
-                 j.get("type"), j.get("url") or j.get("application_url")) for j in jobs]
+                 j.get("type"), j.get("url") or j.get("application_url"),
+                 ext=_ext("workable", j.get("shortcode"))) for j in jobs]
     return Result("ok", rows, "workable", api, r.status_code, raw_rows=len(jobs))
 
 
@@ -249,7 +261,8 @@ def personio(url: str, config: dict) -> Result:
             return (el.text or "").strip() if el is not None and el.text else None
         rows.append(_row(text("name"), text("office"), text("department"),
                          text("employmentType"),
-                         f"https://{sub}.jobs.personio.com/job/{text('id')}" if text("id") else None))
+                         f"https://{sub}.jobs.personio.com/job/{text('id')}" if text("id") else None,
+                         ext=_ext("personio", text("id"))))
     return Result("ok", rows, "personio", api, r.status_code, raw_rows=len(positions))
 
 
@@ -280,7 +293,7 @@ def recruitis(url: str, config: dict) -> Result:
         team = chips[1] if len(chips) > 1 else None
         contract = chips[2] if len(chips) > 2 else None
         rows.append(_row(unescape(_TAGS_ONLY.sub("", title.group(1))), place, team, contract,
-                         f"https://jobs.recruitis.io{link.group(1)}"))
+                         f"https://jobs.recruitis.io{link.group(1)}", ext=_ext("recruitis", link.group(2))))
     if not rows and "job" not in page:
         return Result("blocked", adapter="recruitis", source_url=url, http_status=r.status_code,
                       error="board markup not recognised")
@@ -329,7 +342,8 @@ def startupjobs(url: str, config: dict) -> Result:
             before = chunks[:chunks.index(contract)]
             place = next((x for x in reversed(before)
                           if not re.search(r"(?i)hybrid|onsite|on-site|remote|kč|czk|eur|/ měsíc|month", x)), None)
-        rows.append(_row(chunks[1], place, None, contract, "https://www.startupjobs.cz" + match.group(1)))
+        rows.append(_row(chunks[1], place, None, contract, "https://www.startupjobs.cz" + match.group(1),
+                         ext=_ext("startupjobs", ad_id)))
     return Result("ok", rows, "startupjobs", url, r.status_code, raw_rows=len(cards))
 
 

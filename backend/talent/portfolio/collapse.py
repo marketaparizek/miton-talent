@@ -91,8 +91,9 @@ def apply_aliases(fp: str, aliases: dict | None) -> str:
 def collapse(rows: list[dict], aliases: dict | None = None) -> list[dict]:
     """Merge rows that are the same requisition.
 
-    Two rows are one requisition when the title normalises to the same
-    fingerprint AND they come from the same posting URL. That second half is
+    Two rows with the same board id (``external_id``) are one posting, whatever
+    their titles. Without an id, two rows are one requisition when the title
+    normalises to the same fingerprint AND they come from the same posting URL. That second half is
     what keeps an honest count: a board that repeats one requisition per city
     repeats the same URL (and an adapter that expands secondary locations emits
     the same URL too), while two shops hiring the same job under the same title
@@ -113,7 +114,12 @@ def collapse(rows: list[dict], aliases: dict | None = None) -> list[dict]:
         # merged across postings; nothing else is.
         alias_members = set(aliases or {}) | set((aliases or {}).values())
         aliased = fp in alias_members or raw_fp in alias_members
-        key = fp if aliased else f"{fp}\x00{row.get('url') or ''}"
+        if aliased:
+            key = fp
+        elif row.get("external_id"):
+            key = f"id\x00{row['external_id']}"
+        else:
+            key = f"{fp}\x00{row.get('url') or ''}"
         loc = (row.get("location") or "").strip()
         existing = out.get(key)
         if existing is None:
@@ -121,6 +127,7 @@ def collapse(rows: list[dict], aliases: dict | None = None) -> list[dict]:
             merged["title"] = title
             merged["fingerprint"] = fp
             merged["locations"] = [loc] if loc else []
+            merged["aliased"] = aliased
             out[key] = merged
             continue
         if loc and loc not in existing["locations"]:
@@ -142,8 +149,17 @@ def collapse(rows: list[dict], aliases: dict | None = None) -> list[dict]:
     for fp, group in by_fp.items():
         if len(group) < 2:
             continue
+        used: set[str] = set()
         for row in group:
             mark = row["locations"][0] if row["locations"] else (row.get("url") or "")
             mark = _NONWORD.sub("-", strip_diacritics(str(mark)).lower()).strip("-")
-            row["fingerprint"] = f"{fp}#{mark}"[:255]
+            candidate = f"{fp}#{mark}"[:255]
+            # Two postings under one title in one place (two shifts at one
+            # warehouse) still need two fingerprints; the board id, or failing
+            # that the order on the board, tells them apart.
+            if candidate in used:
+                extra = _NONWORD.sub("-", str(row.get("external_id") or row.get("url") or len(used))).strip("-")
+                candidate = f"{fp}#{mark}#{extra}"[:255]
+            used.add(candidate)
+            row["fingerprint"] = candidate
     return rows_out

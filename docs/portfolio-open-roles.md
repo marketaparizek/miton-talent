@@ -41,9 +41,18 @@ button on the page.
    asked, in one batched call, only about titles the rules cannot place. Every
    role records which of the two decided it (`fn_source`), so a wrong bucket is
    findable. Technical = Engineering & AI, Data & Analytics, Product & Design.
-4. **Diff**: a role seen again keeps its row and its `first_seen_at`; a role
-   that is gone gets `closed_at`. That is the whole "changes this week" panel,
-   with no snapshot table.
+4. **Match** each role to last week's by identity, not by title
+   (`identity.py`). Best first: the board's own posting id (`ats:`), a URL
+   that belongs to this one role (`url:`), the normalised title (`heur:`). The
+   tier is stored on the role. A posting that keeps its id and changes its
+   title stays one role and gains a `title_history` entry.
+5. **Diff**: a role seen again keeps its row and its `first_seen_at`; a role
+   that is gone gets `closed_at`. Before an opening and a closure are scored,
+   they are checked for **relisting**: the same title under a new id in the
+   same run, exactly one posting replaced by one at the same place and function,
+   or a title that closed less than four weeks ago. Those pairs go to
+   `changes.relisted`, not to new or closed, and the new posting keeps the
+   original first-seen date. Nothing is merged, so a wrong pair stays visible.
 
 ### The rule that matters
 

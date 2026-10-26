@@ -368,7 +368,15 @@ class PortfolioRole(Base):
         Integer, ForeignKey("portfolio_companies.id", ondelete="CASCADE"), nullable=False, index=True
     )
     fingerprint: Mapped[str] = mapped_column(String(255), nullable=False)
+    # Identity across runs (portfolio/identity.py): "ats:..." from a board id,
+    # "url:..." from a role-specific URL, "heur:..." from the title. NULL only on
+    # rows written before identity existed; the next run adopts them by title.
+    role_key: Mapped[Optional[str]] = mapped_column(String(600), index=True)
+    key_tier: Mapped[Optional[str]] = mapped_column(String(8))
+    external_id: Mapped[Optional[str]] = mapped_column(String(255))
     title: Mapped[str] = mapped_column(String(500), nullable=False)
+    # Earlier titles of the same posting, oldest first: [{"title", "until"}].
+    title_history: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
     location: Mapped[Optional[str]] = mapped_column(String(255))     # display value
     locations: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
     team: Mapped[Optional[str]] = mapped_column(String(255))
@@ -389,6 +397,12 @@ class PortfolioRole(Base):
     # A failed fetch never closes a role.
     closed_at: Mapped[Optional[dt.datetime]] = mapped_column(DateTime(timezone=True), index=True)
     closed_run_id: Mapped[Optional[int]] = mapped_column(Integer, index=True)
+    # A posting that replaced another in the same run (new id, same job) or came
+    # back within REPOST_WINDOW of closing. Such a pair is not hiring news: the
+    # diff shows it as "relisted", and the role's age runs from the original.
+    replaces_role_id: Mapped[Optional[int]] = mapped_column(Integer)
+    first_seen_original_at: Mapped[Optional[dt.datetime]] = mapped_column(DateTime(timezone=True))
+    relist_reason: Mapped[Optional[str]] = mapped_column(String(32))  # same_title / same_slot / repost
     raw: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
 
     company: Mapped["PortfolioCompany"] = relationship("PortfolioCompany", back_populates="roles")

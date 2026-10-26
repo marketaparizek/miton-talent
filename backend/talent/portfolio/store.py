@@ -13,7 +13,7 @@ import logging
 from typing import Iterable, Optional
 
 from sqlalchemy import func, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, aliased
 
 from talent.models import (
     PortfolioCompany,
@@ -22,7 +22,7 @@ from talent.models import (
     PortfolioRun,
     utcnow,
 )
-from talent.portfolio import classify
+from talent.portfolio import classify, identity
 from talent.portfolio.collapse import apply_aliases, collapse, fingerprint
 
 log = logging.getLogger("miton-talent.portfolio.store")
@@ -83,16 +83,31 @@ def finish_run(session: Session, run: PortfolioRun, *, status: str = "done", err
     return run
 
 
+def _opened_in(run_id: int):
+    """Roles that opened in this run as news: a relisted posting is not."""
+    return (PortfolioRole.first_seen_run_id == run_id, PortfolioRole.replaces_role_id.is_(None))
+
+
+def _closed_in(run_id: int):
+    """Roles that closed in this run as news: one a new posting replaced in the
+    same run is not."""
+    replacer = aliased(PortfolioRole)
+    replaced_now = select(replacer.replaces_role_id).where(
+        replacer.first_seen_run_id == run_id, replacer.replaces_role_id.is_not(None)
+    )
+    return (PortfolioRole.closed_run_id == run_id, PortfolioRole.id.not_in(replaced_now))
+
+
+def _relisted_in(run_id: int):
+    return (PortfolioRole.first_seen_run_id == run_id, PortfolioRole.replaces_role_id.is_not(None))
+
+
 def run_totals(session: Session, run_id: int) -> dict:
     roles_total = session.scalar(
         select(func.count(PortfolioRole.id)).where(PortfolioRole.closed_at.is_(None))
     ) or 0
-    roles_new = session.scalar(
-        select(func.count(PortfolioRole.id)).where(PortfolioRole.first_seen_run_id == run_id)
-    ) or 0
-    roles_closed = session.scalar(
-        select(func.count(PortfolioRole.id)).where(PortfolioRole.closed_run_id == run_id)
-    ) or 0
+    roles_new = session.scalar(select(func.count(PortfolioRole.id)).where(*_opened_in(run_id))) or 0
+    roles_closed = session.scalar(select(func.count(PortfolioRole.id)).where(*_closed_in(run_id))) or 0
     companies_failed = session.scalar(
         select(func.count(PortfolioCompanyRun.id)).where(
             PortfolioCompanyRun.run_id == run_id,
@@ -133,15 +148,6 @@ def open_roles(session: Session, company_id: int | None = None) -> list[Portfoli
     return list(session.scalars(stmt.order_by(PortfolioRole.title)))
 
 
-def _open_by_fingerprint(session: Session, company_id: int) -> dict[str, PortfolioRole]:
-    out: dict[str, PortfolioRole] = {}
-    for role in open_roles(session, company_id):
-        # Should not happen (the write path keeps one open row per fingerprint),
-        # but if it ever did, the older row is closed below rather than ignored.
-        out.setdefault(role.fingerprint, role)
-    return out
-
-
 def record_company_result(
     session: Session,
     run: PortfolioRun,
@@ -174,7 +180,7 @@ def record_company_result(
     else:
         # Page not read: nothing is created, nothing is closed, nothing is touched.
         new_count = closed_count = 0
-        roles_found = len(_open_by_fingerprint(session, company.id))
+        roles_found = len(open_roles(session, company.id))
 
     session.add(PortfolioCompanyRun(
         run_id=run.id,
@@ -195,51 +201,189 @@ def record_company_result(
 
 def _apply_rows(session: Session, run: PortfolioRun, company: PortfolioCompany,
                 rows: list[dict]) -> tuple[int, int]:
-    existing = _open_by_fingerprint(session, company.id)
-    seen: set[str] = set()
-    new_count = 0
-    now = utcnow()
+    """Match this run's rows to the company's open roles, then open and close.
+
+    Matching goes by ``role_key`` (identity.py), so a posting that keeps its id
+    and changes its title stays one role and only gains a title_history entry.
+    A role written before identity existed has no key yet and is adopted by its
+    fingerprint, once, which is what keeps the first run after a deploy quiet.
+
+    What is left unmatched on both sides is checked for relisting before it is
+    scored as an opening and a closure: see ``_pair_relisted``.
+    """
+    identity.assign_keys(rows, careers_url=company.careers_url)
+    existing = open_roles(session, company.id)
+    by_key = {r.role_key: r for r in existing if r.role_key}
+    matched: dict[int, dict] = {}       # role id -> row
+    unmatched_rows: list[dict] = []
+    seen_keys: set[str] = set()
 
     for row in rows:
-        fp = row.get("fingerprint") or apply_aliases(
-            fingerprint(row.get("title", "")), (company.config or {}).get("aliases")
-        )
-        if fp in seen:          # two rows collapsed onto one fingerprint
+        if row["role_key"] in seen_keys:
             continue
-        seen.add(fp)
-        role = existing.get(fp)
-        if role is None:
-            role = PortfolioRole(
-                company_id=company.id,
-                fingerprint=fp,
-                first_seen_at=now,
-                first_seen_run_id=run.id,
-            )
-            session.add(role)
-            new_count += 1
-        role.title = row.get("title") or role.title
-        role.location = row.get("location")
-        role.locations = row.get("locations") or ([row["location"]] if row.get("location") else [])
-        role.team = row.get("team")
-        role.employment_type = row.get("employment_type")
-        role.url = row.get("url")
-        if row.get("fn"):
-            role.fn = row["fn"]
-            role.fn_source = row.get("fn_source") or "rules"
-            role.is_technical = bool(row.get("is_technical"))
-        role.cc = row.get("cc") or role.cc
-        role.last_seen_at = now
-        role.last_seen_run_id = run.id
-        role.raw = {k: v for k, v in row.items() if k not in {"fingerprint", "locations"}}
+        seen_keys.add(row["role_key"])
+        role = by_key.get(row["role_key"])
+        if role is not None and role.id not in matched:
+            matched[role.id] = row
+        else:
+            unmatched_rows.append(row)
 
-    closed_count = 0
-    for fp, role in existing.items():
-        if fp not in seen:
-            role.closed_at = now
-            role.closed_run_id = run.id
-            closed_count += 1
+    # Adoption by fingerprint: only for a role whose identity is weaker than a
+    # board id (no key yet, a URL, or the title). Two different board ids under
+    # one title are two postings; whether they are one job is _pair_relisted's
+    # question, and it never merges them silently.
+    leftovers = [r for r in existing if r.id not in matched and r.key_tier != "ats"]
+    by_fp = {}
+    for role in leftovers:
+        by_fp.setdefault(role.fingerprint, role)
+    still_unmatched = []
+    for row in unmatched_rows:
+        role = by_fp.pop(row["fingerprint"], None)
+        if role is not None and role.id not in matched:
+            matched[role.id] = row
+        else:
+            still_unmatched.append(row)
+
+    now = utcnow()
+    roles_by_id = {r.id: r for r in existing}
+    for role_id, row in matched.items():
+        _write_role(roles_by_id[role_id], row, run, now)
+
+    to_close = [r for r in existing if r.id not in matched]
+    new_roles = []
+    for row in still_unmatched:
+        role = PortfolioRole(
+            company_id=company.id,
+            fingerprint=row["fingerprint"],
+            first_seen_at=now,
+            first_seen_run_id=run.id,
+            title_history=[],
+        )
+        session.add(role)
+        _write_role(role, row, run, now)
+        new_roles.append(role)
+    for role in to_close:
+        role.closed_at = now
+        role.closed_run_id = run.id
     session.flush()
-    return new_count, closed_count
+
+    _pair_relisted(session, company, new_roles, to_close)
+    session.flush()
+    replaced = {r.replaces_role_id for r in new_roles if r.replaces_role_id}
+    return (sum(1 for r in new_roles if not r.replaces_role_id),
+            sum(1 for r in to_close if r.id not in replaced))
+
+
+def _write_role(role: PortfolioRole, row: dict, run: PortfolioRun, now: dt.datetime) -> None:
+    title = row.get("title") or role.title
+    if role.title and title and role.title != title:
+        role.title_history = list(role.title_history or []) + [
+            {"title": role.title, "until": now.date().isoformat()}
+        ]
+    role.title = title
+    role.role_key = row["role_key"]
+    role.key_tier = row["key_tier"]
+    role.external_id = row.get("external_id")
+    role.location = row.get("location")
+    role.locations = row.get("locations") or ([row["location"]] if row.get("location") else [])
+    role.team = row.get("team")
+    role.employment_type = row.get("employment_type")
+    role.url = row.get("url")
+    if row.get("fn"):
+        role.fn = row["fn"]
+        role.fn_source = row.get("fn_source") or "rules"
+        role.is_technical = bool(row.get("is_technical"))
+    role.cc = row.get("cc") or role.cc
+    role.last_seen_at = now
+    role.last_seen_run_id = run.id
+    role.raw = {k: v for k, v in row.items()
+                if k not in {"fingerprint", "locations", "role_key", "key_tier", "aliased"}}
+
+
+# A posting that closes and comes back inside this window is the same job
+# advertised again, not a new opening.
+REPOST_WINDOW = dt.timedelta(days=28)
+
+
+def _location_key(role: PortfolioRole) -> str:
+    return " / ".join(sorted(l.strip().lower() for l in (role.locations or []) if l)) \
+        or (role.location or "").strip().lower()
+
+
+def _pair_relisted(session: Session, company: PortfolioCompany,
+                   new_roles: list[PortfolioRole], closed: list[PortfolioRole]) -> None:
+    """Mark postings that replace another one instead of scoring open + close.
+
+    Three shapes, all seen at Rohlik or Knihobot:
+
+    * ``same_title``  a posting closed and one with the same title opened in
+                      the same run (new id, same job).
+    * ``same_slot``   the title changed too, but exactly one posting closed and
+                      exactly one opened at the same place in the same function
+                      ("Area Manager Chrášťany" -> "Area Manager ve skladu
+                      Chrášťany"). Only a one-to-one pair counts: two warehouse
+                      roles closing and two opening at one site stay as they are.
+    * ``repost``      a role with the same title (or the same board id) closed
+                      at this company within REPOST_WINDOW.
+
+    The new role keeps its own row and id; it gets ``replaces_role_id`` and the
+    original first-seen date, and the diff lists the pair as relisted. Nothing is
+    merged, so a wrong pairing is visible and reversible.
+    """
+    def link(new: PortfolioRole, old: PortfolioRole, reason: str) -> None:
+        new.replaces_role_id = old.id
+        new.relist_reason = reason
+        new.first_seen_original_at = old.first_seen_original_at or old.first_seen_at
+
+    open_new = list(new_roles)
+    open_closed = list(closed)
+
+    def base_fp(fp: str) -> str:
+        return (fp or "").split("#", 1)[0]
+
+    # 1. same title, same run
+    for new in list(open_new):
+        hits = [c for c in open_closed if base_fp(c.fingerprint) == base_fp(new.fingerprint)]
+        if len(hits) == 1:
+            link(new, hits[0], "same_title")
+            open_new.remove(new)
+            open_closed.remove(hits[0])
+
+    # 2. one-to-one at the same place and function, same run
+    def slot(role: PortfolioRole) -> tuple:
+        return (_location_key(role), role.fn or "")
+    new_slots: dict[tuple, list] = {}
+    closed_slots: dict[tuple, list] = {}
+    for r in open_new:
+        new_slots.setdefault(slot(r), []).append(r)
+    for r in open_closed:
+        closed_slots.setdefault(slot(r), []).append(r)
+    for key, news in new_slots.items():
+        olds = closed_slots.get(key, [])
+        if key[0] and len(news) == 1 and len(olds) == 1:
+            link(news[0], olds[0], "same_slot")
+            open_new.remove(news[0])
+
+    # 3. back within the window
+    if not open_new:
+        return
+    since = utcnow() - REPOST_WINDOW
+    recent = list(session.scalars(
+        select(PortfolioRole).where(
+            PortfolioRole.company_id == company.id,
+            PortfolioRole.closed_at.is_not(None),
+            PortfolioRole.closed_at >= since,
+        ).order_by(PortfolioRole.closed_at.desc())
+    ))
+    closed_now = {r.id for r in closed}
+    for new in open_new:
+        for old in recent:
+            if old.id in closed_now:
+                continue
+            same_id = new.external_id and new.external_id == old.external_id
+            if same_id or base_fp(old.fingerprint) == base_fp(new.fingerprint):
+                link(new, old, "repost")
+                break
 
 
 # --- reads for the page ------------------------------------------------------
@@ -266,8 +410,11 @@ def role_dict(role: PortfolioRole) -> dict:
         "fn_source": role.fn_source,
         "cc": role.cc or "Other",
         "tech": bool(role.is_technical),
-        "first_seen": role.first_seen_at.date().isoformat() if role.first_seen_at else None,
-        "new": role.first_seen_run_id is not None and role.last_seen_run_id == role.first_seen_run_id,
+        # A relisted posting is as old as the job it replaced.
+        "first_seen": (role.first_seen_original_at or role.first_seen_at).date().isoformat()
+        if role.first_seen_at else None,
+        "new": role.first_seen_run_id is not None and role.last_seen_run_id == role.first_seen_run_id
+        and not role.replaces_role_id,
     }
 
 
@@ -340,13 +487,24 @@ def changes(session: Session, run: PortfolioRun) -> dict:
     """New and closed since the run before this one, plus who started and stopped."""
     prev = previous_run(session, run)
     new_roles = list(session.scalars(
-        select(PortfolioRole).where(PortfolioRole.first_seen_run_id == run.id)
+        select(PortfolioRole).where(*_opened_in(run.id))
         .order_by(PortfolioRole.company_id, PortfolioRole.title)
     ))
     closed_roles = list(session.scalars(
-        select(PortfolioRole).where(PortfolioRole.closed_run_id == run.id)
+        select(PortfolioRole).where(*_closed_in(run.id))
         .order_by(PortfolioRole.company_id, PortfolioRole.title)
     ))
+    relisted_roles = list(session.scalars(
+        select(PortfolioRole).where(*_relisted_in(run.id))
+        .order_by(PortfolioRole.company_id, PortfolioRole.title)
+    ))
+    previous_titles = {
+        r.id: r.title for r in session.scalars(
+            select(PortfolioRole).where(PortfolioRole.id.in_(
+                [r.replaces_role_id for r in relisted_roles] or [-1]
+            ))
+        )
+    }
     names = {c.id: c.name for c in companies(session, active_only=False)}
 
     def out(role: PortfolioRole) -> dict:
@@ -374,6 +532,7 @@ def changes(session: Session, run: PortfolioRun) -> dict:
     if baseline:
         # The imported snapshot is "what was already open", not a week's news.
         new_roles = []
+        relisted_roles = []
 
     return {
         "baseline": baseline,
@@ -385,6 +544,12 @@ def changes(session: Session, run: PortfolioRun) -> dict:
         ) or 0,
         "new": [out(r) for r in new_roles],
         "closed": [out(r) for r in closed_roles],
+        # Same job under a new posting (new id, a retitle, or back within four
+        # weeks). Not hiring news, so it is in neither list above.
+        "relisted": [
+            dict(out(r), previous_title=previous_titles.get(r.replaces_role_id), reason=r.relist_reason)
+            for r in relisted_roles
+        ],
         "started_hiring": started,
         "went_quiet": quiet,
     }

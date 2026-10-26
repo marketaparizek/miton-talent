@@ -216,16 +216,138 @@ def test_started_hiring_is_reported(session):
     assert store.changes(session, run2)["started_hiring"] == ["Acme"]
 
 
-def test_a_role_that_comes_back_is_a_new_row_not_a_resurrection(session):
+def test_a_role_that_comes_back_soon_is_a_relisting_on_a_new_row(session):
     comp = company(session)
     scrape_into(session, comp, ["Backend Engineer"])
     scrape_into(session, comp, [])
     run3, outcome = scrape_into(session, comp, ["Backend Engineer"])
-    assert outcome["new"] == 1
-    rows = session.query(PortfolioRole).filter_by(company_id=comp.id).all()
+    assert outcome["new"] == 0
+    rows = session.query(PortfolioRole).filter_by(company_id=comp.id).order_by(PortfolioRole.id).all()
     assert len(rows) == 2
     assert sum(1 for r in rows if r.closed_at is None) == 1
+    assert rows[1].replaces_role_id == rows[0].id and rows[1].relist_reason == "repost"
+    assert rows[1].first_seen_original_at == rows[0].first_seen_at
+    diff = store.changes(session, run3)
+    assert diff["new"] == []
+    assert [r["title"] for r in diff["relisted"]] == ["Backend Engineer"]
+
+
+def test_a_role_that_comes_back_after_the_window_is_new(session):
+    comp = company(session)
+    scrape_into(session, comp, ["Backend Engineer"])
+    scrape_into(session, comp, [])
+    old = session.query(PortfolioRole).filter_by(company_id=comp.id).one()
+    old.closed_at = old.closed_at - dt.timedelta(days=40)
+    session.flush()
+    run3, outcome = scrape_into(session, comp, ["Backend Engineer"])
+    assert outcome["new"] == 1
     assert [r["title"] for r in store.changes(session, run3)["new"]] == ["Backend Engineer"]
+
+
+# --- identity: board ids, retitles, relisting --------------------------------
+
+
+def scrape_rows(session, comp, rows):
+    run = store.start_run(session, actor="cron", companies_total=1)
+    outcome = store.record_company_result(session, run, comp, status="ok", rows=rows,
+                                          adapter="test", source_url=comp.careers_url)
+    store.finish_run(session, run)
+    return run, outcome
+
+
+def test_a_retitle_under_the_same_board_id_is_the_same_role(session):
+    comp = company(session)
+    scrape_rows(session, comp, [row("Flow Lead", external_id="ashby:5606545e")])
+    run2, outcome = scrape_rows(session, comp, [row("Flow Lead - Romanian Speaking", external_id="ashby:5606545e")])
+    assert (outcome["new"], outcome["closed"]) == (0, 0)
+    role = session.query(PortfolioRole).filter_by(company_id=comp.id).one()
+    assert role.title == "Flow Lead - Romanian Speaking"
+    assert [h["title"] for h in role.title_history] == ["Flow Lead"]
+    assert role.key_tier == "ats"
+    diff = store.changes(session, run2)
+    assert diff["new"] == diff["closed"] == diff["relisted"] == []
+
+
+def test_a_new_board_id_in_the_same_slot_is_relisted_not_hiring(session):
+    comp = company(session)
+    scrape_rows(session, comp, [row("Area Manager Chrášťany", "Chrášťany", external_id="ashby:775720f0"),
+                                row("Accountant", "Prague", external_id="ashby:aaaa")])
+    run2, outcome = scrape_rows(session, comp, [
+        row("Area Manager ve skladu Chrášťany", "Chrášťany", external_id="ashby:4ee447a9"),
+        row("Accountant", "Prague", external_id="ashby:aaaa"),
+    ])
+    assert (outcome["new"], outcome["closed"]) == (0, 0)
+    diff = store.changes(session, run2)
+    assert diff["new"] == [] and diff["closed"] == []
+    assert diff["relisted"][0]["previous_title"] == "Area Manager Chrášťany"
+    assert diff["relisted"][0]["reason"] == "same_slot"
+    run = session.get(type(run2), run2.id)
+    assert (run.roles_new, run.roles_closed) == (0, 0)
+
+
+def test_two_closures_and_two_openings_at_one_site_are_not_paired(session):
+    comp = company(session)
+    scrape_rows(session, comp, [row("Picker", "Chrášťany", external_id="ashby:1"),
+                                row("Packer", "Chrášťany", external_id="ashby:2")])
+    _, outcome = scrape_rows(session, comp, [row("Forklift Driver", "Chrášťany", external_id="ashby:3"),
+                                             row("Warehouse Clerk", "Chrášťany", external_id="ashby:4")])
+    assert (outcome["new"], outcome["closed"]) == (2, 2)
+
+
+def test_same_title_under_a_new_board_id_is_relisted(session):
+    comp = company(session)
+    scrape_rows(session, comp, [row("Customer Care Specialist", external_id="ashby:1")])
+    run2, outcome = scrape_rows(session, comp, [row("Customer Care Specialist", external_id="ashby:2")])
+    assert (outcome["new"], outcome["closed"]) == (0, 0)
+    assert store.changes(session, run2)["relisted"][0]["reason"] == "same_title"
+
+
+def test_a_role_from_before_identity_is_adopted_by_title(session):
+    comp = company(session)
+    scrape_into(session, comp, ["Backend Engineer"])
+    legacy = session.query(PortfolioRole).filter_by(company_id=comp.id).one()
+    legacy.role_key = None
+    legacy.key_tier = None
+    session.flush()
+    _, outcome = scrape_rows(session, comp, [row("Backend Engineer", external_id="recruitee:42")])
+    assert (outcome["new"], outcome["closed"]) == (0, 0)
+    role = session.query(PortfolioRole).filter_by(company_id=comp.id).one()
+    assert role.role_key == "ats:recruitee:42" and role.id == legacy.id
+
+
+def test_rows_with_one_board_id_collapse_whatever_the_title():
+    out = collapse([row("Developer", "Prague", external_id="x:1", url="https://a/1"),
+                    row("Developer", "Brno", external_id="x:1", url="https://a/1"),
+                    row("Developer", "Brno", external_id="x:2", url="https://a/2")])
+    assert len(out) == 2
+    assert len({r["fingerprint"] for r in out}) == 2
+
+
+def test_two_postings_one_title_one_place_get_distinct_fingerprints():
+    out = collapse([row("Picker", "Chrášťany", external_id="x:1"),
+                    row("Picker", "Chrášťany", external_id="x:2")])
+    assert len({r["fingerprint"] for r in out}) == 2
+
+
+def test_identity_tiers():
+    from talent.portfolio import identity
+    rows = collapse([
+        row("A", url="https://www.startupjobs.cz/nabidka/12345/a"),
+        row("B", url="https://aim.test/hiring"),
+        row("C", url="https://aim.test/hiring"),
+        row("D", url="https://acme.test/careers/d"),
+        row("E", url="https://acme.test/careers"),
+        row("F", url="https://career.rohlik.group/cz/jobs/5606545e-1111-2222-3333-444455556666"),
+        row("G", url="https://acme.peopleforce.io/careers/v/247739"),
+    ])
+    identity.assign_keys(rows, careers_url="https://acme.test/careers/")
+    keys = {r["title"]: (r["key_tier"], r["role_key"]) for r in rows}
+    assert keys["A"] == ("ats", "ats:startupjobs:12345")
+    assert keys["B"][0] == keys["C"][0] == "heur"       # one URL for two roles
+    assert keys["D"] == ("url", "url:acme.test/careers/d")
+    assert keys["E"][0] == "heur"                        # the careers page itself
+    assert keys["F"] == ("ats", "ats:ashby:5606545e-1111-2222-3333-444455556666")
+    assert keys["G"] == ("ats", "ats:peopleforce:247739")
 
 
 def test_snapshot_carries_the_classification(session):

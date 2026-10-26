@@ -857,3 +857,18 @@ def test_a_closed_role_reports_how_long_it_was_open(session):
     run2, _ = scrape_rows(session, comp, [])
     closed = store.changes(session, run2)["closed"][0]
     assert closed["open_days"] == (dt.datetime.now(dt.timezone.utc).date() - dt.date(2026, 9, 1)).days
+
+
+def test_a_role_on_a_page_that_stopped_loading_is_not_new(session):
+    comp = company(session)
+    scrape_into(session, comp, ["Backend Engineer"])
+    scrape_into(session, comp, ["Backend Engineer"])
+    scrape_into(session, comp, [], status="blocked")
+    scrape_into(session, comp, ["Backend Engineer", "Designer"])
+    roles = {r["title"]: r for r in next(c for c in store.snapshot(session)["companies"]
+                                         if c["slug"] == "acme")["roles"]}
+    assert roles["Designer"]["new"] is True and roles["Backend Engineer"]["new"] is False
+    scrape_into(session, comp, [], status="blocked")
+    roles = {r["title"]: r for r in next(c for c in store.snapshot(session)["companies"]
+                                         if c["slug"] == "acme")["roles"]}
+    assert roles["Designer"]["new"] is False

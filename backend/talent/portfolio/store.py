@@ -463,7 +463,8 @@ def _days(since: dt.date | None, until: dt.date | None = None) -> int | None:
     return ((until or utcnow().date()) - since).days
 
 
-def role_dict(role: PortfolioRole, *, baseline_run_id: int | None = None) -> dict:
+def role_dict(role: PortfolioRole, *, baseline_run_id: int | None = None,
+              run_id: int | None = None) -> dict:
     since, how = open_since(role, baseline_run_id=baseline_run_id)
     return {
         "title": role.title,
@@ -479,8 +480,9 @@ def role_dict(role: PortfolioRole, *, baseline_run_id: int | None = None) -> dic
         # A relisted posting is as old as the job it replaced.
         "first_seen": (role.first_seen_original_at or role.first_seen_at).date().isoformat()
         if role.first_seen_at else None,
-        "new": role.first_seen_run_id is not None and role.last_seen_run_id == role.first_seen_run_id
-        and not role.replaces_role_id,
+        # Opened by the latest run. Not "seen in one run only": a company whose
+        # page stopped loading keeps roles that were seen once, weeks ago.
+        "new": run_id is not None and role.first_seen_run_id == run_id and not role.replaces_role_id,
         # How long the role has been open. "before" means at least this long.
         "open_since": since.isoformat() if since else None,
         "open_since_source": how,
@@ -519,7 +521,7 @@ def snapshot(session: Session) -> dict:
             # nothing to read and is not a failed fetch.
             "verified": bool(crun and crun.status in VERIFIED_STATUSES),
             "checked_at": crun.run.started_at.isoformat() if crun and crun.run else None,
-            "roles": [role_dict(r, baseline_run_id=baseline_id) for r in roles],
+            "roles": [role_dict(r, baseline_run_id=baseline_id, run_id=run.id if run else None) for r in roles],
         })
 
     return {

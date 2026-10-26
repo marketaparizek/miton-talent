@@ -644,6 +644,7 @@ def _counts_at_run(session: Session, run_id: int) -> dict[str, int]:
         .where(
             PortfolioRole.first_seen_run_id <= run_id,
             (PortfolioRole.closed_run_id.is_(None)) | (PortfolioRole.closed_run_id > run_id),
+            PortfolioRole.merged_into_role_id.is_(None),
         )
         .group_by(PortfolioCompany.name)
     ).all()
@@ -717,6 +718,10 @@ def history(session: Session) -> list[dict]:
         open_at = (
             PortfolioRole.first_seen_run_id <= run.id,
             (PortfolioRole.closed_run_id.is_(None)) | (PortfolioRole.closed_run_id > run.id),
+            # A posting later folded into a requisition was a duplicate all
+            # along; leaving it out keeps past weeks on today's way of counting,
+            # so the switch to positions is not a drop in the trend.
+            PortfolioRole.merged_into_role_id.is_(None),
         )
         total = session.scalar(select(func.count(PortfolioRole.id)).where(*open_at)) or 0
         technical = session.scalar(

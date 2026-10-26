@@ -799,6 +799,8 @@ def test_grouping_postings_already_stored_is_not_a_wave_of_closures(session):
     # and the week after is quiet too
     _, outcome = scrape_rows(session, comp, postings)
     assert (outcome["new"], outcome["closed"]) == (0, 0)
+    # and the trend counts the past on the same basis: 1 position all along
+    assert [h["open"] for h in store.history(session)] == [1, 1, 1]
 
 
 def test_a_retitled_posting_inside_a_requisition_keeps_its_role(session):

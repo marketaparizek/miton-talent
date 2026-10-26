@@ -318,17 +318,17 @@
   },
   {
    "slug": "whisper",
-   "name": "Whisper",
+   "name": "Yasan",
    "stage": "Early Growth",
-   "website": "https://letswhisper.ai/",
-   "careers_url": null,
+   "website": "https://yasan.ai/",
+   "careers_url": "https://yasan.ai/join-us",
    "status": "no_careers_page",
-   "note": "letswhisper.ai/careers still 404s. Google still indexes the dead URL.",
+   "note": "Formerly Whisper (letswhisper.ai). One-role page, read by the model.",
    "cats": [
     "AI",
     "E-commerce"
    ],
-   "desc": "AI agents for e-commerce. The first one is a customer support agent.",
+   "desc": "AI search and shop assistant for e-commerce.",
    "not_on_site": false,
    "group_name": null,
    "roles": []

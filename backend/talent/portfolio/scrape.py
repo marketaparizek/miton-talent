@@ -71,12 +71,14 @@ def run(*, actor: str = "cron", only: Optional[list[str]] = None,
         outcome["company"] = item["name"]
         per_company.append(outcome)
         log.info("  %-24s %-16s roles=%s new=%s closed=%s %s",
-                 item["name"], result.status, outcome["roles"], outcome["new"], outcome["closed"],
+                 item["name"], outcome["status"], outcome["roles"], outcome["new"], outcome["closed"],
                  result.error or "")
 
     with db.session() as session:
         run_row = session.get(PortfolioRun, run_id)
-        failed = sum(1 for r in results.values() if r.status in {"failed", "blocked"})
+        # The saved status, not the adapter's: a blocked page with a recent hand
+        # check is saved as "manual" and is not unread.
+        failed = sum(1 for o in per_company if o["status"] not in store.VERIFIED_STATUSES)
         store.finish_run(session, run_row, status="done")
         summary = {
             "run_id": run_id,

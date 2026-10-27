@@ -52,6 +52,7 @@ from talent import limits as tlimits
 from talent import store as tstore
 from talent import company_tiers
 from talent.portfolio import view as portfolio_view
+from talent import applicants as applicants_api
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 STATIC_DIR = os.path.join(HERE, "static")
@@ -457,6 +458,8 @@ app.include_router(tauth.router)
 app.include_router(portfolio_view.router)
 # Read-only snapshot for Alister's /miton hub (service token, no session).
 app.include_router(portfolio_view.service_router)
+# The applicant inbox for the hub and its MCP (talent/applicants.py).
+app.include_router(applicants_api.router)
 
 
 @app.exception_handler(tauth.LoginRequired)

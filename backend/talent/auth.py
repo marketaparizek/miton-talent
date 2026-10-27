@@ -206,16 +206,84 @@ def verify_service_token(token: str, purpose: str = SERVICE_READ_PURPOSE) -> dic
     return {"service": str(claims.get("sub") or "unknown")}
 
 
-def require_service(request: Request) -> dict:
-    """FastAPI dependency: an Authorization: Bearer <token> header, nothing else."""
+def _bearer(request: Request) -> str:
     header = request.headers.get("authorization", "")
     scheme, _, token = header.partition(" ")
     if scheme.lower() != "bearer" or not token.strip():
         raise HTTPException(status_code=401, detail="service token required")
+    return token.strip()
+
+
+def require_service(request: Request) -> dict:
+    """FastAPI dependency: an Authorization: Bearer <token> header, nothing else."""
+    token = _bearer(request)
     try:
-        return verify_service_token(token.strip())
+        return verify_service_token(token)
     except ServiceTokenRejected as e:
         log.warning("service token refused: %s", e.reason)
+        raise HTTPException(status_code=401, detail="service token refused") from e
+
+
+# --- Applicant inbox tokens --------------------------------------------------
+# Alister's /miton hub and its MCP show the applicant inbox and let a Miton
+# colleague move a person on (contacted, rejected). The people stay here; the
+# hub only draws them. Two purposes, so a read token can never write:
+#
+#   applicants-read   who is in the inbox and what they told us. Like the
+#                     portfolio read: a service asking, no person.
+#   applicants-write  one change, made by one named @miton.cz person. The token
+#                     carries their e-mail (it becomes the event's actor) and a
+#                     jti that is spent on use, so a captured token changes
+#                     nothing a second time.
+APPLICANTS_READ_PURPOSE = "applicants-read"
+APPLICANTS_WRITE_PURPOSE = "applicants-write"
+
+
+def require_applicants_read(request: Request) -> dict:
+    token = _bearer(request)
+    try:
+        return verify_service_token(token, purpose=APPLICANTS_READ_PURPOSE)
+    except ServiceTokenRejected as e:
+        log.warning("applicants read token refused: %s", e.reason)
+        raise HTTPException(status_code=401, detail="service token refused") from e
+
+
+def verify_applicants_write_token(token: str) -> dict:
+    """Return {"service", "email", "user_id"} for a valid, unused write token."""
+    try:
+        claims = jwt.decode(
+            token,
+            handoff_secret(),
+            algorithms=["HS256"],
+            audience=HANDOFF_AUDIENCE,
+            leeway=HANDOFF_LEEWAY_SECONDS,
+            options={"require": ["exp", "iat", "aud", "purpose", "jti", "email", "role"]},
+        )
+    except jwt.InvalidTokenError as e:
+        raise ServiceTokenRejected(f"invalid token: {type(e).__name__}") from e
+    if claims.get("purpose") != APPLICANTS_WRITE_PURPOSE:
+        raise ServiceTokenRejected("wrong purpose")
+    if int(claims["exp"]) - int(claims["iat"]) > SERVICE_READ_MAX_AGE_SECONDS:
+        raise ServiceTokenRejected("lifetime too long")
+    email = (claims.get("email") or "").strip().lower()
+    if claims.get("role") not in ALLOWED_ROLES:
+        raise ServiceTokenRejected(f"role not allowed: {claims.get('role')}")
+    if not is_miton_email(email):
+        raise ServiceTokenRejected("address is not @miton.cz")
+    try:
+        _consume_jti(f"w:{claims['jti']}"[:64], dt.datetime.fromtimestamp(int(claims["exp"]), dt.timezone.utc))
+    except HandoffRejected as e:
+        raise ServiceTokenRejected(e.reason) from e
+    return {"service": str(claims.get("sub") or "unknown"), "email": email,
+            "user_id": str(claims.get("uid") or "")}
+
+
+def require_applicants_write(request: Request) -> dict:
+    token = _bearer(request)
+    try:
+        return verify_applicants_write_token(token)
+    except ServiceTokenRejected as e:
+        log.warning("applicants write token refused: %s", e.reason)
         raise HTTPException(status_code=401, detail="service token refused") from e
 
 

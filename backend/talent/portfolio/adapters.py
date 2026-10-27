@@ -84,13 +84,25 @@ def _client() -> httpx.Client:
     )
 
 
+def safe_url(url) -> Optional[str]:
+    """An http(s) link or None. A job board is someone else's data and ends up
+    as an href in the admin, so javascript:, data: and the like never pass."""
+    url = (url or "").strip() if isinstance(url, str) else ""
+    if not url:
+        return None
+    parsed = urlparse(url)
+    if parsed.scheme.lower() not in ("http", "https") or not parsed.netloc:
+        return None
+    return url
+
+
 def _row(title, location=None, team=None, employment_type=None, url=None, *, ext=None, posted=None) -> dict:
     return {
         "title": (title or "").strip(),
         "location": (location or "").strip() or None,
         "team": (team or "").strip() or None,
         "employment_type": (employment_type or "").strip() or None,
-        "url": (url or "").strip() or None,
+        "url": safe_url(url),
         "external_id": ext,
         "posted_at": _date(posted),
     }

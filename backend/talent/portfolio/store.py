@@ -23,6 +23,7 @@ from talent.models import (
     utcnow,
 )
 from talent.portfolio import classify, identity
+from talent.portfolio.adapters import safe_url
 from talent.portfolio.collapse import collapse, group_requisitions
 
 log = logging.getLogger("miton-talent.portfolio.store")
@@ -353,7 +354,7 @@ def _write_role(role: PortfolioRole, row: dict, run: PortfolioRun, now: dt.datet
     role.locations = row.get("locations") or ([row["location"]] if row.get("location") else [])
     role.team = row.get("team")
     role.employment_type = row.get("employment_type")
-    role.url = row.get("url")
+    role.url = safe_url(row.get("url"))
     if row.get("fn"):
         role.fn = row["fn"]
         role.fn_source = row.get("fn_source") or "rules"
@@ -536,8 +537,8 @@ def snapshot(session: Session) -> dict:
             "stage": company.stage or "Not on miton.cz",
             "not_on_site": company.not_on_site,
             "group_name": company.group_name,
-            "website": company.website,
-            "careers_url": company.careers_url,
+            "website": safe_url(company.website),
+            "careers_url": safe_url(company.careers_url),
             "cats": company.cats or [],
             "desc": company.description,
             "note": _company_note(company, crun),

@@ -23,7 +23,7 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from sqlalchemy import select
 
 from talent import auth as tauth
-from talent import db
+from talent import db, locks
 from talent.models import PortfolioRun
 from talent.portfolio import scrape as scraper
 from talent.portfolio import store
@@ -47,10 +47,10 @@ def service_snapshot(caller: dict = Depends(tauth.require_service)):
 PAGE = os.path.join(os.path.dirname(__file__), "page.html")
 _NO_STORE = {"Cache-Control": "no-store"}
 
-# One scrape at a time per process. A second click while a run is going gets a
-# plain "already running" instead of two runs writing the same week.
-_lock = threading.Lock()
-_running = False
+# One scrape at a time across every worker and cron: the lock is a row in the
+# database (talent/locks.py), not a flag in this process. A second click while
+# a run is going gets a plain "already running" instead of two runs writing the
+# same week.
 
 
 def _snapshot() -> dict:
@@ -82,11 +82,9 @@ def start_scrape(request: Request, user: dict = Depends(tauth.require_user)):
     A full run walks 40+ careers pages and asks the model about the ones that
     are not an ATS board, so it takes minutes: far too long for a request.
     """
-    global _running
-    with _lock:
-        if _running:
-            return JSONResponse({"started": False, "error": "a scrape is already running"}, status_code=409)
-        _running = True
+    holder = locks.acquire(scraper.LOCK_NAME, scraper.LOCK_TTL)
+    if holder is None:
+        return JSONResponse({"started": False, "error": "a scrape is already running"}, status_code=409)
 
     actor = user.get("email") or "admin"
 
@@ -96,14 +94,12 @@ def start_scrape(request: Request, user: dict = Depends(tauth.require_user)):
         ).first()
 
     def work():
-        global _running
         try:
-            scraper.run(actor=actor)
+            scraper.run(actor=actor, lock=False)
         except Exception:
             log.exception("portfolio scrape started by %s failed", actor)
         finally:
-            with _lock:
-                _running = False
+            locks.release(scraper.LOCK_NAME, holder)
 
     threading.Thread(target=work, name="portfolio-scrape", daemon=True).start()
     return JSONResponse({"started": True, "run_id": (before or 0) + 1, "actor": actor})

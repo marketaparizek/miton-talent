@@ -470,6 +470,8 @@ tbody tr:hover{background:var(--surface-2)}
   var STATUS_LABEL={ok:'read',failed:'could not be read',blocked:'refused us',
                     no_careers_page:'no careers page',skipped:'not scraped',unknown:'not checked yet'};
 
+  // Only http(s) links become hrefs: role URLs come from other people's job boards.
+  function safeHref(u){u=String(u==null?'':u).trim();return /^https?:\/\//i.test(u)?u:'';}
   function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(m){
     return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]})}
   function host(u){try{return String(u).replace(/^https?:\/\//,'').replace(/^www\./,'').split('/')[0]}catch(e){return ''}}
@@ -569,15 +571,15 @@ tbody tr:hover{background:var(--surface-2)}
     var rs=ALL.filter(function(r){return r.company===c.name && pass(r,'co')});
     var cats=(c.cats||[]).map(function(k){return '<span>'+esc(k)+'</span>'}).join('');
     var links='';
-    if(c.careers_url) links+='<a class="dlink primary" href="'+esc(c.careers_url)+'" target="_blank" rel="noopener">Careers page &#8594;</a>';
-    if(c.website) links+='<a class="dlink" href="'+esc(c.website)+'" target="_blank" rel="noopener">'+esc(host(c.website))+' &#8594;</a>';
+    if(safeHref(c.careers_url)) links+='<a class="dlink primary" href="'+esc(safeHref(c.careers_url))+'" target="_blank" rel="noopener">Careers page &#8594;</a>';
+    if(safeHref(c.website)) links+='<a class="dlink" href="'+esc(safeHref(c.website))+'" target="_blank" rel="noopener">'+esc(host(c.website))+' &#8594;</a>';
     links+='<a class="dlink" href="https://www.miton.cz/portfolio/" target="_blank" rel="noopener">miton.cz &#8594;</a>';
 
     var right;
     if(rs.length){
       right='<div class="rolelist"><div class="rl-h">'+rs.length+' open role'+(rs.length===1?'':'s')+'</div>'+
         rs.map(function(r){
-          var t=r.url?'<a href="'+esc(r.url)+'" target="_blank" rel="noopener">'+esc(r.title)+'</a>':esc(r.title);
+          var t=safeHref(r.url)?'<a href="'+esc(safeHref(r.url))+'" target="_blank" rel="noopener">'+esc(r.title)+'</a>':esc(r.title);
           return '<div class="drole"><div class="dt">'+t+(r.isnew?'<span class="badge">new</span>':'')+'</div>'+
                  '<div class="dl">'+esc(r.location)+'</div>'+
                  '<div><span class="tagpill'+(r.tech?' tech':'')+'">'+esc(r.fn)+'</span></div></div>';
@@ -668,7 +670,7 @@ tbody tr:hover{background:var(--surface-2)}
     if(!rs.length){ tbody.innerHTML='<tr><td colspan="4" class="noresult">Nothing matches these filters.</td></tr>'; }
     else{
       tbody.innerHTML=rs.map(function(r){
-        var t=r.url?'<a href="'+esc(r.url)+'" target="_blank" rel="noopener">'+esc(r.title)+'</a>':esc(r.title);
+        var t=safeHref(r.url)?'<a href="'+esc(safeHref(r.url))+'" target="_blank" rel="noopener">'+esc(r.title)+'</a>':esc(r.title);
         return '<tr><td class="c-role">'+t+(r.isnew?'<span class="badge">new</span>':'')+'</td>'+
           '<td class="c-co">'+esc(r.company)+'</td>'+
           '<td class="c-loc">'+esc(r.location)+'</td>'+
@@ -696,7 +698,7 @@ tbody tr:hover{background:var(--surface-2)}
   /* ---- changes this week ---- */
   (function(){
     function line(r,kind){
-      var t=r.url?'<a href="'+esc(r.url)+'" target="_blank" rel="noopener" style="color:inherit">'+esc(r.title)+'</a>':esc(r.title);
+      var t=safeHref(r.url)?'<a href="'+esc(safeHref(r.url))+'" target="_blank" rel="noopener" style="color:inherit">'+esc(r.title)+'</a>':esc(r.title);
       return '<div class="chg '+(kind==='new'?'add':'cls')+'"><span class="cm'+(r.tech?' tech':'')+'">'+
         (kind==='new'?'&#10003;':'&#10007;')+'</span><span class="ct">'+t+'</span>'+
         '<span class="cco">'+esc(r.company)+'</span><span class="cl mono">'+esc(r.location)+'</span></div>';
@@ -723,7 +725,7 @@ tbody tr:hover{background:var(--surface-2)}
     var sil=document.getElementById('silent');
     document.getElementById('silentHint').innerHTML='<b>'+SILENT.length+'</b> of '+D.companies.length+' companies';
     sil.innerHTML = SILENT.map(function(c){
-      var link=c.careers_url?'<a href="'+esc(c.careers_url)+'" target="_blank" rel="noopener">'+esc(host(c.careers_url))+'</a> → ':'';
+      var link=safeHref(c.careers_url)?'<a href="'+esc(safeHref(c.careers_url))+'" target="_blank" rel="noopener">'+esc(host(c.careers_url))+'</a> → ':'';
       return '<div class="srow"><div class="sn">'+esc(c.name)+(c.verified?'':'<span class="badge">unread</span>')+
         '</div><div class="sd">'+link+esc(c.note||'')+'</div></div>';
     }).join('') || '<div class="empty">Every company has something open.</div>';

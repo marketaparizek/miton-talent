@@ -14,7 +14,7 @@ capital group (miton.cz/kariera). It replaces a Typeform.
 A visitor has a short conversation (3 to 4 questions). The model extracts a structured
 profile, writes a running recruiter summary, then invites the person to leave contact
 details and an optional CV. The submission becomes a row in the **Miton Talent
-database** (`backend/talent/`, Postgres on Railway, SQLite locally), and the CV is
+database** (`backend/talent/`, Postgres on Hetzner, SQLite locally), and the CV is
 emailed to the recruiter inbox. While `NOTION_TOKEN` is still set, the row is also
 written to the Notion database "Hledáme chytré lidi" (transitional; Notion is being
 cancelled, see `docs/notion-replacement-analysis.md`).

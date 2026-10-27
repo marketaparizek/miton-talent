@@ -74,9 +74,111 @@ def test_admin_role_on_miton_address_is_admitted(client):
 
 def test_logout_clears_the_session(client):
     _callback(client, _token())
-    r = client.get("/auth/logout", follow_redirects=False)
-    assert r.status_code == 302 and r.headers["location"] == "https://alister.example.test"
+    r = client.post("/auth/logout", follow_redirects=False)
+    assert r.status_code == 303 and r.headers["location"] == "https://alister.example.test"
     assert client.get("/auth/me").status_code == 401
+
+
+def test_logout_is_post_only(client):
+    _callback(client, _token())
+    assert client.get("/auth/logout", follow_redirects=False).status_code == 405
+    assert client.get("/auth/me").status_code == 200  # a GET (a link, an <img>) signed nobody out
+
+
+def test_logout_revokes_the_session_on_the_server(client):
+    """A copy of the cookie taken before logout opens nothing afterwards."""
+    _callback(client, _token())
+    stolen = client.cookies.get(tauth.SESSION_COOKIE)
+    client.post("/auth/logout", follow_redirects=False)
+    other = TestClient(chat.app)
+    other.cookies.set(tauth.SESSION_COOKIE, stolen)
+    assert other.get("/auth/me").status_code == 401
+
+
+def test_revoking_an_address_ends_its_sessions(client):
+    _callback(client, _token())
+    assert client.get("/auth/me").status_code == 200
+    assert tauth.revoke_sessions_for("KOLEGA@miton.cz") == 1
+    assert client.get("/auth/me").status_code == 401
+
+
+def test_session_lasts_hours_not_weeks(client):
+    assert tauth.SESSION_MAX_AGE_SECONDS <= 24 * 3600
+    r = _callback(client, _token())
+    assert f"Max-Age={tauth.SESSION_MAX_AGE_SECONDS}" in r.headers["set-cookie"]
+
+
+def test_expired_session_row_is_refused(client):
+    from talent.models import AdminSession
+
+    _callback(client, _token())
+    with db.session() as s:
+        for row in s.query(AdminSession).all():
+            row.expires_at = dt.datetime.now(dt.timezone.utc) - dt.timedelta(minutes=1)
+    assert client.get("/auth/me").status_code == 401
+
+
+def test_cookie_stores_no_identity(client):
+    """The cookie is a signed session id; the address and role live on the server."""
+    r = _callback(client, _token())
+    data = tauth._serializer().loads(r.cookies[tauth.SESSION_COOKIE])
+    assert set(data) == {"sid"}
+
+
+def test_admin_routes_cannot_be_framed(client):
+    _callback(client, _token())
+    r = client.get("/admin")
+    assert r.headers["content-security-policy"] == "frame-ancestors 'none'"
+    assert r.headers["x-frame-options"] == "DENY"
+    embed = client.get("/")
+    assert embed.headers["content-security-policy"].startswith("frame-ancestors 'self' ")
+    assert "x-frame-options" not in embed.headers
+
+
+def test_no_public_api_docs(client):
+    for path in ("/docs", "/redoc", "/openapi.json"):
+        assert client.get(path).status_code == 404, path
+
+
+# --- Production refuses weak configuration -----------------------------------
+
+
+def test_production_needs_its_own_session_secret(monkeypatch):
+    monkeypatch.setenv("APP_BASE_URL", "https://talent.example.test")
+    monkeypatch.setenv("TALENT_HANDOFF_SECRET", SECRET)
+    monkeypatch.delenv("SESSION_SECRET", raising=False)
+    with pytest.raises(RuntimeError, match="SESSION_SECRET"):
+        tauth.check_production_config()
+    with pytest.raises(RuntimeError, match="SESSION_SECRET"):
+        tauth._session_secret()
+    monkeypatch.setenv("SESSION_SECRET", SECRET)
+    with pytest.raises(RuntimeError, match="differ"):
+        tauth.check_production_config()
+    monkeypatch.setenv("SESSION_SECRET", "short")
+    with pytest.raises(RuntimeError, match="at least"):
+        tauth.check_production_config()
+    monkeypatch.setenv("SESSION_SECRET", "a-separate-session-secret-of-32-plus-chars")
+    tauth.check_production_config()
+
+
+def test_local_runs_without_a_session_secret(monkeypatch):
+    monkeypatch.delenv("APP_BASE_URL", raising=False)
+    monkeypatch.delenv("SESSION_SECRET", raising=False)
+    monkeypatch.setenv("TALENT_HANDOFF_SECRET", SECRET)
+    tauth.check_production_config()
+    assert tauth._session_secret()
+
+
+def test_production_refuses_sqlite_fallback(monkeypatch):
+    monkeypatch.setenv("APP_BASE_URL", "https://talent.example.test")
+    monkeypatch.delenv("DATABASE_URL", raising=False)
+    with pytest.raises(RuntimeError, match="DATABASE_URL"):
+        db.database_url()
+    monkeypatch.setenv("DATABASE_URL", "postgresql://u:p@127.0.0.1/x")
+    assert db.database_url().startswith("postgresql+psycopg://")
+    monkeypatch.delenv("APP_BASE_URL")
+    monkeypatch.delenv("DATABASE_URL")
+    assert db.database_url().startswith("sqlite")
 
 
 # --- Everything that must be refused ----------------------------------------
@@ -144,6 +246,19 @@ def test_missing_or_garbage_token(client):
 # --- The session cookie itself -----------------------------------------------
 
 
+def test_old_identity_cookie_is_ignored(client):
+    """A v1 cookie (identity inside, 30 days) signed with the right key opens nothing now."""
+    from itsdangerous import URLSafeTimedSerializer
+
+    old = URLSafeTimedSerializer(tauth._session_secret(), salt="mt-session-v1").dumps(
+        {"user_id": "1", "email": "kolega@miton.cz", "role": "miton"})
+    client.cookies.set(tauth.SESSION_COOKIE, old)
+    assert client.get("/auth/me").status_code == 401
+    newsalt = tauth._serializer().dumps({"user_id": "1", "email": "kolega@miton.cz", "role": "miton"})
+    client.cookies.set(tauth.SESSION_COOKIE, newsalt)
+    assert client.get("/auth/me").status_code == 401
+
+
 def test_forged_cookie_is_ignored(client):
     client.cookies.set(tauth.SESSION_COOKIE, "forged-value")
     assert client.get("/auth/me").status_code == 401
@@ -154,9 +269,7 @@ def test_cookie_signed_with_handoff_secret_directly_is_ignored(client):
     """The session key is derived from the handoff secret; the secret itself must not sign sessions."""
     from itsdangerous import URLSafeTimedSerializer
 
-    forged = URLSafeTimedSerializer(SECRET, salt="mt-session-v1").dumps(
-        {"user_id": "1", "email": "kolega@miton.cz", "role": "miton"}
-    )
+    forged = URLSafeTimedSerializer(SECRET, salt="mt-session-v2").dumps({"sid": "x" * 43})
     client.cookies.set(tauth.SESSION_COOKIE, forged)
     assert client.get("/auth/me").status_code == 401
 

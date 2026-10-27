@@ -2,11 +2,15 @@
 
 One engine per process. The URL comes from DATABASE_URL:
 
-  postgresql://...   (Railway sets this; the "postgres://" spelling is normalised)
+  postgresql://...   (the Hetzner .env sets this; "postgres://" is normalised too)
   sqlite:///./miton_talent.db   (default for local development and tests)
 
+In production (APP_BASE_URL on https) a missing DATABASE_URL is an error, not
+a quiet SQLite file next to the code: candidates written there would be
+invisible to the back office and lost on the next deploy.
+
 The schema is managed by Alembic (backend/alembic). Nothing here creates tables;
-run `alembic upgrade head` (the Procfile does it before uvicorn starts).
+run `alembic upgrade head` (the systemd unit does it before uvicorn starts).
 """
 
 from __future__ import annotations
@@ -19,9 +23,18 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
 
+def is_production() -> bool:
+    """The public https deployment, as opposed to a laptop or the tests."""
+    return os.environ.get("APP_BASE_URL", "").strip().lower().startswith("https://")
+
+
 def database_url() -> str:
-    url = os.environ.get("DATABASE_URL", "").strip() or "sqlite:///./miton_talent.db"
-    # Railway / Heroku hand out the legacy scheme; SQLAlchemy 2 wants the driver named.
+    url = os.environ.get("DATABASE_URL", "").strip()
+    if not url:
+        if is_production():
+            raise RuntimeError("DATABASE_URL is not set; refusing to fall back to SQLite in production")
+        url = "sqlite:///./miton_talent.db"
+    # Some hosts hand out the legacy scheme; SQLAlchemy 2 wants the driver named.
     if url.startswith("postgres://"):
         url = "postgresql+psycopg://" + url[len("postgres://"):]
     elif url.startswith("postgresql://"):

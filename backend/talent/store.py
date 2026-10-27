@@ -96,9 +96,14 @@ def set_stage(session: Session, candidate: Candidate, stage: str, *, actor: str 
 
 def create_from_submission(session: Session, *, uid: str, profile: dict, contact: dict,
                            summary: str, consent: bool, consent_text: str, cv_name: str,
-                           lang: str, messages: Iterable | None) -> tuple[Candidate, bool]:
+                           lang: str, messages: Iterable | None,
+                           consent_version: str | None = None) -> tuple[Candidate, bool]:
     """Store one talent chat submission. Idempotent on `uid`: a retry of the same
-    submission returns the existing row and creates nothing. Returns (row, created)."""
+    submission returns the existing row and creates nothing. Returns (row, created).
+
+    ``messages`` must be the server's own record of the chat (ChatConversation
+    turns); ``consent_text`` the server's wording for ``consent_version``
+    (talent/consent.py). The caller makes sure neither comes from the browser."""
     existing = session.scalar(select(Candidate).where(Candidate.uid == uid))
     if existing:
         return existing, False
@@ -135,6 +140,7 @@ def create_from_submission(session: Session, *, uid: str, profile: dict, contact
         transcript=transcript or None,
         consent=bool(consent),
         consent_text=(consent_text or "").strip() or None,
+        consent_version=consent_version,
         consent_at=utcnow() if consent else None,
         stage="applied",
     )
@@ -189,8 +195,22 @@ def soft_delete(session: Session, candidate: Candidate) -> None:
 
 
 def hard_delete(session: Session, candidate: Candidate) -> None:
-    """GDPR erasure: the row and its events and search links go away for good."""
+    """GDPR erasure: the row and its events and search links go away for good.
+    Use talent/erase.py, which also clears the other copies."""
     session.delete(candidate)
+
+
+def find_for_erasure(session: Session, *, uid: str | None = None,
+                     email: str | None = None) -> list[Candidate]:
+    """Every row that belongs to the person, soft-deleted ones included (they
+    still hold the data). By uid, or by e-mail case-insensitively."""
+    q = select(Candidate)
+    if uid:
+        return list(session.scalars(q.where(Candidate.uid == uid)))
+    em = normalize_email(email)
+    if em:
+        return list(session.scalars(q.where(func.lower(Candidate.email) == em)))
+    return []
 
 
 # --- searches ---------------------------------------------------------------

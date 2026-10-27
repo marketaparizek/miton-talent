@@ -23,7 +23,6 @@ def client(tmp_path, monkeypatch):
     monkeypatch.setattr(chat, "SMTP_PASS", "")
     monkeypatch.setattr(chat, "SUBMISSIONS_FILE", str(tmp_path / "submissions.jsonl"))
     monkeypatch.setattr(chat, "SCORING_ENABLED", False)
-    chat._hits.clear()
     return TestClient(chat.app)
 
 
@@ -47,7 +46,12 @@ def test_submit_creates_candidate(client):
         c = rows[0]
         assert c.full_name == "Eva Malá" and c.linkedin_identifier == "eva-mala"
         assert c.area == ["Product"] and c.stage == "applied" and c.consent
-        assert c.transcript[1]["content"] == "Ahoj Evo"
+        # no server-side conversation: only what the visitor wrote is kept, not
+        # the assistant turn the browser claims
+        assert c.transcript == [{"role": "user", "content": "Ahoj"}]
+        # the consent on record is the server's wording, not the browser's
+        assert c.consent_version == "chat-2025-cs"
+        assert c.consent_text.startswith("Souhlasím se zpracováním osobních údajů")
         assert c.events[0].type == "submitted"
 
 

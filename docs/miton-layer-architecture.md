@@ -69,7 +69,7 @@ only through Alister's public API and MCP, the same way an external
 customer would. Alister does not know Miton Talent exists.
 
 The talent chat backend is already this service in embryo: a standalone
-FastAPI app on Railway, Miton's own, with Resend and an Anthropic key.
+FastAPI app on Hetzner, Miton's own, with Resend and an Anthropic key.
 It grows into the Miton layer instead of a new repo appearing.
 
 The cost is a second admin, a second login, a second deploy. The gain is

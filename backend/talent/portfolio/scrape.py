@@ -71,7 +71,8 @@ def _run(*, actor: str, only: Optional[list[str]], classify: bool, parallel: int
                 "name": c.name,
                 "careers_url": c.careers_url,
                 "adapter": c.adapter,
-                "config": dict(c.config or {}, company_name=c.name),
+                "config": dict(c.config or {}, company_name=c.name,
+                               previous_read=store.previous_read(session, c.id)),
             }
             for c in targets
         ]
@@ -106,12 +107,17 @@ def _run(*, actor: str, only: Optional[list[str]], classify: bool, parallel: int
                 error=result.error,
                 duration_ms=result.duration_ms,
                 classify_rows=classify,
+                page_hash=result.page_hash,
+                extracted=result.extracted,
+                reused_from_run_id=result.reused_from_run_id,
             )
         outcome["company"] = item["name"]
+        outcome["reused_from_run_id"] = result.reused_from_run_id if outcome["status"] == "ok" else None
         per_company.append(outcome)
+        reused = f"page unchanged, reused run {result.reused_from_run_id}" if outcome["reused_from_run_id"] else ""
         log.info("  %-24s %-16s roles=%s new=%s closed=%s %s",
                  item["name"], outcome["status"], outcome["roles"], outcome["new"], outcome["closed"],
-                 result.error or "")
+                 result.error or reused)
 
     outage = [o["company"] for o in per_company if o["status"] == "model_unavailable"]
     outage_error = None

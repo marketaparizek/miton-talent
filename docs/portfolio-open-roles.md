@@ -31,6 +31,13 @@ button on the page.
    and read by Claude, which is told to list only what is open and to treat an
    open-application form as not a role. If an ATS board 404s, the page itself is
    read instead and the run says so.
+   An HTML page whose readable text (with the URL, prompt and model) hashes the
+   same as the company's **latest** read, when that read was a successful
+   model read, is not sent to the model again: the run reuses that answer, and
+   `portfolio_company_runs.reused_from_run_id` names the run whose model read
+   it is. A reused read counts as a real read (the page was fetched and is
+   unchanged), so it diffs and closes like any other. If the latest read
+   failed or was blocked, the model is asked again.
 2. **Collapse** copies of one requisition. Two rows are one role when the title
    normalises to the same fingerprint *and* they share a posting URL: a board
    that repeats one requisition per city repeats its URL, while two shops hiring

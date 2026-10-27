@@ -56,6 +56,7 @@ from talent import limits as tlimits
 from talent import store as tstore
 from talent import vocab as tvocab
 from talent import company_tiers
+from talent.usage import log_usage
 from talent.portfolio import view as portfolio_view
 from talent import applicants as applicants_api
 
@@ -146,9 +147,10 @@ ERR_MSG = {
     "en": "Sorry, something went wrong on my side. Please try again in a moment.",
 }
 
-# Appended to the system prompt once the conversation reaches SOFT_CLOSE_TURNS user
+# Added to the system prompt once the conversation reaches SOFT_CLOSE_TURNS user
 # messages: a hard instruction to wrap up now, so chats never drag on regardless of
-# how curious the model feels.
+# how curious the model feels. It goes in as a second system block AFTER the cache
+# breakpoint (see _chat_system), so it never changes the cached prefix.
 WRAP_UP = {
     "cs": "\n\nDŮLEŽITÉ: Rozhovor už je dost dlouhý. V TÉTO odpovědi už nepokládej žádnou další otázku. Shrň, co o člověku víš, vyzvi ho, ať nechá kontakt, a nastav stage na \"collect_contact\".",
     "en": "\n\nIMPORTANT: The conversation is already long enough. Do NOT ask any further question in THIS reply. Summarize what you know about the person, invite them to leave their contact, and set stage to \"collect_contact\".",
@@ -752,6 +754,18 @@ def _newest_user_message(body: ChatIn) -> str:
     return ""
 
 
+def _chat_system(lang: str, user_turns: int) -> list[dict]:
+    """System blocks for the chat call. Prompt caching is a prefix match over
+    tools -> system -> messages, so the breakpoint sits on the static prompt (one
+    per language, nothing per-request in it) and caches REPLY_TOOL + SYSTEM[lang].
+    The soft-close instruction (from SOFT_CLOSE_TURNS on) is a separate block after
+    the breakpoint, so turning it on does not invalidate the cached prefix."""
+    blocks = [{"type": "text", "text": SYSTEM[lang], "cache_control": {"type": "ephemeral"}}]
+    if user_turns >= SOFT_CLOSE_TURNS:
+        blocks.append({"type": "text", "text": WRAP_UP[lang].strip()})
+    return blocks
+
+
 @app.post("/chat")
 def chat(body: ChatIn, request: Request):
     lang = "en" if body.lang == "en" else "cs"
@@ -798,15 +812,12 @@ def chat(body: ChatIn, request: Request):
 
     # soft close: from SOFT_CLOSE_TURNS on, order the model to wrap up right now
     user_turns = done_turns + 1
-    system = SYSTEM[lang]
-    if user_turns >= SOFT_CLOSE_TURNS:
-        system = system + WRAP_UP[lang]
 
     try:
         resp = client.messages.create(
             model=MODEL,
             max_tokens=MAX_TOKENS,
-            system=system,
+            system=_chat_system(lang, user_turns),
             messages=msgs,
             tools=[REPLY_TOOL],
             tool_choice={"type": "tool", "name": "record_reply"},
@@ -814,6 +825,7 @@ def chat(body: ChatIn, request: Request):
     except Exception:
         log.exception("model call failed")
         return _chat_out(ERR_MSG[lang], cid)
+    log_usage("chat", resp, model=MODEL)
 
     parsed = None
     for block in resp.content:
@@ -1244,6 +1256,7 @@ def _score_candidate(cv_text, profile, summary, messages, lang):
     except Exception:
         log.exception("scoring model call failed")
         return None
+    log_usage("score", resp, model=SCORE_MODEL)
     for block in resp.content:
         if block.type == "tool_use" and block.name == "record_score":
             return _resolve_company_tier(block.input or {})

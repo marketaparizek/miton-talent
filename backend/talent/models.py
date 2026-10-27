@@ -421,6 +421,14 @@ class PortfolioCompanyRun(Base):
     note: Mapped[Optional[str]] = mapped_column(Text)
     error: Mapped[Optional[str]] = mapped_column(Text)
     duration_ms: Mapped[Optional[int]] = mapped_column(Integer)
+    # Plain careers pages read by the model (adapter html), status ok only:
+    # page_hash fingerprints the page as read (extract.page_hash) and extracted
+    # keeps the model's answer ({"rows", "note"}). Next week, an identical page
+    # reuses that answer instead of a model call; reused_from_run_id then names
+    # the run whose model read is being reused. NULL everywhere else.
+    page_hash: Mapped[Optional[str]] = mapped_column(String(64))
+    extracted: Mapped[Optional[dict]] = mapped_column(JSON)
+    reused_from_run_id: Mapped[Optional[int]] = mapped_column(Integer)
 
     run: Mapped["PortfolioRun"] = relationship("PortfolioRun", back_populates="company_runs")
 

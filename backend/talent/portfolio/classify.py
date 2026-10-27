@@ -167,12 +167,14 @@ def ask_model(rows: list[dict], *, company: str = "") -> dict[str, str]:
         f"Company: {company or 'unknown'}\n\n"
         "Titles:\n" + "\n".join(f"- {t}" for t in titles)
     )
+    model = os.environ.get("PORTFOLIO_MODEL") or os.environ.get("MODEL", "claude-sonnet-4-6")
     client = anthropic.Anthropic()
     reply = client.messages.create(
-        model=os.environ.get("PORTFOLIO_MODEL") or os.environ.get("MODEL", "claude-sonnet-4-6"),
+        model=model,
         max_tokens=1000,
         messages=[{"role": "user", "content": prompt}],
     )
+    log_usage("portfolio_classify", reply, model=model)
     text = "".join(block.text for block in reply.content if getattr(block, "type", "") == "text")
     start, end = text.find("{"), text.rfind("}")
     if start < 0 or end <= start:

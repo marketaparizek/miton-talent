@@ -27,6 +27,7 @@ column overrides it.
 
 from __future__ import annotations
 
+import copy
 import json
 import logging
 import re
@@ -55,6 +56,12 @@ class Result:
     note: Optional[str] = None
     error: Optional[str] = None
     duration_ms: Optional[int] = None
+    # html adapter only: the fingerprint of the page as read (extract.page_hash),
+    # the model's answer as given ({"rows", "note"}), and, when the page was
+    # unchanged, the run whose successful read was reused instead of a model call.
+    page_hash: Optional[str] = None
+    extracted: Optional[dict] = None
+    reused_from_run_id: Optional[int] = None
 
 
 _TAGS_ONLY = re.compile(r"<[^>]+>")
@@ -395,6 +402,22 @@ def html(url: str, config: dict) -> Result:
     if len(text) < extract.MIN_TEXT_CHARS:
         return Result("blocked", adapter="html", source_url=url, http_status=r.status_code,
                       error="page rendered client-side: no readable text to judge")
+    digest = extract.page_hash(text, url=url)
+
+    # The page is byte-for-byte what the last SUCCESSFUL read saw (scrape.py only
+    # passes previous_read when the company's latest run was an ok html read):
+    # the model would answer the same, so take that answer. This is still a real
+    # read, because the page was fetched and its text is known, so it may close
+    # roles exactly as last week's answer would have.
+    previous = config.get("previous_read") or {}
+    extracted = previous.get("extracted")
+    if previous.get("page_hash") == digest and isinstance(extracted, dict) \
+            and isinstance(extracted.get("rows"), list):
+        rows = copy.deepcopy(extracted["rows"])
+        return Result("ok", rows, "html", url, r.status_code, raw_rows=len(rows),
+                      note=extracted.get("note"), page_hash=digest,
+                      extracted=copy.deepcopy(extracted), reused_from_run_id=previous.get("run_id"))
+
     try:
         rows, note = extract.roles_from_text(text, url=url, company=config.get("company_name", ""))
     except extract.ModelUnavailable as exc:
@@ -402,7 +425,8 @@ def html(url: str, config: dict) -> Result:
                       error=str(exc))
     except extract.ExtractorUnavailable as exc:
         return Result("failed", adapter="html", source_url=url, http_status=r.status_code, error=str(exc))
-    return Result("ok", rows, "html", url, r.status_code, raw_rows=len(rows), note=note)
+    return Result("ok", rows, "html", url, r.status_code, raw_rows=len(rows), note=note,
+                  page_hash=digest, extracted={"rows": copy.deepcopy(rows), "note": note})
 
 
 ADAPTERS: dict[str, Callable[[str, dict], Result]] = {

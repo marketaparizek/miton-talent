@@ -14,15 +14,21 @@ Two rules that keep the counts honest, both learned from the artifact:
 
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 import os
 import re
 
+from talent.usage import log_usage
+
 log = logging.getLogger("miton-talent.portfolio.extract")
 
 # Below this many characters of visible text, a page is a shell, not a board.
 MIN_TEXT_CHARS = 400
+# Nav and footer are NOT stripped, but measured 27 Oct 2026 the html pages run
+# 1k-20k characters (Bonami the largest at ~20k), so this cap never bites and
+# lowering it would save nothing while risking cut-off roles on a long page.
 MAX_TEXT_CHARS = 60_000
 
 _SCRIPTS = re.compile(r"<(script|style|noscript|svg|head)[^>]*>.*?</\1>", re.I | re.S)
@@ -99,13 +105,14 @@ def check_model() -> None:
     import anthropic
 
     try:
-        anthropic.Anthropic().messages.create(
+        reply = anthropic.Anthropic().messages.create(
             model=_model_name(), max_tokens=1, messages=[{"role": "user", "content": "ok"}],
         )
     except Exception as exc:
         if is_provider_failure(exc):
             raise ModelUnavailable(_short(exc)) from exc
         raise
+    log_usage("portfolio_check", reply, model=_model_name())
 
 
 def _short(exc: BaseException) -> str:
@@ -123,6 +130,18 @@ def readable_text(raw_html: str) -> str:
     lines = [line.strip() for line in text.split("\n")]
     text = "\n".join(line for line in lines if line)
     return _BLANKS.sub("\n\n", text)[:MAX_TEXT_CHARS]
+
+
+def page_hash(text: str, *, url: str) -> str:
+    """Fingerprint of one read: the page's readable text, plus everything else
+    that decides what the model would answer (the URL, the prompt, the model).
+    Same hash as last week's successful read = same answer, so the run reuses
+    that answer instead of paying for the same page again (adapters.html)."""
+    h = hashlib.sha256()
+    for part in (PROMPT, _model_name(), url or "", text or ""):
+        h.update(part.encode("utf-8"))
+        h.update(b"\0")
+    return h.hexdigest()
 
 
 def roles_from_text(text: str, *, url: str, company: str = "") -> tuple[list[dict], str | None]:
@@ -146,6 +165,7 @@ def roles_from_text(text: str, *, url: str, company: str = "") -> tuple[list[dic
         if is_provider_failure(exc):
             raise ModelUnavailable(_short(exc)) from exc
         raise ExtractorUnavailable(f"{type(exc).__name__}: {exc}"[:300]) from exc
+    log_usage("portfolio_extract", reply, model=_model_name())
 
     answer = "".join(b.text for b in reply.content if getattr(b, "type", "") == "text")
     data = _parse(answer)

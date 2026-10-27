@@ -187,8 +187,15 @@ def record_company_result(
     error: str | None = None,
     duration_ms: int | None = None,
     classify_rows: bool = True,
+    page_hash: str | None = None,
+    extracted: dict | None = None,
+    reused_from_run_id: int | None = None,
 ) -> dict:
     """Write one company's outcome into this run, and diff its roles.
+
+    page_hash / extracted / reused_from_run_id come from the html adapter and
+    are kept only on an ok read: a page that was not read leaves no fingerprint,
+    so the next run cannot reuse anything from it.
 
     Returns {"status", "roles": n, "new": n, "closed": n}.
     """
@@ -225,9 +232,37 @@ def record_company_result(
         note=note,
         error=error,
         duration_ms=duration_ms,
+        page_hash=page_hash if status == "ok" else None,
+        extracted=extracted if status == "ok" and page_hash else None,
+        reused_from_run_id=reused_from_run_id if status == "ok" and page_hash else None,
     ))
     session.flush()
     return {"status": status, "roles": roles_found, "new": new_count, "closed": closed_count}
+
+
+def previous_read(session: Session, company_id: int) -> dict | None:
+    """The company's latest read, if it was a successful model read of a plain
+    page: {"page_hash", "extracted", "run_id"}. Anything else (the latest run
+    failed, was blocked, went through an ATS board) gives None, so the next run
+    asks the model again. "An unread page never closes roles": only a page we
+    did read successfully may stand in for this week's read.
+
+    run_id is the run where the model actually read the page, followed through
+    any chain of earlier reuses."""
+    last = session.scalars(
+        select(PortfolioCompanyRun)
+        .where(PortfolioCompanyRun.company_id == company_id)
+        .order_by(PortfolioCompanyRun.id.desc())
+        .limit(1)
+    ).first()
+    if not last or last.status != "ok" or last.adapter != "html" or not last.page_hash \
+            or not isinstance(last.extracted, dict):
+        return None
+    return {
+        "page_hash": last.page_hash,
+        "extracted": last.extracted,
+        "run_id": last.reused_from_run_id or last.run_id,
+    }
 
 
 def _apply_rows(session: Session, run: PortfolioRun, company: PortfolioCompany,
@@ -545,6 +580,9 @@ def snapshot(session: Session) -> dict:
             "status": crun.status if crun else ("no_careers_page" if not company.careers_url else "unknown"),
             "adapter": crun.adapter if crun else company.adapter,
             "read_ok": bool(crun and crun.status in READ_STATUSES),
+            # The page was unchanged, so this week's read reused that run's
+            # model answer instead of calling the model again.
+            "reused_from_run_id": crun.reused_from_run_id if crun else None,
             # "the number is this week's": a company with no careers page has
             # nothing to read and is not a failed fetch.
             "verified": bool(crun and crun.status in VERIFIED_STATUSES),

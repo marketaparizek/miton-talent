@@ -57,7 +57,7 @@ ssh -t root@46.225.26.134 'bash /root/live/miton-talent/deploy/set_secret.sh SES
 
 `FRAME_ANCESTORS` určuje, kdo smí chat vložit do iframu. Na dobu přepínání jsou v seznamu i Petrovy testovací weby. Vlož tuhle hodnotu (bez mezer):
 
-`https://www.miton.cz,https://miton.cz,https://preview.miton.cz,https://miton.wx.virtii.com,https://alisterai.com`
+`https://www.miton.cz,https://miton.cz,https://preview.miton.cz,https://miton.wx.virtii.com,https://alisterai.com,https://miton-talent-chat-production.up.railway.app`
 
 ```bash
 ssh -t root@46.225.26.134 'bash /root/live/miton-talent/deploy/set_secret.sh FRAME_ANCESTORS'
@@ -168,21 +168,24 @@ Nový skill čte jen Talent. Dokud chat běží přes Railway, noví uchazeči j
 
 ---
 
-## Fáze 5. Přepnutí iframu (Petr, VIRTII)
+## Fáze 5. Přepnutí přes Railway (bez Petra)
 
-Mění se jen doména v `src`, parametry zůstávají (`?lang=en` u anglické stránky, případně `?resize=1`).
+Web miton.cz má v iframu napevno adresu Railway a výšku chatu bere jen ze zpráv od ní. Proto se adresa na webu nemění. Přepne to proměnná `TALENT_URL` ve starém chatu na Railway (repo `miton-talent-chat`, commit aacc4bb). Když je nastavená, Railway místo chatu pošle malou stránku. Ta vloží chat z Talentu a zprávy o výšce předá webu pod adresou Railway. `/chat` a `/submit` na Railway dál fungují pro lidi, kteří měli stránku otevřenou už před přepnutím.
 
-Návrh e-mailu Petrovi:
+Předpoklad: `FRAME_ANCESTORS` v Talentu obsahuje adresu Railway (krok 1.3). Bez ní zůstane rámeček prázdný.
 
-> Ahoj Petře, přesouváme náborový chat z Railway na náš server. Prosím na stránkách /kariera/ a /en/career/ změň v iframu adresu z `https://miton-talent-chat-production.up.railway.app` na `https://talent.alisterai.com`. Parametry za otazníkem nech, jak jsou. Nejdřív to prosím zkus na preview.miton.cz a dej vědět, ať to otestuju, pak na ostrý web. Díky! Markéta
+1. Railway → služba miton-talent-chat → Variables → přidat `TALENT_URL` = `https://talent.alisterai.com` (bez lomítka na konci). Railway službu sám restartuje.
+2. Ověřit: `curl -s https://miton-talent-chat-production.up.railway.app/diag` ukazuje `"talent_url": "https://talent.alisterai.com"`.
 
-**Ověřit na preview i na ostrém webu:**
+**Ověřit na ostrém webu (miton.cz/kariera i /en/career):**
 
-- Chat se načte (prázdný rámeček znamená, že doména chybí ve `FRAME_ANCESTORS`).
+- Chat se načte a výška rámečku se mění s obsahem.
 - Anglická stránka mluví anglicky.
 - Testovací přihláška dorazí e-mailem a objeví se v Applicants. Pak ji smaž jako v kroku 2.3.
 
 Den přepnutí je **den D**.
+
+Později může Petr v klidu změnit adresu v iframu přímo na `https://talent.alisterai.com` a v posluchači výšky povolit tuhle adresu. Až to udělá, Railway se dá zrušit.
 
 ---
 
@@ -206,7 +209,7 @@ ssh root@46.225.26.134 'cd /root/live/miton-talent && set -a && . ./.env && set 
 
 Když čísla v dry-run sedí (přibude zhruba tolik lidí, kolik jich přišlo přes Railway od 30.9.), pusť totéž bez `--dry-run`.
 
-**Návrat zpátky**, kdyby se něco pokazilo: Petr vrátí v iframu adresu Railway a vrátíš starý skill. Railway i Notion celou dobu běží, takže se nic neztratí. Lidi, kteří mezitím přišli přes Hetzner, jsou v Notionu taky.
+**Návrat zpátky**, kdyby se něco pokazilo: v Railway smaž proměnnou `TALENT_URL` a vrať starý skill. Railway i Notion celou dobu běží, takže se nic neztratí. Lidi, kteří mezitím přišli přes Hetzner, jsou v Notionu taky.
 
 ---
 
@@ -221,7 +224,7 @@ Až týden proběhne bez problémů:
    ```
 
 2. **Zúžit `FRAME_ANCESTORS`** na `https://www.miton.cz,https://miton.cz,https://alisterai.com` (stejně jako v kroku 1.3).
-3. **Railway:** v dashboardu smazat službu a zrušit plán.
+3. **Railway:** nechat běžet, dokud Petr nepřepne iframe přímo na Talent (viz fáze 5). Teprve pak smazat službu a zrušit plán. Do té doby musí `FRAME_ANCESTORS` obsahovat i adresu Railway.
 4. **Notion:** v Settings → Connections odpojit integraci Miton webu a smazat `~/.config/miton-talent/notion_token` na Macu.
 5. **Starý skill** z Claude odstranit, pokud tam ještě je.
 6. **Kód:** odstranit z `backend/app.py` zápis do Notionu (`_write_notion` a spol.) a `/diag` kontrolu Notionu. To je práce pro mě, samostatný commit.

@@ -231,7 +231,8 @@ def require_service(request: Request) -> dict:
 #
 #   applicants-read   who is in the inbox and what they told us. Like the
 #                     portfolio read: a service asking, no person.
-#   applicants-write  one change, made by one named @miton.cz person. The token
+#   applicants-write  one change, made by one named Miton person (or an Alister
+#                     admin on any address). The token
 #                     carries their e-mail (it becomes the event's actor) and a
 #                     jti that is spent on use, so a captured token changes
 #                     nothing a second time.
@@ -268,7 +269,10 @@ def verify_applicants_write_token(token: str) -> dict:
     email = (claims.get("email") or "").strip().lower()
     if claims.get("role") not in ALLOWED_ROLES:
         raise ServiceTokenRejected(f"role not allowed: {claims.get('role')}")
-    if not is_miton_email(email):
+    # An Alister admin may triage on any address (2026-11-05); the miton role
+    # only ever on @miton.cz. The back-office door (verify_handoff) stays
+    # @miton.cz for everyone.
+    if claims.get("role") != "admin" and not is_miton_email(email):
         raise ServiceTokenRejected("address is not @miton.cz")
     try:
         _consume_jti(f"w:{claims['jti']}"[:64], dt.datetime.fromtimestamp(int(claims["exp"]), dt.timezone.utc))

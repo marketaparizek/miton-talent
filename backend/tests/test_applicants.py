@@ -120,6 +120,15 @@ def test_a_write_moves_the_person_and_records_who(client):
     assert [i["uid"] for i in data["items"]] == ["new1"]
 
 
+def test_an_admin_on_an_outside_address_may_triage(client):
+    token = _token("applicants-write", email="admin@alister.com", role="admin")
+    r = client.post("/api/applicants/new1/notes", json={"text": "test"}, headers=_h(token))
+    assert r.status_code == 200, r.text
+    with db.session() as s:
+        actors = [e.actor for e in s.query(CandidateEvent).all() if e.type == "note"]
+    assert actors == ["admin@alister.com"]
+
+
 def test_a_write_token_is_spent_on_use(client):
     token = _token("applicants-write")
     assert client.post("/api/applicants/new1/notes", json={"text": "volat v pondělí"},
@@ -133,6 +142,7 @@ def test_a_write_token_is_spent_on_use(client):
 
 @pytest.mark.parametrize("over,why", [
     ({"email": "someone@gmail.com"}, "not a Miton address"),
+    ({"email": "someone@gmail.com", "role": "miton"}, "the miton role off the domain"),
     ({"role": "user"}, "a plain Alister user"),
     ({"ttl": 3600}, "lifetime beyond the ceiling"),
     ({"secret": "another-secret-that-is-also-32-characters-long"}, "wrong secret"),

@@ -8,7 +8,12 @@ against them. The other lists came verbatim from the Notion databases they
 replace, so the import maps one to one.
 """
 
-SOURCES = ["talent_chat", "typeform", "startupjobs", "sourcing", "referral", "alister_search", "newsletter"]
+# Playable job ads (backend/static/*-quest.html). Each game posts its own
+# source to POST /api/game-application; a new game is one line here.
+GAME_SOURCES = ["yasan-game"]
+
+SOURCES = ["talent_chat", "typeform", "startupjobs", "sourcing", "referral", "alister_search", "newsletter",
+           *GAME_SOURCES]
 
 # Candidate.stage. Verbatim from the Notion "Full databáze kandidátů" Stage
 # property, lower-cased. The old inbox Status maps onto it:

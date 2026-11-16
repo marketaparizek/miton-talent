@@ -14,7 +14,11 @@ from typing import Optional
 CONSENTS = {
     "chat-2025-cs": "Souhlasím se zpracováním osobních údajů za účelem oslovení s pracovní nabídkou.",
     "chat-2025-en": "I agree to the processing of my personal data so that I can be contacted about job opportunities.",
+    # The playable job ads (static/*-quest.html, CONTENT.marketa.consent).
+    "game-2026-en": "By sending this you agree that Miton stores these details for this hiring process.",
 }
+
+GAME = "game-2026-en"
 
 CURRENT = {"cs": "chat-2025-cs", "en": "chat-2025-en"}
 

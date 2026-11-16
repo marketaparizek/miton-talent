@@ -97,13 +97,19 @@ def set_stage(session: Session, candidate: Candidate, stage: str, *, actor: str 
 def create_from_submission(session: Session, *, uid: str, profile: dict, contact: dict,
                            summary: str, consent: bool, consent_text: str, cv_name: str,
                            lang: str, messages: Iterable | None,
-                           consent_version: str | None = None) -> tuple[Candidate, bool]:
+                           consent_version: str | None = None, source: str = "talent_chat",
+                           applied_for: list[str] | None = None) -> tuple[Candidate, bool]:
     """Store one talent chat submission. Idempotent on `uid`: a retry of the same
     submission returns the existing row and creates nothing. Returns (row, created).
 
     ``messages`` must be the server's own record of the chat (ChatConversation
     turns); ``consent_text`` the server's wording for ``consent_version``
-    (talent/consent.py). The caller makes sure neither comes from the browser."""
+    (talent/consent.py). The caller makes sure neither comes from the browser.
+
+    The playable job ads use the same path with their own ``source`` and the
+    role they advertise in ``applied_for``."""
+    if source not in vocab.SOURCES:
+        raise ValueError(f"unknown source {source!r}")
     existing = session.scalar(select(Candidate).where(Candidate.uid == uid))
     if existing:
         return existing, False
@@ -124,11 +130,13 @@ def create_from_submission(session: Session, *, uid: str, profile: dict, contact
 
     row = Candidate(
         uid=uid,
-        full_name=(name or (email or "") or ("New candidate from chat" if lang == "en" else "Nový kandidát z chatu"))[:255],
+        full_name=(name or (email or "") or (linkedin_identifier(li) if source != "talent_chat" else "")
+                   or ("New candidate from chat" if lang == "en" else "Nový kandidát z chatu"))[:255],
         email=(email or None) and email[:255],
         linkedin_url=(li or None) and li[:500],
         linkedin_identifier=linkedin_identifier(li),
-        source="talent_chat",
+        source=source,
+        sourced_for=[r for r in (applied_for or []) if r],
         lang=(lang or "cs")[:8],
         area=vocab.clean_list(_as_list(profile.get("area")), vocab.AREA),
         level=vocab.clean_list(_as_list(profile.get("level")), vocab.LEVEL),
@@ -146,7 +154,10 @@ def create_from_submission(session: Session, *, uid: str, profile: dict, contact
     )
     session.add(row)
     session.flush()
-    add_event(session, row, "submitted", actor="chat", data={"lang": lang, "has_cv": bool(cv_name)})
+    data = {"lang": lang, "has_cv": bool(cv_name)}
+    if source != "talent_chat":
+        data.update({"source": source, "role": (applied_for or [None])[0]})
+    add_event(session, row, "submitted", actor="chat" if source == "talent_chat" else "game", data=data)
     return row, True
 
 

@@ -36,7 +36,7 @@ router = APIRouter(prefix="/api/applicants", tags=["applicants"])
 _NO_STORE = {"Cache-Control": "no-store"}
 
 # People who came to us, as opposed to people we sourced. The inbox is theirs.
-INBOUND_SOURCES = ["talent_chat", "typeform", "startupjobs"]
+INBOUND_SOURCES = ["talent_chat", "typeform", "startupjobs", *vocab.GAME_SOURCES]
 
 # The triage skill never drafts a rejection inside this window: a same-day no
 # looks like nobody read it. Invitations have no delay.
@@ -78,6 +78,7 @@ def _row(c: Candidate, now: dt.datetime) -> dict:
         "current_position": c.current_position,
         "summary": c.summary,
         "has_cv": bool(c.cv_filename),
+        "applied_for": c.sourced_for or [],
         "score": c.score,
         "recommendation": c.recommendation,
         "company_tier": c.company_tier,

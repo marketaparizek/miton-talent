@@ -6,6 +6,8 @@ A small server that:
   POST /submit  stores the submitted contact in the database, emails the CV, and (while the
                 migration runs) writes a row in Notion
   GET  /health  checks that the server is running
+  GET  /yasan-quest              the playable Yasan job ad (static/yasan-quest.html)
+  POST /api/game-application     its form: a candidate row in stage applied + the e-mail
 
 Run:
   export ANTHROPIC_API_KEY=sk-ant-...      (Windows: set ANTHROPIC_API_KEY=...)
@@ -35,12 +37,13 @@ import datetime
 import unicodedata
 from email.message import EmailMessage
 from typing import List, Optional
+from urllib.parse import urlsplit
 
 import httpx
 from fastapi import Depends, FastAPI, Request, BackgroundTasks, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from anthropic import Anthropic
 
 from talent import auth as tauth
@@ -50,6 +53,7 @@ from talent import db as tdb
 from talent import erase as terase
 from talent import limits as tlimits
 from talent import store as tstore
+from talent import vocab as tvocab
 from talent import company_tiers
 from talent.portfolio import view as portfolio_view
 from talent import applicants as applicants_api
@@ -95,6 +99,8 @@ CHAT_RATE_LIMIT = int(os.environ.get("CHAT_RATE_LIMIT", "30"))      # messages
 CHAT_RATE_WINDOW = int(os.environ.get("CHAT_RATE_WINDOW", "600"))   # per this many seconds (10 min)
 SUBMIT_RATE_LIMIT = int(os.environ.get("SUBMIT_RATE_LIMIT", "5"))   # submissions
 SUBMIT_RATE_WINDOW = int(os.environ.get("SUBMIT_RATE_WINDOW", "600"))
+GAME_RATE_LIMIT = int(os.environ.get("GAME_RATE_LIMIT", "5"))      # game applications
+GAME_RATE_WINDOW = int(os.environ.get("GAME_RATE_WINDOW", "600"))
 
 
 def _client_ip(request: Request) -> str:
@@ -429,6 +435,15 @@ class SubmitIn(BaseModel):
     messages: List[Msg] = []  # ignored when conversation_id is known; else user turns only
 
 
+class GameApplicationIn(BaseModel):
+    linkedin: str = Field("", max_length=500)
+    github: str = Field("", max_length=500)
+    email: str = Field("", max_length=254)
+    role: str = Field("", max_length=100)
+    source: str = Field("", max_length=32)
+    consent: bool = False
+
+
 class EraseIn(BaseModel):
     uid: str = ""
     email: str = ""
@@ -655,6 +670,15 @@ def widget_js():
     if os.path.exists(bundle):
         return FileResponse(bundle, media_type="application/javascript", headers=_NO_CACHE)
     return JSONResponse({"error": "widget bundle not found"}, status_code=404)
+
+
+@app.get("/yasan-quest")
+def yasan_quest():
+    # The playable job ad for Yasan. It posts to /api/game-application same-origin.
+    page = os.path.join(STATIC_DIR, "yasan-quest.html")
+    if os.path.exists(page):
+        return FileResponse(page, media_type="text/html", headers=_NO_CACHE)
+    raise HTTPException(status_code=404)
 
 
 @app.get("/fonts/{name}")
@@ -967,7 +991,7 @@ def _send_via_resend(subject, body_text, reply_to, filename, blob) -> bool:
         return False
 
 
-def _send_cv_email(profile, contact, cv: Optional[CVIn], summary, lang) -> bool:
+def _send_cv_email(profile, contact, cv: Optional[CVIn], summary, lang, origin: str = "") -> bool:
     """Email the submission to the recruiter inbox with the CV attached. In-memory only."""
     if not RESEND_API_KEY and not (SMTP_HOST and SMTP_USER and SMTP_PASS and MAIL_TO and MAIL_FROM):
         return False
@@ -978,7 +1002,10 @@ def _send_cv_email(profile, contact, cv: Optional[CVIn], summary, lang) -> bool:
 
     name = (contact.get("name") or "").strip()
     who = _hdr(name) or _hdr(contact.get("email")) or ("kandidát" if lang == "cs" else "candidate")
-    subject = f"Nový kandidát z webu: {who}" if lang == "cs" else f"New candidate from the website: {who}"
+    if origin:
+        subject = f"Nový kandidát ({_hdr(origin)}): {who}" if lang == "cs" else f"New candidate ({_hdr(origin)}): {who}"
+    else:
+        subject = f"Nový kandidát z webu: {who}" if lang == "cs" else f"New candidate from the website: {who}"
 
     if lang == "cs":
         lines = [
@@ -1431,6 +1458,112 @@ def submit(body: SubmitIn, request: Request, background: BackgroundTasks):
         True, consent_version, consent_text, cv_name, lang, messages, conversation_id,
     )
     return {"ok": True, "queued": True, "cv_accepted": bool(filename) if body.cv and body.cv.data else None}
+
+
+# --- Playable job ads ----------------------------------------------------------
+# static/*-quest.html end with a short form: LinkedIn (required), GitHub and
+# e-mail (optional). The applicant goes the chat's way: a candidate row in stage
+# "applied", in the inbox, and the same e-mail notification. No Notion, no
+# scoring: there is no transcript or CV to score.
+
+_ROLE_RE = re.compile(r"^[a-z0-9][a-z0-9-]{0,99}$")
+
+
+def _http_url(value: str) -> Optional[str]:
+    """The URL with its host lower-cased, or None when it is not http(s) with a host."""
+    v = (value or "").strip()
+    if not v:
+        return None
+    if "://" not in v:
+        v = "https://" + v
+    try:
+        parts = urlsplit(v)
+    except ValueError:
+        return None
+    if parts.scheme not in ("http", "https") or not parts.hostname or any(c in v for c in " \r\n\t<>\"'"):
+        return None
+    return v
+
+
+def _linkedin_url(value: str) -> Optional[str]:
+    """A URL on linkedin.com (or a subdomain such as www. or cz.) with a path."""
+    v = _http_url(value)
+    if not v:
+        return None
+    parts = urlsplit(v)
+    host = parts.hostname.lower()
+    if host != "linkedin.com" and not host.endswith(".linkedin.com"):
+        return None
+    if parts.path.strip("/") == "":
+        return None
+    return v
+
+
+def _deliver_game_application(uid, contact, lang, consent_version, consent_text, source, role):
+    """Database first, then the e-mail; same order and fallback as the chat."""
+    db_ok = False
+    try:
+        with tdb.session() as s:
+            tstore.create_from_submission(
+                s, uid=uid, profile={}, contact=contact, summary="", consent=True,
+                consent_text=consent_text, consent_version=consent_version, cv_name="",
+                lang=lang, messages=None, source=source, applied_for=[role] if role else [],
+            )
+        db_ok = True
+        log.info("game application %s stored (%s)", uid, source)
+    except Exception:
+        log.exception("database write failed for game application %s", uid)
+        _write_fallback_file({
+            "uid": uid, "ts": _utcnow().isoformat().replace("+00:00", "Z"), "lang": lang,
+            "source": source, "role": role, "contact": contact,
+            "consent": True, "consent_version": consent_version,
+        })
+    origin = f"{source}, {role}" if role else source
+    email_ok = _send_cv_email({}, contact, None, "", lang, origin=origin)
+    if not db_ok and not email_ok:
+        log.error("game application delivered NOWHERE (database and email failed/off); check submissions.jsonl")
+
+
+@app.post("/api/game-application")
+def game_application(body: GameApplicationIn, request: Request, background: BackgroundTasks):
+    # Unlike /submit, a rate-limited call gets a 429: the game then tells the
+    # person to e-mail Markéta instead of showing "Sent" for nothing.
+    try:
+        limited = _rate_limited("game", _client_ip(request), GAME_RATE_LIMIT, GAME_RATE_WINDOW)
+    except Exception:
+        log.exception("game rate limit check failed; accepting the application")
+        limited = False
+    if limited:
+        raise HTTPException(status_code=429, detail="too many applications, try again later")
+
+    if not body.consent:
+        raise HTTPException(status_code=400, detail="consent required")
+    source = body.source.strip()
+    if source not in tvocab.GAME_SOURCES:
+        raise HTTPException(status_code=400, detail="unknown source")
+    role = body.role.strip().lower()
+    if role and not _ROLE_RE.match(role):
+        raise HTTPException(status_code=400, detail="invalid role")
+    linkedin = _linkedin_url(body.linkedin)
+    if not linkedin:
+        raise HTTPException(status_code=400, detail="linkedin must be a linkedin.com URL")
+    github = None
+    if body.github.strip():
+        github = _http_url(body.github)
+        if not github:
+            raise HTTPException(status_code=400, detail="github must be a URL")
+    email = body.email.strip()
+    if email and not _reply_to({"email": email}):
+        raise HTTPException(status_code=400, detail="invalid email")
+
+    lang = "en"
+    consent_version, consent_text = tconsent.resolve(tconsent.GAME, lang)
+    contact = {"email": email, "linkedin": linkedin,
+               "note": f"GitHub or project: {github}" if github else ""}
+    uid = uuid.uuid4().hex
+    background.add_task(_deliver_game_application, uid, contact, lang,
+                        consent_version, consent_text, source, role)
+    return {"ok": True, "queued": True}
 
 
 @app.post("/admin/candidates/erase")

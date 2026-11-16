@@ -116,6 +116,6 @@ def test_page_view_is_a_no_op_when_off(client, monkeypatch):
 
 def test_link_preview_tags_and_image(client):
     page = client.get("/yasan-quest").text
-    assert 'property="og:image" content="https://talent.alisterai.com/yasan-quest/preview.png"' in page
+    assert 'property="og:image" content="https://talent.alisterai.com/yasan-quest/preview.png?v=2"' in page
     r = client.get("/yasan-quest/preview.png")
     assert r.status_code == 200 and r.headers["content-type"] == "image/png" and r.content[:4] == b"\x89PNG"

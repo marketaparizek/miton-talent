@@ -686,7 +686,7 @@ def widget_js():
     return JSONResponse({"error": "widget bundle not found"}, status_code=404)
 
 
-@app.get("/yasan-quest")
+@app.api_route("/yasan-quest", methods=["GET", "HEAD"])
 def yasan_quest():
     # The playable job ad for Yasan. It posts to /api/game-application same-origin.
     page = os.path.join(STATIC_DIR, "yasan-quest.html")
@@ -695,7 +695,7 @@ def yasan_quest():
     raise HTTPException(status_code=404)
 
 
-@app.get("/yasan-quest/preview.png")
+@app.api_route("/yasan-quest/preview.png", methods=["GET", "HEAD"])
 def yasan_quest_preview():
     # The link-preview image (og:image) for LinkedIn and friends.
     page = os.path.join(STATIC_DIR, "yasan-quest-preview.png")

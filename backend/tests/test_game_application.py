@@ -119,3 +119,9 @@ def test_link_preview_tags_and_image(client):
     assert 'property="og:image" content="https://talent.alisterai.com/yasan-quest/preview.png?v=2"' in page
     r = client.get("/yasan-quest/preview.png")
     assert r.status_code == 200 and r.headers["content-type"] == "image/png" and r.content[:4] == b"\x89PNG"
+
+
+def test_crawlers_can_head_the_page_and_image(client):
+    # link-preview crawlers often send HEAD first; a 405 there can kill the preview
+    assert client.head("/yasan-quest").status_code == 200
+    assert client.head("/yasan-quest/preview.png").status_code == 200

@@ -43,7 +43,7 @@
   #contact input { display:block; width:100%; margin-top:3px; font-family:var(--tx); font-size:clamp(17px,2.1vw,21px); padding:5px 8px; border:3px solid var(--ink); background:var(--soft); color:var(--ink); }
   #contact input:focus { outline:3px solid var(--violet); outline-offset:1px; }
   #contact .row { display:flex; flex-wrap:wrap; gap:10px; margin:12px 0 10px; }
-  #contact .mail { font-size:clamp(16px,2vw,20px); color:var(--mute); user-select:all; word-break:break-all; }
+  #contact .mail { font-size:clamp(16px,2vw,20px); color:var(--mute); user-select:all; overflow-wrap:anywhere; }
   #fhint { font-size:clamp(16px,2vw,20px); color:#b91c1c; min-height:1em; }
   #help { margin-top:18px; font-size:20px; color:var(--mute); text-align:center; }
   #help b { color:var(--ink); font-weight:400; }
@@ -51,6 +51,8 @@
   #touch div { display:flex; gap:10px; }
   #touch button { font-family:var(--px); font-size:14px; width:66px; height:58px; background:#fff; color:var(--ink); border:3px solid var(--ink); box-shadow:0 4px 0 var(--violet); touch-action:none; user-select:none; }
   @media (pointer:coarse) { #touch { display:flex; } #help { display:none; } }
+  /* phones: the game is only ~200px tall, so dialogs sit over the whole screen instead of inside it */
+  @media (max-width:700px) { #dlg { position:fixed; width:calc(100% - 24px); max-height:calc(100% - 24px); z-index:10; } }
 </style>
 </head>
 <body>
@@ -314,6 +316,7 @@ function jingle() { [523, 659, 784, 1047].forEach((f, i) => setTimeout(() => bee
 /* ---------- dialogs and caption ---------- */
 const dlg = document.getElementById('dlg'), cap = document.getElementById('cap');
 const dTag = dlg.querySelector('.tag'), dH = dlg.querySelector('h2'), dP = dlg.querySelector('p');
+const TOUCH = matchMedia('(pointer:coarse)').matches; // no Enter key to point at on a phone
 const dOpts = dlg.querySelector('.opts'), dOk = document.getElementById('ok'), dContact = document.getElementById('contact');
 let dlgOpen = false, dlgAt = 0, dlgOnOk = null, dlgPick = null, dlgKeys = true, capText = '';
 
@@ -343,7 +346,7 @@ function showDialog({ tag, title, body, button = 'Continue', options = null, onO
   } else {
     dOk.style.display = '';
     dOk.className = contact ? 'sec' : 'pri';
-    dOk.textContent = contact ? button : button + ' [Enter]';
+    dOk.textContent = contact || TOUCH ? button : button + ' [Enter]';
   }
   dlgOnOk = onOk;
   dlg.hidden = false; dlgOpen = true; dlgAt = performance.now();
@@ -743,6 +746,26 @@ function frame(now) {
   draw();
   requestAnimationFrame(frame);
 }
+// one page view per load for the traffic analytics (Alister admin -> Traffic):
+// the pathname, where they came from, utm_source, and a per-tab visit id.
+// No cookie, nothing else about the visitor.
+(function () {
+  try {
+    let visit = null;
+    try {
+      visit = sessionStorage.getItem('al_visit');
+      if (!visit) { visit = Math.random().toString(36).slice(2) + Date.now().toString(36); sessionStorage.setItem('al_visit', visit); }
+    } catch (e) {}
+    const json = JSON.stringify({
+      path: location.pathname,
+      referrer: document.referrer || null,
+      utm_source: new URLSearchParams(location.search).get('utm_source'),
+      session_id: visit
+    });
+    fetch('/api/pageview', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: json, keepalive: true }).catch(() => {});
+  } catch (e) {}
+})();
+
 init();
 musicFirst(); // plays at once where the browser allows sound without a click
 requestAnimationFrame(frame);

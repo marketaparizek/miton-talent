@@ -8,6 +8,7 @@ A small server that:
   GET  /health  checks that the server is running
   GET  /yasan-quest              the playable Yasan job ad (static/yasan-quest.html)
   POST /api/game-application     its form: a candidate row in stage applied + the e-mail
+  POST /api/pageview             its page views, passed on to Alister's traffic analytics
 
 Run:
   export ANTHROPIC_API_KEY=sk-ant-...      (Windows: set ANTHROPIC_API_KEY=...)
@@ -42,7 +43,7 @@ from urllib.parse import urlsplit
 import httpx
 from fastapi import Depends, FastAPI, Request, BackgroundTasks, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response
 from pydantic import BaseModel, Field
 from anthropic import Anthropic
 
@@ -101,6 +102,12 @@ SUBMIT_RATE_LIMIT = int(os.environ.get("SUBMIT_RATE_LIMIT", "5"))   # submission
 SUBMIT_RATE_WINDOW = int(os.environ.get("SUBMIT_RATE_WINDOW", "600"))
 GAME_RATE_LIMIT = int(os.environ.get("GAME_RATE_LIMIT", "5"))      # game applications
 GAME_RATE_WINDOW = int(os.environ.get("GAME_RATE_WINDOW", "600"))
+
+# Page views of the public pages here go to Alister's traffic analytics (admin ->
+# Traffic), which runs on the same server. On the box this is
+# http://127.0.0.1:8001/api/v1/pageviews; empty turns the forwarding off.
+ALISTER_PAGEVIEW_URL = os.environ.get("ALISTER_PAGEVIEW_URL", "").strip()
+TRACKED_PAGES = {"/yasan-quest"}
 
 
 def _client_ip(request: Request) -> str:
@@ -442,6 +449,13 @@ class GameApplicationIn(BaseModel):
     role: str = Field("", max_length=100)
     source: str = Field("", max_length=32)
     consent: bool = False
+
+
+class PageViewIn(BaseModel):
+    path: str = Field(..., max_length=300)
+    referrer: Optional[str] = Field(None, max_length=2000)
+    utm_source: Optional[str] = Field(None, max_length=200)
+    session_id: Optional[str] = Field(None, max_length=64)
 
 
 class EraseIn(BaseModel):
@@ -1564,6 +1578,28 @@ def game_application(body: GameApplicationIn, request: Request, background: Back
     background.add_task(_deliver_game_application, uid, contact, lang,
                         consent_version, consent_text, source, role)
     return {"ok": True, "queued": True}
+
+
+def _forward_page_view(payload: dict, user_agent: str) -> None:
+    """Hand one page view to Alister. Alister decides what is stored (no IP, no
+    query string) and drops crawlers by the user agent, so it is passed on."""
+    try:
+        httpx.post(ALISTER_PAGEVIEW_URL, json=payload, timeout=3,
+                   headers={"User-Agent": user_agent[:500]})
+    except Exception:
+        log.warning("page view forwarding to Alister failed")
+
+
+@app.post("/api/pageview", status_code=204)
+def page_view(body: PageViewIn, request: Request, background: BackgroundTasks):
+    """Beacon from the public pages here (the playable job ads). Only known pages
+    are passed on, so nobody can write arbitrary paths into Alister's traffic."""
+    path = body.path.split("?")[0].split("#")[0].rstrip("/") or "/"
+    if ALISTER_PAGEVIEW_URL and path in TRACKED_PAGES:
+        payload = {"path": path, "referrer": body.referrer, "utm_source": body.utm_source,
+                   "session_id": body.session_id}
+        background.add_task(_forward_page_view, payload, request.headers.get("user-agent", ""))
+    return Response(status_code=204)
 
 
 @app.post("/admin/candidates/erase")

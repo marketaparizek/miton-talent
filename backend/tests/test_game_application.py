@@ -94,3 +94,21 @@ def test_serves_the_page_pointing_at_the_endpoint(client):
     r = client.get("/yasan-quest")
     assert r.status_code == 200 and "text/html" in r.headers["content-type"]
     assert "submitUrl: '/api/game-application'" in r.text
+
+
+def test_page_view_is_forwarded_only_for_known_pages(client, monkeypatch):
+    sent = []
+    monkeypatch.setattr(chat, "ALISTER_PAGEVIEW_URL", "http://alister.test/api/v1/pageviews")
+    monkeypatch.setattr(chat, "_forward_page_view", lambda payload, ua: sent.append((payload, ua)))
+    ua = {"User-Agent": "Mozilla/5.0"}
+    assert client.post("/api/pageview", json={"path": "/yasan-quest/", "referrer": "https://www.linkedin.com/",
+                                              "session_id": "abc"}, headers=ua).status_code == 204
+    assert client.post("/api/pageview", json={"path": "/admin"}, headers=ua).status_code == 204
+    assert sent == [({"path": "/yasan-quest", "referrer": "https://www.linkedin.com/", "utm_source": None,
+                      "session_id": "abc"}, "Mozilla/5.0")]
+
+
+def test_page_view_is_a_no_op_when_off(client, monkeypatch):
+    monkeypatch.setattr(chat, "ALISTER_PAGEVIEW_URL", "")
+    monkeypatch.setattr(chat, "_forward_page_view", lambda *a: pytest.fail("must not forward"))
+    assert client.post("/api/pageview", json={"path": "/yasan-quest"}).status_code == 204

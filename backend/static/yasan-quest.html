@@ -70,7 +70,7 @@
       <label id="l_em" hidden>Your email (optional)<input id="f_em" type="email" placeholder="you@example.com" autocomplete="off"></label>
       <div class="row">
         <button class="pri" id="send" hidden>Send to Markéta</button>
-        <button class="pri" id="copy">Copy the message for Markéta</button>
+        <a class="btn" id="copy">Or email Markéta</a>
         <a class="btn" id="full" target="_blank" rel="noopener">Or apply at yasan.ai</a>
       </div>
       <div class="mail">Send it to: <span id="mail"></span></div>
@@ -371,11 +371,15 @@ function toast(t) { state.toast = t; state.toastT = 150; }
   $('full').href = g.fullRole;
   const body = () => 'Hi Markéta,\n\nI played the Yasan quest and I would like to talk about the Senior Backend Engineer role.\n\nLinkedIn: ' + li.value.trim() +
     (gh.value.trim() ? '\nGitHub or project: ' + gh.value.trim() : '') + '\n';
-  const refresh = () => { hint.textContent = ''; };
+  // the mailto button: subject and body prefilled, LinkedIn included once typed
+  const refresh = () => {
+    hint.textContent = '';
+    cb.href = 'mailto:' + g.email + '?subject=' + encodeURIComponent(g.subject) + '&body=' + encodeURIComponent(body());
+  };
   [li, gh].forEach(el => el.addEventListener('input', refresh));
   if (g.submitUrl) {
     const send = $('send'), em = $('f_em');
-    send.hidden = false; $('l_em').hidden = false; cb.className = 'sec';
+    send.hidden = false; $('l_em').hidden = false;
     document.querySelector('#contact .mail').textContent = g.consent;
     send.onclick = async e => {
       if (!li.value.trim()) { hint.textContent = 'Add your LinkedIn profile first.'; li.focus(); return; }
@@ -387,18 +391,12 @@ function toast(t) { state.toast = t; state.toastT = 150; }
         send.textContent = 'Sent'; hint.style.color = '#4c1d95'; hint.textContent = 'Sent. Markéta will get back to you.';
       } catch (err) {
         send.disabled = false; send.textContent = 'Send to Markéta';
-        hint.textContent = 'Sending failed. Copy the message and email it to ' + g.email;
+        hint.textContent = 'Sending failed. Email Markéta instead, the button is right here.';
       }
     };
   }
   refresh();
-  const ready = e => { if (li.value.trim()) return true; e.preventDefault(); hint.textContent = 'Add your LinkedIn profile first.'; li.focus(); return false; };
-  cb.onclick = async e => {
-    if (!ready(e)) return;
-    try { await navigator.clipboard.writeText('To: ' + g.email + '\nSubject: ' + g.subject + '\n\n' + body()); cb.textContent = 'Copied'; hint.style.color = '#4c1d95'; hint.textContent = 'Copied. Paste it into an email to the address below.'; }
-    catch (err) { hint.textContent = 'Copy did not work here. Write to ' + g.email; }
-    setTimeout(() => { cb.textContent = 'Copy the message for Markéta'; }, 2000);
-  };
+  cb.textContent = 'Or email ' + g.email;
 }
 
 /* ---------- stations ---------- */

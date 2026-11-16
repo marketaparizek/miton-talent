@@ -119,7 +119,7 @@ const CONTENT = {
     next: {
       tag: 'VOJTĚCH ON THE PRODUCT',
       title: 'We build an AI salesperson for e-shops',
-      body: 'A shopper types what they need. Yasan finds the right product and answers their questions, in search, chat and email. Shops like Lentiamo use it. In one recent month it ran 113,378 searches.'
+      body: 'A shopper types what they need. Yasan finds the right product and answers their questions, in search, chat and email. Shops like Lentiamo use it. Last month it ran 144 thousand searches.'
     }
   },
   martin: {
@@ -138,29 +138,29 @@ const CONTENT = {
     start: {
       tag: 'QUEST 1 · CONTEXT',
       title: 'A shopper wants shoes with a wide toe box',
-      body: 'The AI cannot answer yet. It has no context. Collect three pieces for it: product, customer and business.'
+      body: 'The AI cannot answer yet. It has no context. Collect three pieces for it: product, customer and shop.'
     },
     hud: 'CONTEXT',
     pieces: [
       { label: 'PRODUCT', toast: 'Product: fresh catalog data' },
-      { label: 'CUSTOMER', toast: 'Customer: the conversation so far' },
-      { label: 'BUSINESS', toast: 'Business: how this shop sells' }
+      { label: 'CUSTOMER', toast: 'Customer: their behavior on the website, search and cart history' },
+      { label: 'SHOP', toast: 'Shop: understanding how this shop sells' }
     ],
     tag: 'QUEST 1 · DONE',
     title: 'The AI answers. The shopper buys.',
-    body: 'This is the core of the job. You build the systems that give the models the right product, customer and business information. The listing calls it context engineering.'
+    body: 'This is the core of the job. You build the systems that give the models the right product, customer and shop information. We call it context engineering.'
   },
   sync: {
     hint: 'Quest 2: sync the catalog. Hit all three blocks from below.',
     hud: 'SYNC',
     platforms: ['SHOPTET', 'SHOPIFY', 'WOO'],
     tag: 'QUEST 2 · DONE',
-    title: 'Three platforms, one catalog',
-    body: 'Yasan plugs into Shoptet, Shopify and WooCommerce. You keep product data flowing in reliably. Catalog sync, email processing and queues are part of the work.'
+    title: 'Many platforms, one catalog',
+    body: 'Yasan plugs into Shoptet, Shopify, WooCommerce and Eshop-rychle, with Upgates coming soon. Plus product feeds and custom integrations. You keep product data flowing in reliably. Catalog sync, email processing and queues are part of the work.'
   },
   review: {
     tag: 'QUEST 3 · CODE REVIEW',
-    question: 'Three pull requests. Which one do you stop?',
+    question: 'Three pull requests. Which one do you review first?',
     hint: 'Pick one.',
     options: ['Fixes a typo in a log message', 'Queue worker retries failed emails forever', 'Bumps a dev dependency'],
     correct: 1,

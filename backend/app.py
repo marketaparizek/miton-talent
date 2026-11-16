@@ -695,6 +695,15 @@ def yasan_quest():
     raise HTTPException(status_code=404)
 
 
+@app.get("/yasan-quest/preview.png")
+def yasan_quest_preview():
+    # The link-preview image (og:image) for LinkedIn and friends.
+    page = os.path.join(STATIC_DIR, "yasan-quest-preview.png")
+    if os.path.exists(page):
+        return FileResponse(page, media_type="image/png", headers={"Cache-Control": "public, max-age=86400"})
+    raise HTTPException(status_code=404)
+
+
 @app.get("/fonts/{name}")
 def font_file(name: str):
     # Serve the Miton brand font (DegularDisplay) next to the widget, because the

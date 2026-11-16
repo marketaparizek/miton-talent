@@ -112,3 +112,10 @@ def test_page_view_is_a_no_op_when_off(client, monkeypatch):
     monkeypatch.setattr(chat, "ALISTER_PAGEVIEW_URL", "")
     monkeypatch.setattr(chat, "_forward_page_view", lambda *a: pytest.fail("must not forward"))
     assert client.post("/api/pageview", json={"path": "/yasan-quest"}).status_code == 204
+
+
+def test_link_preview_tags_and_image(client):
+    page = client.get("/yasan-quest").text
+    assert 'property="og:image" content="https://talent.alisterai.com/yasan-quest/preview.png"' in page
+    r = client.get("/yasan-quest/preview.png")
+    assert r.status_code == 200 and r.headers["content-type"] == "image/png" and r.content[:4] == b"\x89PNG"

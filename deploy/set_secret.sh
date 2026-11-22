@@ -32,4 +32,4 @@ else
 fi
 chmod 600 "$ENV_FILE"
 echo "${name} uloženo (${#value} znaků, začíná ${value:0:6}…)" >&2
-systemctl restart miton-talent && sleep 2 && curl -fsS http://127.0.0.1:8200/diag >&2 && echo >&2
+systemctl restart miton-talent && sleep 2 && curl -fsS http://127.0.0.1:8200/health >&2 && echo " <- běží" >&2

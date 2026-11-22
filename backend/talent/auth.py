@@ -263,8 +263,15 @@ def require_applicants_read(request: Request) -> dict:
         raise HTTPException(status_code=401, detail="service token refused") from e
 
 
-def verify_applicants_write_token(token: str) -> dict:
-    """Return {"service", "email", "user_id"} for a valid, unused write token."""
+# Running costs (/admin/usage) drawn in Alister's admin as a tab: a read
+# token (no person) and a write token per change, admin role only.
+COSTS_READ_PURPOSE = "costs-read"
+COSTS_WRITE_PURPOSE = "costs-write"
+
+
+def verify_applicants_write_token(token: str, purpose: str = APPLICANTS_WRITE_PURPOSE) -> dict:
+    """Return {"service", "email", "user_id", "role"} for a valid, unused
+    write token of ``purpose`` (applicant changes, or a costs change)."""
     try:
         claims = jwt.decode(
             token,
@@ -276,11 +283,13 @@ def verify_applicants_write_token(token: str) -> dict:
         )
     except jwt.InvalidTokenError as e:
         raise ServiceTokenRejected(f"invalid token: {type(e).__name__}") from e
-    if claims.get("purpose") != APPLICANTS_WRITE_PURPOSE:
+    if claims.get("purpose") != purpose:
         raise ServiceTokenRejected("wrong purpose")
     if int(claims["exp"]) - int(claims["iat"]) > SERVICE_READ_MAX_AGE_SECONDS:
         raise ServiceTokenRejected("lifetime too long")
     email = (claims.get("email") or "").strip().lower()
+    if purpose == COSTS_WRITE_PURPOSE and claims.get("role") != "admin":
+        raise ServiceTokenRejected("costs are for the admin role")
     if claims.get("role") not in ALLOWED_ROLES:
         raise ServiceTokenRejected(f"role not allowed: {claims.get('role')}")
     # An Alister admin may triage on any address (2026-11-05); the miton role
@@ -293,7 +302,7 @@ def verify_applicants_write_token(token: str) -> dict:
     except HandoffRejected as e:
         raise ServiceTokenRejected(e.reason) from e
     return {"service": str(claims.get("sub") or "unknown"), "email": email,
-            "user_id": str(claims.get("uid") or "")}
+            "user_id": str(claims.get("uid") or ""), "role": claims.get("role")}
 
 
 def require_applicants_write(request: Request) -> dict:
@@ -302,6 +311,24 @@ def require_applicants_write(request: Request) -> dict:
         return verify_applicants_write_token(token)
     except ServiceTokenRejected as e:
         log.warning("applicants write token refused: %s", e.reason)
+        raise HTTPException(status_code=401, detail="service token refused") from e
+
+
+def require_costs_read(request: Request) -> dict:
+    token = _bearer(request)
+    try:
+        return verify_service_token(token, purpose=COSTS_READ_PURPOSE)
+    except ServiceTokenRejected as e:
+        log.warning("costs read token refused: %s", e.reason)
+        raise HTTPException(status_code=401, detail="service token refused") from e
+
+
+def require_costs_write(request: Request) -> dict:
+    token = _bearer(request)
+    try:
+        return verify_applicants_write_token(token, purpose=COSTS_WRITE_PURPOSE)
+    except ServiceTokenRejected as e:
+        log.warning("costs write token refused: %s", e.reason)
         raise HTTPException(status_code=401, detail="service token refused") from e
 
 

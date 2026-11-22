@@ -26,6 +26,13 @@ from talent import costs, locks, usage
 
 router = APIRouter(prefix="/admin/usage", tags=["usage"], dependencies=[Depends(tauth.require_admin)])
 
+# The same numbers for Alister's admin, which draws them as its "Costs" tab:
+# server to server with tokens signed with the shared secret (talent/auth.py).
+#   GET  /api/costs/snapshot   costs-read, no person
+#   POST /api/costs/manual     costs-write, one admin, one change
+#   POST /api/costs/sync       costs-write
+service_router = APIRouter(prefix="/api/costs", tags=["usage"])
+
 PAGE = os.path.join(os.path.dirname(__file__), "usage_page.html")
 _NO_STORE = {"Cache-Control": "no-store"}
 SYNC_LOCK = "cost-sync"
@@ -56,6 +63,10 @@ def _json_body(request: Request) -> bool:
 def sync_now(request: Request):
     if not _json_body(request):
         return JSONResponse({"error": "JSON only"}, status_code=415)
+    return _sync()
+
+
+def _sync():
     holder = locks.acquire(SYNC_LOCK, dt.timedelta(minutes=5))
     if holder is None:
         return JSONResponse({"error": "načítání už běží"}, status_code=409)
@@ -69,16 +80,35 @@ def sync_now(request: Request):
 async def save_manual(request: Request, user: dict = Depends(tauth.require_admin)):
     if not _json_body(request):
         return JSONResponse({"error": "JSON only"}, status_code=415)
+    return await _manual(request, user.get("email"))
+
+
+async def _manual(request: Request, who):
     try:
         body = await request.json()
         out = costs.set_manual(
             str(body.get("provider", "")), str(body.get("month", "")),
             float(body.get("amount", 0)), str(body.get("currency", "USD")).upper(),
-            body.get("note"), user.get("email"), estimate=bool(body.get("estimate")),
+            body.get("note"), who, estimate=bool(body.get("estimate")),
         )
     except (ValueError, TypeError) as exc:
         return JSONResponse({"error": str(exc)}, status_code=400)
     return JSONResponse(out)
+
+
+@service_router.get("/snapshot")
+def service_snapshot(caller: dict = Depends(tauth.require_costs_read)):
+    return JSONResponse(_data(), headers=_NO_STORE)
+
+
+@service_router.post("/manual")
+async def service_manual(request: Request, caller: dict = Depends(tauth.require_costs_write)):
+    return await _manual(request, caller.get("email"))
+
+
+@service_router.post("/sync")
+def service_sync(caller: dict = Depends(tauth.require_costs_write)):
+    return _sync()
 
 
 def _inline(data: dict) -> str:

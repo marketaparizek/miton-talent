@@ -494,6 +494,8 @@ app.include_router(portfolio_view.service_router)
 app.include_router(applicants_api.router)
 # Token spend per day and per feature (/admin/usage), admin role only.
 app.include_router(usage_view.router)
+# The same numbers for Alister's admin Costs tab (service tokens, no session).
+app.include_router(usage_view.service_router)
 
 
 @app.exception_handler(tauth.LoginRequired)

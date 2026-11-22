@@ -129,6 +129,20 @@ def is_miton_email(email: Optional[str]) -> bool:
     return (email or "").strip().lower().endswith(MITON_DOMAIN)
 
 
+def may_enter(role: Optional[str], email: Optional[str]) -> bool:
+    """Who the back office lets in: an Alister admin on any address, or the
+    miton role on an @miton.cz address. The same rule as Alister's
+    ``can_access_talent``; Alister checks it before it signs the token, this
+    service checks it again on the token and on every session read.
+
+    The admin on an outside address was refused until 2026-11-22, when
+    Markéta asked to let that account in (running costs on /admin/usage).
+    A beta customer holds neither role and never gets a token."""
+    if role == "admin":
+        return True
+    return role == "miton" and is_miton_email(email)
+
+
 # --- Handoff token -----------------------------------------------------------
 
 
@@ -165,8 +179,8 @@ def verify_handoff_token(token: str) -> dict:
     email = (claims.get("email") or "").strip().lower()
     if role not in ALLOWED_ROLES:
         raise HandoffRejected(f"role not allowed: {role}")
-    if not is_miton_email(email):
-        raise HandoffRejected("address is not @miton.cz")
+    if not may_enter(role, email):
+        raise HandoffRejected("miton role on an address that is not @miton.cz")
 
     _consume_jti(str(claims["jti"]), dt.datetime.fromtimestamp(int(claims["exp"]), dt.timezone.utc))
     return {"user_id": str(claims["sub"]), "email": email, "role": role}
@@ -374,7 +388,7 @@ def current_user(request: Request) -> Optional[dict]:
         if row is None or row.revoked_at is not None or _aware(row.expires_at) <= now:
             return None
         user = {"user_id": row.user_id, "email": row.email, "role": row.role}
-    if user["role"] not in ALLOWED_ROLES or not is_miton_email(user["email"]):
+    if user["role"] not in ALLOWED_ROLES or not may_enter(user["role"], user["email"]):
         return None
     return user
 

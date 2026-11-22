@@ -193,8 +193,17 @@ def _assert_refused(client, token):
 
 
 def test_outside_address_is_refused_even_with_a_valid_signature(client):
-    _assert_refused(client, _token(email="someone@example.com"))
-    _assert_refused(client, _token(email="kolega@miton.cz.evil.com"))
+    _assert_refused(client, _token(email="someone@example.com", role="miton"))
+    _assert_refused(client, _token(email="kolega@miton.cz.evil.com", role="miton"))
+
+
+def test_an_alister_admin_on_any_address_gets_in(client):
+    """Since 2026-11-22 the admin on an outside address may enter, like in
+    Alister's hub; the miton role still needs an @miton.cz address."""
+    r = _callback(client, _token(role="admin", email="admin@alister.com"))
+    assert r.status_code == 302
+    assert client.get("/auth/me").json()["email"] == "admin@alister.com"
+    assert client.get("/admin/usage.json").status_code == 200
 
 
 def test_user_role_is_refused(client):

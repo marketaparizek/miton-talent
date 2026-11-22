@@ -30,6 +30,9 @@ key, so the two systems stay independent.
                       limit per visitor network and the daily model budget.
   job_locks           a named lock in the database, so one portfolio scrape
                       runs at a time across workers and cron.
+  llm_usage           one row per model call: which feature, which model, the
+                      token counts and what it cost. Counts only, never what
+                      was said. Feeds /admin/usage.
 
 Lists (area, level, ...) are stored as JSON arrays so the same schema runs on
 SQLite (local, tests) and Postgres (Hetzner). Vocabularies live in
@@ -510,3 +513,29 @@ class PortfolioRole(Base):
 
     def __repr__(self) -> str:
         return f"<PortfolioRole {self.title!r} company={self.company_id}>"
+
+
+class LlmUsage(Base):
+    """One model call and what it cost (talent/usage.py writes it).
+
+    ``cost_micro_usd`` is the price at the time of the call in millionths of a
+    dollar, so a later price change does not rewrite history and the sums stay
+    exact integers. Counts only: no prompt, no answer, nothing about a person.
+    """
+
+    __tablename__ = "llm_usage"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+    feature: Mapped[str] = mapped_column(String(32), nullable=False)
+    model: Mapped[str] = mapped_column(String(64), nullable=False)
+    input_tokens: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    output_tokens: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    cache_write_tokens: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    cache_read_tokens: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    cost_micro_usd: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    # False when the model is missing from the price list: the row still counts
+    # tokens, and the page says that its cost is a floor, not the bill.
+    priced: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+
+    __table_args__ = (Index("ix_llm_usage_created", "created_at"),)

@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Útrata za modely · Miton Talent</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap">
+<style>
+:root{
+  --orange:#E9600D; --orange-dk:#C24F09; --yellow:#FFC800; --mint:#A9D6B4; --mint-dk:#5E9E70;
+  --paper:#FFFFFF; --paper-2:#F5F4F0; --surface:#FFFFFF;
+  --ink:#1D1D1B; --ink-2:#4A4A45; --muted:#82807A; --line:#E6E4DC; --line-2:#CFCCC1;
+  --s1:#E9600D; --s2:#1D1D1B; --s3:#5E9E70; --s4:#C9A200; --s5:#82807A;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#131311; --paper-2:#1A1A17; --surface:#1E1E1A;
+    --ink:#F3F1EA; --ink-2:#C2BFB5; --muted:#8B8880; --line:#2A2A24; --line-2:#3C3B33;
+    --s2:#F3F1EA; --s3:#8CC49E; --s4:#FFC800;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#131311; --paper-2:#1A1A17; --surface:#1E1E1A;
+  --ink:#F3F1EA; --ink-2:#C2BFB5; --muted:#8B8880; --line:#2A2A24; --line-2:#3C3B33;
+  --s2:#F3F1EA; --s3:#8CC49E; --s4:#FFC800;
+}
+*{box-sizing:border-box}
+body{margin:0; background:var(--paper); color:var(--ink); font-family:"Figtree","Helvetica Neue",Arial,sans-serif;
+  font-size:15px; line-height:1.45; -webkit-font-smoothing:antialiased}
+.wrap{max-width:1100px; margin:0 auto; padding:14px 16px 70px}
+.mono{font-family:"JetBrains Mono",ui-monospace,SFMono-Regular,monospace}
+a{color:inherit}
+.nav{display:flex; gap:16px; font-size:13px; color:var(--muted); margin:2px 2px 12px}
+.top{background:var(--orange); color:#fff; border-radius:14px; padding:20px clamp(18px,2.4vw,28px)}
+.top h1{margin:0; font-size:22px; font-weight:700; letter-spacing:-.025em}
+.top .sub{font-family:"JetBrains Mono",ui-monospace,monospace; font-size:11px; letter-spacing:.14em;
+  text-transform:uppercase; color:#FFD9B8; margin-top:5px}
+.verdict{font-size:17px; font-weight:600; margin:14px 0 4px; max-width:760px}
+.kpis{display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-top:16px}
+.kpi{background:rgba(255,255,255,.13); border-radius:11px; padding:13px 15px}
+.kpi .v{font-size:30px; font-weight:800; letter-spacing:-.04em; line-height:1; font-variant-numeric:tabular-nums}
+.kpi .k{font-family:"JetBrains Mono",ui-monospace,monospace; font-size:10px; font-weight:500; letter-spacing:.12em;
+  text-transform:uppercase; color:#FFD9B8; margin-top:8px}
+.kpi .n{font-size:12px; color:#FFE6D2; margin-top:4px}
+@media (max-width:720px){.kpis{grid-template-columns:repeat(2,1fr)}}
+.card{background:var(--paper-2); border-radius:14px; padding:18px clamp(16px,2vw,22px) 22px; margin-top:12px}
+.card h2{margin:0 0 4px; font-size:16px; font-weight:700}
+.card .hint{color:var(--muted); font-size:13px; margin:0 0 14px}
+.legend{display:flex; flex-wrap:wrap; gap:6px 16px; font-size:13px; color:var(--ink-2); margin-bottom:10px}
+.legend i{display:inline-block; width:10px; height:10px; border-radius:2px; margin-right:6px; vertical-align:-1px}
+.chart{position:relative}
+.chart svg{display:block; width:100%; height:220px; overflow:visible}
+.chart .grid line{stroke:var(--line)}
+.chart .grid text,.chart .axis text{fill:var(--muted); font-size:11px; font-family:"JetBrains Mono",ui-monospace,monospace}
+.chart rect.hit{fill:transparent; cursor:default}
+.chart rect.hit:hover{fill:var(--line); opacity:.5}
+.tip{position:absolute; pointer-events:none; background:var(--surface); color:var(--ink); border:1px solid var(--line-2);
+  border-radius:8px; padding:8px 10px; font-size:12px; box-shadow:0 4px 14px rgba(0,0,0,.08); display:none; min-width:150px; z-index:2}
+.tip b{display:block; margin-bottom:4px}
+.tip .row{display:flex; justify-content:space-between; gap:12px}
+.tablewrap{overflow-x:auto}
+table{width:100%; border-collapse:collapse; font-size:14px; font-variant-numeric:tabular-nums}
+th{text-align:left; font-weight:600; font-size:12px; color:var(--muted); padding:6px 10px 8px; border-bottom:1px solid var(--line-2); white-space:nowrap}
+td{padding:9px 10px; border-bottom:1px solid var(--line); vertical-align:top}
+td.r,th.r{text-align:right; white-space:nowrap}
+tr:last-child td{border-bottom:0}
+.bar{height:6px; border-radius:3px; background:var(--orange); margin-top:6px}
+.small{font-size:12px; color:var(--muted)}
+.warn{background:#FFF4CC; color:#5A4500; border-radius:10px; padding:10px 14px; margin-top:12px; font-size:14px}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .warn{background:#3A3010; color:#FFE38A}}
+.empty{padding:28px 0; text-align:center; color:var(--muted)}
+.notes{font-size:13px; color:var(--ink-2)}
+.notes li{margin:4px 0}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="nav"><a href="/admin">← Back office</a><a href="/admin/portfolio">Portfolio hiring</a><a href="/admin/usage.json">JSON</a></div>
+
+  <header class="top">
+    <h1>Útrata za AI modely</h1>
+    <div class="sub" id="sub"></div>
+    <p class="verdict" id="verdict"></p>
+    <div class="kpis" id="kpis"></div>
+  </header>
+
+  <div id="warn"></div>
+
+  <section class="card">
+    <h2>Po dnech</h2>
+    <p class="hint" id="dayhint"></p>
+    <div class="legend" id="legend"></div>
+    <div class="chart" id="chart"><div class="tip" id="tip"></div></div>
+  </section>
+
+  <section class="card">
+    <h2>Za co se platí</h2>
+    <p class="hint" id="feathint"></p>
+    <div class="tablewrap"><table id="features"></table></div>
+  </section>
+
+  <section class="card">
+    <h2>Modely</h2>
+    <p class="hint">Za posledních <span id="mdays"></span> dní.</p>
+    <div class="tablewrap"><table id="models"></table></div>
+  </section>
+
+  <section class="card notes">
+    <h2>Co tady je a co ne</h2>
+    <ul>
+      <li>Jen volání Anthropicu z Miton Talentu: chat na webu, hodnocení přihlášek a čtení kariérních stránek portfolia.</li>
+      <li>Alister tu není. Starý chat na Railway (OpenAI) taky ne.</li>
+      <li>Cena se počítá z ceníku v kódu (talent/usage.py) v okamžiku volání. Faktura od Anthropicu je jediné přesné číslo.</li>
+      <li>Dny jsou podle UTC, stejně jako denní limit volání.</li>
+      <li>Ukládají se jen počty tokenů. Nic z toho, co kdo napsal.</li>
+    </ul>
+  </section>
+</div>
+
+<script id="data" type="application/json">__DATA__</script>
+<script>
+(function(){
+  var D = JSON.parse(document.getElementById('data').textContent);
+  var $ = function(id){ return document.getElementById(id); };
+  var COLORS = ['var(--s1)','var(--s2)','var(--s3)','var(--s4)','var(--s5)'];
+  var labels = D.feature_labels || {};
+
+  function usd(v, digits){
+    if (v == null) return '–';
+    var d = digits != null ? digits : (v >= 100 ? 0 : v >= 1 ? 2 : v >= 0.01 ? 2 : 4);
+    return v.toLocaleString('cs-CZ', {minimumFractionDigits:d, maximumFractionDigits:d}) + ' $';
+  }
+  function num(v){ return (v || 0).toLocaleString('cs-CZ'); }
+  function pct(v){ return v == null ? '–' : Math.round(v * 100) + ' %'; }
+  function esc(s){ return String(s).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+  function cz(iso){ var d = new Date(iso); return d.getUTCDate() + '. ' + (d.getUTCMonth()+1) + '. ' + d.getUTCFullYear(); }
+
+  var m = D.this_month, t = D.today, b = D.budget;
+  $('sub').textContent = D.tracking_since ? 'Měří se od ' + cz(D.tracking_since) : 'Zatím žádné záznamy';
+
+  // verdict first: one sentence on where the money goes
+  var v;
+  if (!D.tracking_since) {
+    v = 'Zatím se nic nezměřilo. První čísla se objeví po prvním volání modelu.';
+  } else {
+    v = 'Tento měsíc zatím ' + usd(m.usd) + '. Na celý měsíc to vychází zhruba na ' + usd(m.projected_usd, 0) + '.';
+    var top = D.features[0];
+    if (top && D.window.usd > 0) {
+      v += ' Nejvíc stojí ' + top.label.charAt(0).toLowerCase() + top.label.slice(1) + ' (' + pct(top.usd / D.window.usd) + ').';
+    }
+  }
+  $('verdict').textContent = v;
+
+  var budgetShare = b.limit ? b.used_today / b.limit : 0;
+  $('kpis').innerHTML = [
+    ['Dnes', usd(t.usd), num(t.calls) + ' volání'],
+    ['Tento měsíc', usd(m.usd), 'den ' + m.days_elapsed + ' z ' + m.days_in_month],
+    ['Minulý měsíc', usd(D.last_month.usd), num(D.last_month.calls) + ' volání'],
+    ['Denní limit', num(b.used_today) + ' / ' + num(b.limit), pct(budgetShare) + ' využito dnes']
+  ].map(function(k){
+    return '<div class="kpi"><div class="v">' + esc(k[1]) + '</div><div class="k">' + esc(k[0]) + '</div><div class="n">' + esc(k[2]) + '</div></div>';
+  }).join('');
+
+  var warns = [];
+  if (D.unpriced_calls) warns.push(num(D.unpriced_calls) + ' volání šlo na model, který není v ceníku. Jejich cena tu chybí, skutečná útrata je vyšší. Doplň model do PRICES v talent/usage.py.');
+  if (budgetShare >= 0.8) warns.push('Denní limit volání je z ' + pct(budgetShare) + ' vyčerpaný. Po jeho vyčerpání chat odpovídá omluvou. Limit je LLM_DAILY_BUDGET v .env.');
+  $('warn').innerHTML = warns.map(function(w){ return '<div class="warn">' + esc(w) + '</div>'; }).join('');
+
+  // ---- per-day stacked bars --------------------------------------------------
+  var feats = D.features.map(function(f){ return f.feature; });
+  var color = {}; feats.forEach(function(f, i){ color[f] = COLORS[Math.min(i, COLORS.length - 1)]; });
+  $('legend').innerHTML = feats.map(function(f){
+    return '<span><i style="background:' + color[f] + '"></i>' + esc(labels[f] || f) + '</span>';
+  }).join('');
+  $('dayhint').textContent = 'Posledních ' + D.days + ' dní, v dolarech. Za ' + D.days + ' dní celkem ' + usd(D.window.usd) + '.';
+
+  var days = D.daily, W = 1000, H = 220, padL = 44, padB = 22, padT = 6;
+  var max = Math.max.apply(null, days.map(function(d){ return d.usd; }).concat([0]));
+  var chart = $('chart');
+  if (max <= 0) {
+    chart.insertAdjacentHTML('beforeend', '<div class="empty">Za posledních ' + D.days + ' dní žádná útrata.</div>');
+  } else {
+    var step = niceStep(max / 4), top = Math.ceil(max / step) * step;
+    var bw = (W - padL) / days.length, y = function(v){ return padT + (H - padT - padB) * (1 - v / top); };
+    var svg = ['<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" role="img" aria-label="Útrata po dnech">'];
+    svg.push('<g class="grid">');
+    for (var g = 0; g <= top + 1e-9; g += step) {
+      svg.push('<line x1="' + padL + '" x2="' + W + '" y1="' + y(g) + '" y2="' + y(g) + '"/>');
+      svg.push('<text x="' + (padL - 6) + '" y="' + (y(g) + 4) + '" text-anchor="end">' + fmtAxis(g, step) + '</text>');
+    }
+    svg.push('</g>');
+    days.forEach(function(d, i){
+      var x = padL + i * bw + bw * 0.15, w = bw * 0.7, acc = 0;
+      feats.forEach(function(f){
+        var val = d.by_feature[f] || 0; if (!val) return;
+        var y1 = y(acc + val), y0 = y(acc);
+        svg.push('<rect x="' + x + '" y="' + y1 + '" width="' + w + '" height="' + Math.max(0.5, y0 - y1) + '" fill="' + color[f] + '" rx="1"/>');
+        acc += val;
+      });
+      var every = Math.ceil(days.length / 8), last = days.length - 1;
+      if ((i % every === 0 && last - i >= every / 2) || i === last) {
+        var dd = new Date(d.date + 'T00:00:00Z');
+        svg.push('<g class="axis"><text x="' + (x + w / 2) + '" y="' + (H - 6) + '" text-anchor="middle">' + dd.getUTCDate() + '.' + (dd.getUTCMonth() + 1) + '.</text></g>');
+      }
+      svg.push('<rect class="hit" data-i="' + i + '" x="' + (padL + i * bw) + '" y="0" width="' + bw + '" height="' + (H - padB) + '"/>');
+    });
+    svg.push('</svg>');
+    chart.insertAdjacentHTML('beforeend', svg.join(''));
+    var tip = $('tip');
+    chart.addEventListener('mousemove', function(e){
+      var i = e.target.getAttribute && e.target.getAttribute('data-i');
+      if (i == null) { tip.style.display = 'none'; return; }
+      var d = days[+i];
+      tip.innerHTML = '<b>' + cz(d.date + 'T00:00:00Z') + ' · ' + usd(d.usd) + '</b>' + feats.filter(function(f){ return d.by_feature[f]; }).map(function(f){
+        return '<div class="row"><span>' + esc(labels[f] || f) + '</span><span>' + usd(d.by_feature[f]) + '</span></div>';
+      }).join('');
+      var r = chart.getBoundingClientRect();
+      tip.style.display = 'block';
+      var left = e.clientX - r.left + 12;
+      if (left + 180 > r.width) left = e.clientX - r.left - 190;
+      tip.style.left = left + 'px'; tip.style.top = (e.clientY - r.top - 10) + 'px';
+    });
+    chart.addEventListener('mouseleave', function(){ tip.style.display = 'none'; });
+  }
+  function niceStep(raw){ var p = Math.pow(10, Math.floor(Math.log10(raw))), n = raw / p; return (n <= 1 ? 1 : n <= 2 ? 2 : n <= 5 ? 5 : 10) * p; }
+  function fmtAxis(v, step){ var d = step >= 1 ? 0 : Math.min(4, Math.ceil(-Math.log10(step))); return v.toFixed(d).replace('.', ',') + ' $'; }
+
+  // ---- per feature ------------------------------------------------------------
+  $('feathint').textContent = 'Posledních ' + D.days + ' dní. Podíl cache říká, kolik vstupu šlo z cache za desetinu ceny.';
+  var fmax = Math.max.apply(null, D.features.map(function(f){ return f.usd; }).concat([0]));
+  $('features').innerHTML = D.features.length ? '<thead><tr><th>Funkce</th><th class="r">Volání</th><th class="r">Cena</th><th class="r">Za volání</th><th class="r">Vstup</th><th class="r">Výstup</th><th class="r">Z cache</th></tr></thead><tbody>' +
+    D.features.map(function(f){
+      return '<tr><td>' + esc(f.label) + '<div class="bar" style="width:' + (fmax ? Math.max(2, 100 * f.usd / fmax) : 0) + '%;background:' + color[f.feature] + '"></div></td>' +
+        '<td class="r">' + num(f.calls) + '</td><td class="r"><b>' + usd(f.usd) + '</b></td><td class="r">' + usd(f.per_call_usd, 4) + '</td>' +
+        '<td class="r">' + num(f.input + f.cache_write + f.cache_read) + '</td><td class="r">' + num(f.output) + '</td><td class="r">' + pct(f.cache_share) + '</td></tr>';
+    }).join('') + '</tbody>' : '<tbody><tr><td class="empty">Zatím nic.</td></tr></tbody>';
+
+  $('mdays').textContent = D.days;
+  $('models').innerHTML = D.models.length ? '<thead><tr><th>Model</th><th class="r">Volání</th><th class="r">Cena</th></tr></thead><tbody>' +
+    D.models.map(function(r){
+      return '<tr><td class="mono">' + esc(r.model) + (r.priced ? '' : ' <span class="small">není v ceníku</span>') + '</td><td class="r">' + num(r.calls) + '</td><td class="r">' + usd(r.usd) + '</td></tr>';
+    }).join('') + '</tbody>' : '<tbody><tr><td class="empty">Zatím nic.</td></tr></tbody>';
+})();
+</script>
+</body>
+</html>

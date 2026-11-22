@@ -36,29 +36,33 @@ class FakeMessages:
 
 
 @pytest.fixture()
-def fake_model(monkeypatch):
+def fake_model(tmp_path, monkeypatch):
+    # The chat keeps the conversation and its limits in the database, so each
+    # test gets a fresh one.
+    db.reset_for_tests(f"sqlite+pysqlite:///{tmp_path / 'chat.db'}")
+    Base.metadata.create_all(db.engine())
+    monkeypatch.delenv("LLM_DAILY_BUDGET", raising=False)
     fake = FakeMessages()
     monkeypatch.setattr(chat, "client", SimpleNamespace(messages=fake))
-    chat._hits.clear()
     return fake
 
 
-def _conversation(user_turns):
-    msgs = []
-    for i in range(user_turns):
-        msgs.append({"role": "user", "content": f"zprava cislo {i}"})
-        if i < user_turns - 1:
-            msgs.append({"role": "assistant", "content": f"odpoved {i}"})
-    return msgs
+def _talk(http, lang, turns):
+    """Send ``turns`` user messages in one server-side conversation."""
+    cid = ""
+    for i in range(turns):
+        r = http.post("/chat", json={"lang": lang, "conversation_id": cid, "message": f"zprava cislo {i}"},
+                      headers={"X-Forwarded-For": "203.0.113.9"})
+        assert r.status_code == 200, r.text
+        cid = r.json()["conversation_id"]
 
 
 @pytest.mark.parametrize("lang", ["cs", "en"])
 def test_the_static_prompt_carries_the_breakpoint_and_the_wrap_up_comes_after_it(fake_model, lang):
     http = TestClient(chat.app)
-    assert http.post("/chat", json={"lang": lang, "messages": _conversation(1)}).status_code == 200
-    assert http.post("/chat", json={"lang": lang, "messages": _conversation(chat.SOFT_CLOSE_TURNS)}).status_code == 200
+    _talk(http, lang, chat.SOFT_CLOSE_TURNS)
 
-    early, late = fake_model.calls
+    early, late = fake_model.calls[0], fake_model.calls[-1]
     # before the soft close: one block, the static prompt, cached
     assert early["system"] == [{"type": "text", "text": chat.SYSTEM[lang], "cache_control": {"type": "ephemeral"}}]
     # from the soft close on: the cached block is byte-identical, the wrap-up follows
@@ -81,7 +85,7 @@ def test_the_breakpoint_holds_nothing_per_request():
 
 def test_the_chat_logs_usage_counts_and_no_contents(fake_model, caplog):
     caplog.set_level(logging.INFO, logger="miton-talent.usage")
-    TestClient(chat.app).post("/chat", json={"lang": "cs", "messages": _conversation(1)})
+    _talk(TestClient(chat.app), "cs", 1)
     lines = [r.getMessage() for r in caplog.records if r.name == "miton-talent.usage"]
     assert lines == [f"anthropic usage feature=chat model={chat.MODEL} input=40 output=60 cache_write=0 cache_read=1700"]
     assert "zprava" not in lines[0] and "Ahoj" not in lines[0]

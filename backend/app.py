@@ -58,6 +58,7 @@ from talent import vocab as tvocab
 from talent import company_tiers
 from talent.usage import log_usage
 from talent.portfolio import view as portfolio_view
+from talent import usage_view
 from talent import applicants as applicants_api
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -491,6 +492,8 @@ app.include_router(portfolio_view.router)
 app.include_router(portfolio_view.service_router)
 # The applicant inbox for the hub and its MCP (talent/applicants.py).
 app.include_router(applicants_api.router)
+# Token spend per day and per feature (/admin/usage), admin role only.
+app.include_router(usage_view.router)
 
 
 @app.exception_handler(tauth.LoginRequired)
@@ -643,7 +646,8 @@ def admin_home(user: dict = Depends(tauth.require_user)):
         f"<p>Přihlášen(a) jako <strong>{email}</strong> přes Alister.</p>"
         "<p>Back office (inbox, kandidáti, searche) vzniká tady. Zatím: "
         "<a href='/admin/portfolio'>portfolio hiring</a> · "
-        "<a href='/diag'>diagnostika</a> · "
+        + ("<a href='/admin/usage'>útrata za modely</a> · " if user.get("role") == "admin" else "")
+        + "<a href='/diag'>diagnostika</a> · "
         "<form method='post' action='/auth/logout' style='display:inline'>"
         "<button type='submit' style='font:inherit;background:none;border:0;padding:0;color:#1b1b1b;"
         "text-decoration:underline;cursor:pointer'>odhlásit</button></form></p>"

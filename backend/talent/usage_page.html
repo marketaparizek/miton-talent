@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Útrata za modely · Miton Talent</title>
+<title>Provozní náklady · Miton Talent</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap">
@@ -73,6 +73,24 @@ tr:last-child td{border-bottom:0}
 .empty{padding:28px 0; text-align:center; color:var(--muted)}
 .notes{font-size:13px; color:var(--ink-2)}
 .notes li{margin:4px 0}
+.src{font-size:12px; color:var(--muted)}
+.tag{display:inline-block; font-size:11px; border-radius:6px; padding:1px 6px; background:var(--line); color:var(--ink-2); margin-left:6px; vertical-align:1px}
+tr.total td{font-weight:700; border-top:1px solid var(--line-2)}
+td.now{background:rgba(233,96,13,.07)}
+.scopes{display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px 24px}
+@media (max-width:640px){.scopes{grid-template-columns:1fr}}
+.scopes h3{font-size:14px; margin:0 0 6px}
+.scope{display:flex; justify-content:space-between; gap:12px; font-size:14px; padding:5px 0; border-bottom:1px solid var(--line)}
+form.manual{display:flex; flex-wrap:wrap; gap:8px; align-items:end; margin-bottom:14px}
+form.manual label{display:grid; gap:3px; font-size:12px; color:var(--muted)}
+form.manual input,form.manual select{font:inherit; font-size:14px; padding:7px 9px; border:1px solid var(--line-2); border-radius:8px; background:var(--surface); color:var(--ink)}
+form.manual input[name=note]{min-width:200px}
+button.btn{font:inherit; font-size:14px; font-weight:600; padding:8px 14px; border-radius:8px; border:0; background:var(--ink); color:var(--paper); cursor:pointer}
+button.btn.ghost{background:transparent; color:var(--ink); border:1px solid var(--line-2)}
+button.btn:disabled{opacity:.5; cursor:default}
+.msg{font-size:13px; color:var(--muted); margin-left:4px}
+.row-head{display:flex; flex-wrap:wrap; justify-content:space-between; align-items:baseline; gap:8px}
+h2.big{font-size:19px; margin:26px 4px 0}
 </style>
 </head>
 <body>
@@ -80,13 +98,43 @@ tr:last-child td{border-bottom:0}
   <div class="nav"><a href="/admin">← Back office</a><a href="/admin/portfolio">Portfolio hiring</a><a href="/admin/usage.json">JSON</a></div>
 
   <header class="top">
-    <h1>Útrata za AI modely</h1>
+    <h1>Provozní náklady</h1>
     <div class="sub" id="sub"></div>
     <p class="verdict" id="verdict"></p>
     <div class="kpis" id="kpis"></div>
   </header>
 
   <div id="warn"></div>
+
+  <section class="card">
+    <div class="row-head"><h2>Po měsících</h2>
+      <span><button class="btn ghost" id="syncbtn" type="button">Načíst z API teď</button><span class="msg" id="syncmsg"></span></span></div>
+    <p class="hint">V dolarech. Anthropic a OpenAI se načítají z jejich fakturačních API každý den, Bright Data a Hetzner se zapisují ručně z faktury. Eura jsou přepočtená kurzem <span id="rate"></span>.</p>
+    <div class="tablewrap"><table id="months"></table></div>
+  </section>
+
+  <section class="card">
+    <h2>Podle projektů</h2>
+    <p class="hint">Anthropic podle workspace, OpenAI podle projektu. Tento a minulý měsíc.</p>
+    <div class="scopes" id="scopes"></div>
+  </section>
+
+  <section class="card">
+    <h2>Faktury zapsané ručně</h2>
+    <p class="hint">Bright Data a Hetzner nemají API, které bychom mohli číst. Jednou měsíčně sem opiš částku z faktury. Stejný měsíc znovu přepíše starou částku, 0 ji smaže.</p>
+    <form class="manual" id="manual">
+      <label>Služba<select name="provider" id="mprov"></select></label>
+      <label>Měsíc<input name="month" type="month" required id="mmonth"></label>
+      <label>Částka<input name="amount" type="number" step="0.01" min="0" required style="width:110px"></label>
+      <label>Měna<select name="currency"><option>USD</option><option>EUR</option></select></label>
+      <label>Poznámka<input name="note" maxlength="500" placeholder="např. číslo faktury"></label>
+      <button class="btn" type="submit">Uložit</button><span class="msg" id="mmsg"></span>
+    </form>
+    <div class="tablewrap"><table id="manuallist"></table></div>
+  </section>
+
+  <h2 class="big">Miton Talent podrobně</h2>
+  <p class="hint" style="margin:4px 4px 0;color:var(--muted);font-size:13px" id="talenthint"></p>
 
   <section class="card">
     <h2>Po dnech</h2>
@@ -110,11 +158,11 @@ tr:last-child td{border-bottom:0}
   <section class="card notes">
     <h2>Co tady je a co ne</h2>
     <ul>
-      <li>Jen volání Anthropicu z Miton Talentu: chat na webu, hodnocení přihlášek a čtení kariérních stránek portfolia.</li>
-      <li>Alister tu není. Starý chat na Railway (OpenAI) taky ne.</li>
-      <li>Cena se počítá z ceníku v kódu (talent/usage.py) v okamžiku volání. Faktura od Anthropicu je jediné přesné číslo.</li>
-      <li>Dny jsou podle UTC, stejně jako denní limit volání.</li>
-      <li>Ukládají se jen počty tokenů. Nic z toho, co kdo napsal.</li>
+      <li>Anthropic a OpenAI jsou celé účty organizace: Alister i Talent, dev i prod. Čísla jsou z jejich fakturačních API, dorazí se zpožděním 4 až 24 hodin a uzavřený měsíc se ještě může o pár centů změnit.</li>
+      <li>Částky jsou před odečtením kreditů a bez DPH. Faktura je jediné přesné číslo.</li>
+      <li>Odhad na celý měsíc: API služby podle dosavadního tempa, ručně zapsané podle faktury, a když tento měsíc ještě chybí, podle minulého.</li>
+      <li>Miton Talent podrobně: jen jeho vlastní volání Anthropicu, rozdělená podle funkce. Cena je z ceníku v kódu (talent/usage.py). Ukládají se jen počty tokenů, nic z toho, co kdo napsal.</li>
+      <li>Dny jsou podle UTC.</li>
     </ul>
   </section>
 </div>
@@ -122,10 +170,12 @@ tr:last-child td{border-bottom:0}
 <script id="data" type="application/json">__DATA__</script>
 <script>
 (function(){
-  var D = JSON.parse(document.getElementById('data').textContent);
+  var ALL = JSON.parse(document.getElementById('data').textContent);
+  var D = ALL.talent, C = ALL.costs;
   var $ = function(id){ return document.getElementById(id); };
   var COLORS = ['var(--s1)','var(--s2)','var(--s3)','var(--s4)','var(--s5)'];
   var labels = D.feature_labels || {};
+  var MONTHS = ['leden','únor','březen','duben','květen','červen','červenec','srpen','září','říjen','listopad','prosinec'];
 
   function usd(v, digits){
     if (v == null) return '–';
@@ -136,37 +186,97 @@ tr:last-child td{border-bottom:0}
   function pct(v){ return v == null ? '–' : Math.round(v * 100) + ' %'; }
   function esc(s){ return String(s).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
   function cz(iso){ var d = new Date(iso); return d.getUTCDate() + '. ' + (d.getUTCMonth()+1) + '. ' + d.getUTCFullYear(); }
+  function monthName(iso){ return MONTHS[+iso.slice(5,7) - 1]; }
+  function cap(s){ return s.charAt(0).toUpperCase() + s.slice(1); }
 
-  var m = D.this_month, t = D.today, b = D.budget;
-  $('sub').textContent = D.tracking_since ? 'Měří se od ' + cz(D.tracking_since) : 'Zatím žádné záznamy';
+  // ---- all providers ---------------------------------------------------------------
+  var thisM = C.this_month, lastM = C.last_month;
+  var nowTotal = C.totals[thisM] || 0, lastTotal = C.totals[lastM] || 0;
+  var ranked = C.providers.slice().sort(function(a, b){ return (b.months[lastM] || 0) - (a.months[lastM] || 0); });
+  $('sub').textContent = 'Alister + Miton Talent · ' + monthName(thisM) + ', den ' + C.days_elapsed + ' z ' + C.days_in_month;
 
-  // verdict first: one sentence on where the money goes
   var v;
-  if (!D.tracking_since) {
-    v = 'Zatím se nic nezměřilo. První čísla se objeví po prvním volání modelu.';
+  if (!C.providers.some(function(p){ return p.last_sync || Object.values(p.months).some(Boolean); })) {
+    v = 'Zatím tu nejsou žádné náklady. Doplň admin klíče k Anthropicu a OpenAI a zapiš faktury Bright Data a Hetzneru.';
   } else {
-    v = 'Tento měsíc zatím ' + usd(m.usd) + '. Na celý měsíc to vychází zhruba na ' + usd(m.projected_usd, 0) + '.';
-    var top = D.features[0];
-    if (top && D.window.usd > 0) {
-      v += ' Nejvíc stojí ' + top.label.charAt(0).toLowerCase() + top.label.slice(1) + ' (' + pct(top.usd / D.window.usd) + ').';
-    }
+    v = cap(monthName(thisM)) + ' zatím ' + usd(nowTotal, 0) + ', na celý měsíc to vychází zhruba na ' + usd(C.projected_usd, 0) + '.';
+    if (lastTotal > 0 && ranked[0]) v += ' Za ' + monthName(lastM) + ' to bylo ' + usd(lastTotal, 0) + ', z toho nejvíc ' + ranked[0].label + ' (' + pct((ranked[0].months[lastM] || 0) / lastTotal) + ').';
   }
   $('verdict').textContent = v;
 
-  var budgetShare = b.limit ? b.used_today / b.limit : 0;
+  var b = D.budget, budgetShare = b.limit ? b.used_today / b.limit : 0;
   $('kpis').innerHTML = [
-    ['Dnes', usd(t.usd), num(t.calls) + ' volání'],
-    ['Tento měsíc', usd(m.usd), 'den ' + m.days_elapsed + ' z ' + m.days_in_month],
-    ['Minulý měsíc', usd(D.last_month.usd), num(D.last_month.calls) + ' volání'],
-    ['Denní limit', num(b.used_today) + ' / ' + num(b.limit), pct(budgetShare) + ' využito dnes']
+    [cap(monthName(thisM)) + ' zatím', usd(nowTotal, 0), 'všechny služby'],
+    ['Odhad na celý měsíc', usd(C.projected_usd, 0), 'podle dosavadního tempa'],
+    [cap(monthName(lastM)), usd(lastTotal, 0), 'celý měsíc'],
+    ['Talent chat dnes', num(b.used_today) + ' / ' + num(b.limit), 'volání z denního limitu']
   ].map(function(k){
     return '<div class="kpi"><div class="v">' + esc(k[1]) + '</div><div class="k">' + esc(k[0]) + '</div><div class="n">' + esc(k[2]) + '</div></div>';
   }).join('');
 
   var warns = [];
-  if (D.unpriced_calls) warns.push(num(D.unpriced_calls) + ' volání šlo na model, který není v ceníku. Jejich cena tu chybí, skutečná útrata je vyšší. Doplň model do PRICES v talent/usage.py.');
-  if (budgetShare >= 0.8) warns.push('Denní limit volání je z ' + pct(budgetShare) + ' vyčerpaný. Po jeho vyčerpání chat odpovídá omluvou. Limit je LLM_DAILY_BUDGET v .env.');
+  C.providers.forEach(function(p){
+    if (p.kind === 'api' && !p.configured) warns.push(p.label + ' není napojený: na serveru chybí ' + (p.provider === 'openai' ? 'OPENAI_ADMIN_KEY' : 'ANTHROPIC_ADMIN_KEY') + ' v .env. Admin klíč se dá vložit přes deploy/set_secret.sh.');
+    if (p.kind === 'manual' && p.provider !== 'other' && p.projection_basis !== 'manual') warns.push(p.label + ' za ' + monthName(thisM) + ' ještě není zapsaný. ' + (p.projection_basis === 'last_month' ? 'V odhadu je minulá známá faktura.' : 'V odhadu chybí úplně.'));
+  });
+  if (D.unpriced_calls) warns.push(num(D.unpriced_calls) + ' volání Talentu šlo na model, který není v ceníku. Doplň ho do PRICES v talent/usage.py.');
+  if (budgetShare >= 0.8) warns.push('Denní limit volání chatu je z ' + pct(budgetShare) + ' vyčerpaný. Pak chat odpovídá omluvou. Limit je LLM_DAILY_BUDGET v .env.');
   $('warn').innerHTML = warns.map(function(w){ return '<div class="warn">' + esc(w) + '</div>'; }).join('');
+
+  $('rate').textContent = String(C.eur_usd).replace('.', ',') + ' $ za euro (COST_EUR_USD v .env, přibližný)';
+  var head = '<thead><tr><th>Služba</th>' + C.months.map(function(m){ return '<th class="r">' + cap(monthName(m)) + (m === thisM ? ' (zatím)' : '') + '</th>'; }).join('') + '<th class="r">Odhad ' + monthName(thisM) + '</th></tr></thead>';
+  var body = C.providers.map(function(p){
+    var src = p.kind === 'api' ? (p.configured ? (p.last_sync ? 'API, načteno ' + cz(p.last_sync) : 'API, zatím nenačteno') : 'API, chybí klíč') : 'ručně z faktury';
+    return '<tr><td style="white-space:nowrap">' + esc(p.label) + '<div class="src">' + esc(src) + '</div></td>' + C.months.map(function(m){
+      var val = p.months[m];
+      return '<td class="r' + (m === thisM ? ' now' : '') + '">' + (val ? usd(val, 2) : '<span class="src">–</span>') + '</td>';
+    }).join('') + '<td class="r">' + (p.projected_usd ? usd(p.projected_usd, 0) : '–') + '</td></tr>';
+  }).join('');
+  var foot = '<tr class="total"><td>Celkem</td>' + C.months.map(function(m){ return '<td class="r' + (m === thisM ? ' now' : '') + '">' + usd(C.totals[m] || 0, 0) + '</td>'; }).join('') + '<td class="r">' + usd(C.projected_usd, 0) + '</td></tr>';
+  $('months').innerHTML = head + '<tbody>' + body + foot + '</tbody>';
+
+  var scopeHtml = C.providers.filter(function(p){ return p.kind === 'api'; }).map(function(p){
+    function list(rows, title){
+      return '<div><h3>' + esc(p.label) + ' · ' + title + '</h3>' + (rows.length ? rows.map(function(r){
+        return '<div class="scope"><span>' + esc(r.scope) + '</span><b>' + usd(r.usd, 2) + '</b></div>';
+      }).join('') : '<div class="src">Nic.</div>') + '</div>';
+    }
+    return list(p.scopes_this_month, monthName(thisM) + ' zatím') + list(p.scopes_last_month, monthName(lastM));
+  }).join('');
+  $('scopes').innerHTML = scopeHtml;
+
+  $('mprov').innerHTML = C.manual_providers.map(function(p){ return '<option value="' + esc(p.id) + '">' + esc(p.label) + '</option>'; }).join('');
+  $('mmonth').value = lastM.slice(0, 7);
+  $('manuallist').innerHTML = C.manual.length ? '<thead><tr><th>Měsíc</th><th>Služba</th><th class="r">Částka</th><th class="r">V dolarech</th><th>Poznámka</th><th>Zapsal(a)</th></tr></thead><tbody>' +
+    C.manual.map(function(r){
+      return '<tr><td>' + esc(cap(monthName(r.month + '-01')) + ' ' + r.month.slice(0, 4)) + '</td><td>' + esc(r.label) + '</td><td class="r">' +
+        r.amount.toLocaleString('cs-CZ', {minimumFractionDigits:2, maximumFractionDigits:2}) + ' ' + esc(r.currency) + '</td><td class="r">' + usd(r.usd, 2) +
+        '</td><td>' + esc(r.note || '') + '</td><td class="src">' + esc(r.updated_by || '') + '</td></tr>';
+    }).join('') + '</tbody>' : '<tbody><tr><td class="empty">Zatím nic zapsaného.</td></tr></tbody>';
+
+  function post(url, payload){
+    return fetch(url, {method:'POST', headers:{'Content-Type':'application/json','Accept':'application/json'}, body:JSON.stringify(payload), credentials:'same-origin'})
+      .then(function(r){ return r.json().then(function(j){ if (!r.ok) throw new Error(j.error || r.status); return j; }); });
+  }
+  $('manual').addEventListener('submit', function(e){
+    e.preventDefault();
+    var f = e.target, btn = f.querySelector('button');
+    btn.disabled = true; $('mmsg').textContent = 'Ukládám…';
+    post('/admin/usage/manual', {provider:f.provider.value, month:f.month.value, amount:parseFloat(f.amount.value), currency:f.currency.value, note:f.note.value})
+      .then(function(){ location.reload(); })
+      .catch(function(err){ $('mmsg').textContent = 'Neuložilo se: ' + err.message; btn.disabled = false; });
+  });
+  $('syncbtn').addEventListener('click', function(){
+    var btn = this; btn.disabled = true; $('syncmsg').textContent = 'Načítám…';
+    post('/admin/usage/sync', {}).then(function(j){
+      var bad = Object.keys(j.result).filter(function(k){ return !j.result[k].ok; });
+      if (bad.length) { $('syncmsg').textContent = bad.map(function(k){ return k + ': ' + j.result[k].error; }).join(' · '); btn.disabled = false; }
+      else location.reload();
+    }).catch(function(err){ $('syncmsg').textContent = 'Nepovedlo se: ' + err.message; btn.disabled = false; });
+  });
+
+  // ---- Talent detail ------------------------------------------------------------------
+  $('talenthint').textContent = D.tracking_since ? 'Vlastní volání Anthropicu z Talentu, měřená od ' + cz(D.tracking_since) + '. ' + cap(monthName(thisM)) + ' zatím ' + usd(D.this_month.usd) + ', dnes ' + usd(D.today.usd) + '.' : 'Talent zatím nic nezměřil. Čísla se objeví po prvním volání modelu.';
 
   // ---- per-day stacked bars --------------------------------------------------
   var feats = D.features.map(function(f){ return f.feature; });

@@ -33,6 +33,9 @@ key, so the two systems stay independent.
   llm_usage           one row per model call: which feature, which model, the
                       token counts and what it cost. Counts only, never what
                       was said. Feeds /admin/usage.
+  provider_costs      what each provider billed per day (Anthropic, OpenAI from
+                      their cost APIs) or per month (Bright Data, Hetzner,
+                      entered by hand). Feeds the totals on /admin/usage.
 
 Lists (area, level, ...) are stored as JSON arrays so the same schema runs on
 SQLite (local, tests) and Postgres (Hetzner). Vocabularies live in
@@ -47,6 +50,7 @@ from typing import Optional
 
 from sqlalchemy import (
     JSON,
+    BigInteger,
     Boolean,
     Date,
     DateTime,
@@ -539,3 +543,33 @@ class LlmUsage(Base):
     priced: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
 
     __table_args__ = (Index("ix_llm_usage_created", "created_at"),)
+
+
+class ProviderCost(Base):
+    """One provider's bill for one day (API) or one month (by hand).
+
+    ``source`` api: a day's cost as the provider's cost API reported it, per
+    ``scope`` (Anthropic workspace, OpenAI project, by name). A sync replaces
+    the rows of the days it read, so a revised day ends up right.
+    ``source`` manual: a whole month typed in from an invoice; ``day`` is the
+    first of that month and ``scope`` is empty.
+    ``amount_micro`` is millionths of ``currency`` (USD or EUR).
+    """
+
+    __tablename__ = "provider_costs"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    provider: Mapped[str] = mapped_column(String(32), nullable=False)
+    source: Mapped[str] = mapped_column(String(16), nullable=False)
+    day: Mapped[dt.date] = mapped_column(Date, nullable=False)
+    scope: Mapped[str] = mapped_column(String(128), nullable=False, default="")
+    amount_micro: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0)
+    currency: Mapped[str] = mapped_column(String(3), nullable=False, default="USD")
+    note: Mapped[Optional[str]] = mapped_column(Text)
+    updated_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow, onupdate=utcnow)
+    updated_by: Mapped[Optional[str]] = mapped_column(String(255))
+
+    __table_args__ = (
+        UniqueConstraint("provider", "source", "day", "scope", name="uq_provider_cost"),
+        Index("ix_provider_costs_day", "day"),
+    )

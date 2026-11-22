@@ -646,7 +646,7 @@ def admin_home(user: dict = Depends(tauth.require_user)):
         f"<p>Přihlášen(a) jako <strong>{email}</strong> přes Alister.</p>"
         "<p>Back office (inbox, kandidáti, searche) vzniká tady. Zatím: "
         "<a href='/admin/portfolio'>portfolio hiring</a> · "
-        + ("<a href='/admin/usage'>útrata za modely</a> · " if user.get("role") == "admin" else "")
+        + ("<a href='/admin/usage'>provozní náklady</a> · " if user.get("role") == "admin" else "")
         + "<a href='/diag'>diagnostika</a> · "
         "<form method='post' action='/auth/logout' style='display:inline'>"
         "<button type='submit' style='font:inherit;background:none;border:0;padding:0;color:#1b1b1b;"

@@ -95,4 +95,12 @@ scrape_line="10 6 * * 1 cd ${APP_DIR} && set -a && . ./.env && set +a && backend
 ( crontab -l 2>/dev/null | grep -v "scripts/scrape_portfolio.py" ; echo "$scrape_line" ) | crontab -
 echo "portfolio scrape cron installed (Mondays 06:10)"
 
+# 7. daily cost sync ----------------------------------------------------------------
+# What Anthropic and OpenAI billed yesterday (and revised the days before), for
+# /admin/usage. Their data lands 4-24 h late, so 07:20 reads a settled
+# yesterday. Without the admin keys in .env the run just skips them.
+costs_line="20 7 * * * cd ${APP_DIR} && set -a && . ./.env && set +a && backend/.venv/bin/python scripts/sync_costs.py >> logs/costs.log 2>&1"
+( crontab -l 2>/dev/null | grep -v "scripts/sync_costs.py" ; echo "$costs_line" ) | crontab -
+echo "cost sync cron installed (daily 07:20)"
+
 echo "done. logs: ${APP_DIR}/logs/app.log   status: systemctl status miton-talent"

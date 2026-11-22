@@ -154,7 +154,7 @@ def test_the_page_is_for_the_admin_role_only(http):
     assert http.get("/admin/usage.json").status_code == 401
     sign_in(http, "miton")
     assert http.get("/admin/usage").status_code == 403
-    assert "útrata za modely" not in http.get("/admin").text
+    assert "provozní náklady" not in http.get("/admin").text
 
 
 def test_the_admin_sees_the_page_with_numbers_inside(http):
@@ -163,5 +163,5 @@ def test_the_admin_sees_the_page_with_numbers_inside(http):
     page = http.get("/admin/usage")
     assert page.status_code == 200 and page.headers["cache-control"] == "no-store"
     assert "__DATA__" not in page.text and '"feature": "chat"' in page.text
-    assert http.get("/admin/usage.json").json()["window"]["calls"] == 1
+    assert http.get("/admin/usage.json").json()["talent"]["window"]["calls"] == 1
     assert "/admin/usage" in http.get("/admin").text

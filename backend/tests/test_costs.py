@@ -207,3 +207,27 @@ def test_sync_button_reports_missing_keys(http):
     r = http.post("/admin/usage/sync", json={})
     assert r.status_code == 200
     assert r.json()["result"]["openai"] == {"ok": False, "error": "chybí klíč"}
+
+
+def test_an_estimate_drives_the_projection_but_is_not_spend(fresh_db):
+    d = dt.date
+    costs.set_manual("brightdata", "2026-10", 220, "USD", None, None)
+    costs.set_manual("brightdata", "2026-11", 100, "USD", "jen tech", None, estimate=True)
+    out = costs.summary(today=d(2026, 11, 22))
+    bd = {p["provider"]: p for p in out["providers"]}["brightdata"]
+    assert bd["months"]["2026-11-01"] == 0 and out["totals"]["2026-11-01"] == 0
+    assert (bd["projection_basis"], bd["projected_usd"], bd["estimate_this_month"]) == ("estimate", 100.0, 100.0)
+    assert [m["estimate"] for m in out["manual"] if m["month"] == "2026-11"] == [True]
+    # the invoice wins once it is in
+    costs.set_manual("brightdata", "2026-11", 104.2, "USD", None, None)
+    bd = {p["provider"]: p for p in costs.summary(today=d(2026, 11, 22))["providers"]}["brightdata"]
+    assert (bd["projection_basis"], bd["projected_usd"]) == ("manual", 104.2)
+
+
+def test_estimate_flag_goes_through_the_route(http):
+    sign_in(http, "admin")
+    r = http.post("/admin/usage/manual", json={"provider": "brightdata", "month": "2026-11", "amount": 100,
+                                              "currency": "USD", "estimate": True})
+    assert r.status_code == 200
+    (row,) = rows("brightdata")
+    assert row.source == "estimate"

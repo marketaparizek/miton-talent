@@ -121,13 +121,14 @@ h2.big{font-size:19px; margin:26px 4px 0}
 
   <section class="card">
     <h2>Faktury zapsané ručně</h2>
-    <p class="hint">Bright Data a Hetzner nemají API, které bychom mohli číst. Jednou měsíčně sem opiš částku z faktury. Stejný měsíc znovu přepíše starou částku, 0 ji smaže.</p>
+    <p class="hint">Bright Data a Hetzner nemají API, které bychom mohli číst. Jednou měsíčně sem opiš částku z faktury. Stejný měsíc znovu přepíše starou částku, 0 ji smaže. Dokud faktura nepřijde, můžeš zapsat odhad: počítá se jen do odhadu na celý měsíc a jakmile zapíšeš fakturu, platí ona.</p>
     <form class="manual" id="manual">
       <label>Služba<select name="provider" id="mprov"></select></label>
       <label>Měsíc<input name="month" type="month" required id="mmonth"></label>
       <label>Částka<input name="amount" type="number" step="0.01" min="0" required style="width:110px"></label>
       <label>Měna<select name="currency"><option>USD</option><option>EUR</option></select></label>
       <label>Poznámka<input name="note" maxlength="500" placeholder="např. číslo faktury"></label>
+      <label style="display:flex;align-items:center;gap:6px;color:var(--ink-2);font-size:13px;padding-bottom:9px"><input type="checkbox" name="estimate" style="width:auto">Jen odhad, faktura ještě nepřišla</label>
       <button class="btn" type="submit">Uložit</button><span class="msg" id="mmsg"></span>
     </form>
     <div class="tablewrap"><table id="manuallist"></table></div>
@@ -217,7 +218,7 @@ h2.big{font-size:19px; margin:26px 4px 0}
   var warns = [];
   C.providers.forEach(function(p){
     if (p.kind === 'api' && !p.configured) warns.push(p.label + ' není napojený: na serveru chybí ' + (p.provider === 'openai' ? 'OPENAI_ADMIN_KEY' : 'ANTHROPIC_ADMIN_KEY') + ' v .env. Admin klíč se dá vložit přes deploy/set_secret.sh.');
-    if (p.kind === 'manual' && p.provider !== 'other' && p.projection_basis !== 'manual') warns.push(p.label + ' za ' + monthName(thisM) + ' ještě není zapsaný. ' + (p.projection_basis === 'last_month' ? 'V odhadu je minulá známá faktura.' : 'V odhadu chybí úplně.'));
+    if (p.kind === 'manual' && p.provider !== 'other' && p.projection_basis !== 'manual' && p.projection_basis !== 'estimate') warns.push(p.label + ' za ' + monthName(thisM) + ' ještě není zapsaný. ' + (p.projection_basis === 'last_month' ? 'V odhadu je minulá známá faktura. Jestli bude jiná, zapiš odhad.' : 'V odhadu chybí úplně. Zapiš aspoň odhad.'));
   });
   if (D.unpriced_calls) warns.push(num(D.unpriced_calls) + ' volání Talentu šlo na model, který není v ceníku. Doplň ho do PRICES v talent/usage.py.');
   if (budgetShare >= 0.8) warns.push('Denní limit volání chatu je z ' + pct(budgetShare) + ' vyčerpaný. Pak chat odpovídá omluvou. Limit je LLM_DAILY_BUDGET v .env.');
@@ -230,7 +231,7 @@ h2.big{font-size:19px; margin:26px 4px 0}
     return '<tr><td style="white-space:nowrap">' + esc(p.label) + '<div class="src">' + esc(src) + '</div></td>' + C.months.map(function(m){
       var val = p.months[m];
       return '<td class="r' + (m === thisM ? ' now' : '') + '">' + (val ? usd(val, 2) : '<span class="src">–</span>') + '</td>';
-    }).join('') + '<td class="r">' + (p.projected_usd ? usd(p.projected_usd, 0) : '–') + '</td></tr>';
+    }).join('') + '<td class="r">' + (p.projected_usd ? usd(p.projected_usd, 0) : '–') + (p.projection_basis === 'estimate' ? '<div class="src">tvůj odhad</div>' : p.projection_basis === 'last_month' ? '<div class="src">jako minule</div>' : '') + '</td></tr>';
   }).join('');
   var foot = '<tr class="total"><td>Celkem</td>' + C.months.map(function(m){ return '<td class="r' + (m === thisM ? ' now' : '') + '">' + usd(C.totals[m] || 0, 0) + '</td>'; }).join('') + '<td class="r">' + usd(C.projected_usd, 0) + '</td></tr>';
   $('months').innerHTML = head + '<tbody>' + body + foot + '</tbody>';
@@ -249,7 +250,7 @@ h2.big{font-size:19px; margin:26px 4px 0}
   $('mmonth').value = lastM.slice(0, 7);
   $('manuallist').innerHTML = C.manual.length ? '<thead><tr><th>Měsíc</th><th>Služba</th><th class="r">Částka</th><th class="r">V dolarech</th><th>Poznámka</th><th>Zapsal(a)</th></tr></thead><tbody>' +
     C.manual.map(function(r){
-      return '<tr><td>' + esc(cap(monthName(r.month + '-01')) + ' ' + r.month.slice(0, 4)) + '</td><td>' + esc(r.label) + '</td><td class="r">' +
+      return '<tr><td>' + esc(cap(monthName(r.month + '-01')) + ' ' + r.month.slice(0, 4)) + '</td><td>' + esc(r.label) + (r.estimate ? '<span class="tag">odhad</span>' : '') + '</td><td class="r">' +
         r.amount.toLocaleString('cs-CZ', {minimumFractionDigits:2, maximumFractionDigits:2}) + ' ' + esc(r.currency) + '</td><td class="r">' + usd(r.usd, 2) +
         '</td><td>' + esc(r.note || '') + '</td><td class="src">' + esc(r.updated_by || '') + '</td></tr>';
     }).join('') + '</tbody>' : '<tbody><tr><td class="empty">Zatím nic zapsaného.</td></tr></tbody>';
@@ -262,7 +263,7 @@ h2.big{font-size:19px; margin:26px 4px 0}
     e.preventDefault();
     var f = e.target, btn = f.querySelector('button');
     btn.disabled = true; $('mmsg').textContent = 'Ukládám…';
-    post('/admin/usage/manual', {provider:f.provider.value, month:f.month.value, amount:parseFloat(f.amount.value), currency:f.currency.value, note:f.note.value})
+    post('/admin/usage/manual', {provider:f.provider.value, month:f.month.value, amount:parseFloat(f.amount.value), currency:f.currency.value, note:f.note.value, estimate:f.estimate.checked})
       .then(function(){ location.reload(); })
       .catch(function(err){ $('mmsg').textContent = 'Neuložilo se: ' + err.message; btn.disabled = false; });
   });

@@ -74,7 +74,7 @@ async def save_manual(request: Request, user: dict = Depends(tauth.require_admin
         out = costs.set_manual(
             str(body.get("provider", "")), str(body.get("month", "")),
             float(body.get("amount", 0)), str(body.get("currency", "USD")).upper(),
-            body.get("note"), user.get("email"),
+            body.get("note"), user.get("email"), estimate=bool(body.get("estimate")),
         )
     except (ValueError, TypeError) as exc:
         return JSONResponse({"error": str(exc)}, status_code=400)

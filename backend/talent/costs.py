@@ -266,8 +266,12 @@ def sync(days: int = 35, *, since: dt.date | None = None, today: dt.date | None 
 
 
 def set_manual(provider: str, month: str, amount: float, currency: str, note: str | None,
-               who: str | None) -> dict:
-    """Upsert one month's invoice. ``month`` is YYYY-MM; amount 0 deletes it."""
+               who: str | None, estimate: bool = False) -> dict:
+    """Upsert one month's invoice, or with ``estimate`` what the month is
+    expected to cost before the invoice comes. ``month`` is YYYY-MM; amount 0
+    deletes that row. An estimate never counts as spend, only in the
+    projection, and the invoice wins as soon as it is in."""
+    source = "estimate" if estimate else "manual"
     if provider not in MANUAL_PROVIDERS:
         raise ValueError("unknown provider")
     if currency not in CURRENCIES:
@@ -280,14 +284,14 @@ def set_manual(provider: str, month: str, amount: float, currency: str, note: st
         raise ValueError("amount out of range")
     with db.session() as s:
         row = s.scalars(select(ProviderCost).where(
-            ProviderCost.provider == provider, ProviderCost.source == "manual",
+            ProviderCost.provider == provider, ProviderCost.source == source,
             ProviderCost.day == day, ProviderCost.scope == "")).first()
         if amount == 0:
             if row is not None:
                 s.delete(row)
             return {"deleted": True}
         if row is None:
-            row = ProviderCost(provider=provider, source="manual", day=day, scope="")
+            row = ProviderCost(provider=provider, source=source, day=day, scope="")
             s.add(row)
         row.amount_micro = int(round(amount * 1_000_000))
         row.currency = currency
@@ -328,9 +332,16 @@ def summary(today: dt.date | None = None, months: int = 6) -> dict:
     last_api: dict[str, dt.datetime] = {}
     last_api_day: dict[str, dt.date] = {}
     manual = []
+    estimates: dict[str, dict[str, float]] = {}
     for provider, source, day, scope, micro, currency, note, updated_at, by in rows:
         usd = to_usd(micro, currency)
         mk = _month(day).isoformat()
+        if source == "estimate":
+            estimates.setdefault(provider, {})[mk] = usd
+            manual.append({"provider": provider, "label": PROVIDERS.get(provider, provider), "estimate": True,
+                           "month": day.strftime("%Y-%m"), "amount": micro / 1_000_000, "currency": currency,
+                           "usd": round(usd, 2), "note": note, "updated_by": by})
+            continue
         table.setdefault(provider, {})
         table[provider][mk] = table[provider].get(mk, 0.0) + usd
         if source == "api":
@@ -341,7 +352,7 @@ def summary(today: dt.date | None = None, months: int = 6) -> dict:
             if usd > 0 and (provider not in last_api_day or day > last_api_day[provider]):
                 last_api_day[provider] = day
         else:
-            manual.append({"provider": provider, "label": PROVIDERS.get(provider, provider),
+            manual.append({"provider": provider, "label": PROVIDERS.get(provider, provider), "estimate": False,
                            "month": day.strftime("%Y-%m"), "amount": micro / 1_000_000, "currency": currency,
                            "usd": round(usd, 2), "note": note, "updated_by": by})
 
@@ -350,7 +361,7 @@ def summary(today: dt.date | None = None, months: int = 6) -> dict:
     providers = []
     for p in PROVIDERS:
         per_month = {m.isoformat(): round(table.get(p, {}).get(m.isoformat(), 0.0), 2) for m in month_keys}
-        has_any = p in table
+        has_any = p in table or p in estimates
         is_api = p in FETCHERS
         if not has_any and not (is_api and configured().get(p)) and p == "other":
             continue
@@ -359,6 +370,8 @@ def summary(today: dt.date | None = None, months: int = 6) -> dict:
             projected, basis = now_usd / days_in * month_len, "api"
         elif this.isoformat() in table.get(p, {}):
             projected, basis = now_usd, "manual"
+        elif this.isoformat() in estimates.get(p, {}):
+            projected, basis = estimates[p][this.isoformat()], "estimate"
         else:
             prev = [m for m in sorted(table.get(p, {})) if m < this.isoformat()]
             projected = table[p][prev[-1]] if prev else 0.0
@@ -367,6 +380,7 @@ def summary(today: dt.date | None = None, months: int = 6) -> dict:
             "provider": p, "label": PROVIDERS[p], "kind": "api" if is_api else "manual",
             "configured": configured().get(p, True) if is_api else True,
             "months": per_month, "projected_usd": round(projected, 2), "projection_basis": basis,
+            "estimate_this_month": round(estimates[p][this.isoformat()], 2) if this.isoformat() in estimates.get(p, {}) else None,
             "last_sync": last_api[p].isoformat() if p in last_api else None,
             "last_day": last_api_day[p].isoformat() if p in last_api_day else None,
             "scopes_this_month": sorted(({"scope": k, "usd": round(v, 2)} for k, v in

@@ -197,6 +197,15 @@ def test_outside_address_is_refused_even_with_a_valid_signature(client):
     _assert_refused(client, _token(email="kolega@miton.cz.evil.com", role="miton"))
 
 
+def test_the_callback_lands_only_on_known_pages(client):
+    r = client.get(f"/auth/callback?token={_token(role='admin', email='admin@alister.com')}&next=/admin/usage",
+                   follow_redirects=False)
+    assert r.headers["location"] == "/admin/usage"
+    for evil in ("https://evil.example", "//evil.example", "/admin/../x"):
+        r = client.get(f"/auth/callback?token={_token()}&next={evil}", follow_redirects=False)
+        assert r.headers["location"] == "/admin"
+
+
 def test_an_alister_admin_on_any_address_gets_in(client):
     """Since 2026-11-22 the admin on an outside address may enter, like in
     Alister's hub; the miton role still needs an @miton.cz address."""

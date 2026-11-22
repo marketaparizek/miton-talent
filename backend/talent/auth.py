@@ -454,8 +454,13 @@ def login_required_response(request: Request):
 # --- Routes ------------------------------------------------------------------
 
 
+# Pages the handoff may land on (Alister's ?to=costs sends next=/admin/usage).
+# Anything else lands on /admin, so ``next`` can never redirect off-site.
+CALLBACK_LANDINGS = ("/admin", "/admin/usage", "/admin/portfolio")
+
+
 @router.get("/callback")
-def callback(request: Request, token: str = ""):
+def callback(request: Request, token: str = "", next: str = ""):
     """The end of the Alister handoff: token in, session cookie out."""
     if not token:
         raise HTTPException(status_code=400, detail="Missing token")
@@ -466,7 +471,8 @@ def callback(request: Request, token: str = ""):
         # Send the person back to Alister to try again; no detail leaks.
         return RedirectResponse(url=login_redirect_url(), status_code=302, headers={"Cache-Control": "no-store"})
     log.info("handoff accepted email=%s role=%s", identity["email"], identity["role"])
-    response = RedirectResponse(url="/admin", status_code=302, headers={"Cache-Control": "no-store"})
+    landing = next if next in CALLBACK_LANDINGS else "/admin"
+    response = RedirectResponse(url=landing, status_code=302, headers={"Cache-Control": "no-store"})
     issue_session(response, identity)
     return response
 

@@ -147,7 +147,7 @@ def test_manual_month_upserts_and_zero_deletes(fresh_db):
     costs.set_manual("hetzner", "2026-10", 0, "EUR", None, None)
     assert rows("hetzner") == []
     with pytest.raises(ValueError):
-        costs.set_manual("openai", "2026-10", 1, "USD", None, None)
+        costs.set_manual("aws", "2026-10", 1, "USD", None, None)
     with pytest.raises(ValueError):
         costs.set_manual("hetzner", "2026/10", 1, "USD", None, None)
 
@@ -175,6 +175,22 @@ def test_summary_months_totals_and_projection(fresh_db, monkeypatch):
     assert by["openai"]["scopes_this_month"] == [{"scope": "talent-sourcing", "usd": 22.0}]
     assert "other" not in by
     assert by["anthropic"]["configured"] is False
+    assert by["anthropic"]["kind"] == "manual" and by["anthropic"]["topup"] is True
+
+
+def test_a_provider_without_admin_key_is_entered_by_hand_as_topups(fresh_db, monkeypatch):
+    monkeypatch.delenv("ANTHROPIC_ADMIN_KEY", raising=False)
+    monkeypatch.setenv("OPENAI_ADMIN_KEY", "sk-admin-x")
+    assert "anthropic" in costs.manual_providers() and "openai" not in costs.manual_providers()
+    costs.set_manual("anthropic", "2026-10", 48.4, "USD", "2x credit grant", None)
+    with pytest.raises(ValueError):
+        costs.set_manual("openai", "2026-10", 1, "USD", None, None)
+    out = costs.summary(today=dt.date(2026, 11, 22))
+    a = {p["provider"]: p for p in out["providers"]}["anthropic"]
+    assert a["months"]["2026-10-01"] == pytest.approx(48.4)
+    # a top-up is not a monthly bill: nothing carried into November
+    assert a["projected_usd"] == 0.0 and a["projection_basis"] == "none"
+    assert {"id": "anthropic", "label": "Anthropic"} in out["manual_providers"]
 
 
 # --- routes ----------------------------------------------------------------------------------
@@ -194,7 +210,7 @@ def test_manual_entry_needs_admin_and_json(http):
     assert http.post("/admin/usage/manual", json=payload).status_code == 403
     sign_in(http, "admin")
     assert http.post("/admin/usage/manual", data=payload).status_code == 415
-    assert http.post("/admin/usage/manual", json=dict(payload, provider="openai")).status_code == 400
+    assert http.post("/admin/usage/manual", json=dict(payload, provider="aws")).status_code == 400
     assert http.post("/admin/usage/manual", json=payload).status_code == 200
     (r,) = rows("brightdata")
     assert r.updated_by == "marketa.parizek@miton.cz" and r.currency == "USD"

@@ -218,7 +218,7 @@ h2.big{font-size:19px; margin:26px 4px 0}
   var warns = [];
   C.providers.forEach(function(p){
     if (p.kind === 'api' && !p.configured) warns.push(p.label + ' není napojený: na serveru chybí ' + (p.provider === 'openai' ? 'OPENAI_ADMIN_KEY' : 'ANTHROPIC_ADMIN_KEY') + ' v .env. Admin klíč se dá vložit přes deploy/set_secret.sh.');
-    if (p.kind === 'manual' && p.provider !== 'other' && p.projection_basis !== 'manual' && p.projection_basis !== 'estimate') warns.push(p.label + ' za ' + monthName(thisM) + ' ještě není zapsaný. ' + (p.projection_basis === 'last_month' ? 'V odhadu je minulá známá faktura. Jestli bude jiná, zapiš odhad.' : 'V odhadu chybí úplně. Zapiš aspoň odhad.'));
+    if (p.kind === 'manual' && !p.topup && p.provider !== 'other' && p.projection_basis !== 'manual' && p.projection_basis !== 'estimate') warns.push(p.label + ' za ' + monthName(thisM) + ' ještě není zapsaný. ' + (p.projection_basis === 'last_month' ? 'V odhadu je minulá známá faktura. Jestli bude jiná, zapiš odhad.' : 'V odhadu chybí úplně. Zapiš aspoň odhad.'));
   });
   if (D.unpriced_calls) warns.push(num(D.unpriced_calls) + ' volání Talentu šlo na model, který není v ceníku. Doplň ho do PRICES v talent/usage.py.');
   if (budgetShare >= 0.8) warns.push('Denní limit volání chatu je z ' + pct(budgetShare) + ' vyčerpaný. Pak chat odpovídá omluvou. Limit je LLM_DAILY_BUDGET v .env.');
@@ -227,7 +227,7 @@ h2.big{font-size:19px; margin:26px 4px 0}
   $('rate').textContent = String(C.eur_usd).replace('.', ',') + ' $ za euro (COST_EUR_USD v .env, přibližný)';
   var head = '<thead><tr><th>Služba</th>' + C.months.map(function(m){ return '<th class="r">' + cap(monthName(m)) + (m === thisM ? ' (zatím)' : '') + '</th>'; }).join('') + '<th class="r">Odhad ' + monthName(thisM) + '</th></tr></thead>';
   var body = C.providers.map(function(p){
-    var src = p.kind === 'api' ? (p.configured ? (p.last_sync ? 'API, načteno ' + cz(p.last_sync) : 'API, zatím nenačteno') : 'API, chybí klíč') : 'ručně z faktury';
+    var src = p.kind === 'api' ? (p.configured ? (p.last_sync ? 'API, načteno ' + cz(p.last_sync) : 'API, zatím nenačteno') : 'API, chybí klíč') : (p.topup ? 'ručně z dobití kreditu (admin klíč nejde)' : 'ručně z faktury');
     return '<tr><td style="white-space:nowrap">' + esc(p.label) + '<div class="src">' + esc(src) + '</div></td>' + C.months.map(function(m){
       var val = p.months[m];
       return '<td class="r' + (m === thisM ? ' now' : '') + '">' + (val ? usd(val, 2) : '<span class="src">–</span>') + '</td>';

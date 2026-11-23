@@ -42,6 +42,11 @@ PROVIDERS = {
     "other": "Ostatní",
 }
 MANUAL_PROVIDERS = ("brightdata", "hetzner", "other")
+# An API provider without its admin key (Anthropic on an individual account
+# cannot have one) is entered by hand from its invoices instead. Those
+# invoices are credit top-ups, not a monthly bill, so a month without one
+# is not "missing" and the last one is not carried into the projection.
+TOPUP_PROVIDERS = ("anthropic", "openai")
 CURRENCIES = ("USD", "EUR")
 
 ANTHROPIC_URL = "https://api.anthropic.com/v1/organizations"
@@ -74,6 +79,14 @@ def configured() -> dict:
         "anthropic": bool(os.environ.get("ANTHROPIC_ADMIN_KEY")),
         "openai": bool(os.environ.get("OPENAI_ADMIN_KEY")),
     }
+
+
+def manual_providers() -> tuple[str, ...]:
+    """Who can be entered by hand right now: the always-manual ones plus an
+    API provider whose key is missing (with a key the API is the truth and a
+    hand-entered month would count twice)."""
+    keys = configured()
+    return tuple(p for p in TOPUP_PROVIDERS if not keys.get(p)) + MANUAL_PROVIDERS
 
 
 # --- Anthropic ------------------------------------------------------------------
@@ -272,7 +285,7 @@ def set_manual(provider: str, month: str, amount: float, currency: str, note: st
     deletes that row. An estimate never counts as spend, only in the
     projection, and the invoice wins as soon as it is in."""
     source = "estimate" if estimate else "manual"
-    if provider not in MANUAL_PROVIDERS:
+    if provider not in manual_providers():
         raise ValueError("unknown provider")
     if currency not in CURRENCIES:
         raise ValueError("unknown currency")
@@ -362,7 +375,9 @@ def summary(today: dt.date | None = None, months: int = 6) -> dict:
     for p in PROVIDERS:
         per_month = {m.isoformat(): round(table.get(p, {}).get(m.isoformat(), 0.0), 2) for m in month_keys}
         has_any = p in table or p in estimates
-        is_api = p in FETCHERS
+        # keyless and never synced: entered by hand from top-up invoices
+        topup = p in FETCHERS and not configured().get(p) and p not in last_api
+        is_api = p in FETCHERS and not topup
         if not has_any and not (is_api and configured().get(p)) and p == "other":
             continue
         now_usd = table.get(p, {}).get(this.isoformat(), 0.0)
@@ -372,13 +387,16 @@ def summary(today: dt.date | None = None, months: int = 6) -> dict:
             projected, basis = now_usd, "manual"
         elif this.isoformat() in estimates.get(p, {}):
             projected, basis = estimates[p][this.isoformat()], "estimate"
+        elif topup:
+            projected, basis = 0.0, "none"
         else:
             prev = [m for m in sorted(table.get(p, {})) if m < this.isoformat()]
             projected = table[p][prev[-1]] if prev else 0.0
             basis = "last_month" if prev else "none"
         providers.append({
             "provider": p, "label": PROVIDERS[p], "kind": "api" if is_api else "manual",
-            "configured": configured().get(p, True) if is_api else True,
+            "topup": topup,
+            "configured": configured().get(p, True) if p in FETCHERS else True,
             "months": per_month, "projected_usd": round(projected, 2), "projection_basis": basis,
             "estimate_this_month": round(estimates[p][this.isoformat()], 2) if this.isoformat() in estimates.get(p, {}) else None,
             "last_sync": last_api[p].isoformat() if p in last_api else None,
@@ -404,6 +422,6 @@ def summary(today: dt.date | None = None, months: int = 6) -> dict:
         "days_elapsed": days_in,
         "days_in_month": month_len,
         "manual": manual[:24],
-        "manual_providers": [{"id": p, "label": PROVIDERS[p]} for p in MANUAL_PROVIDERS],
+        "manual_providers": [{"id": p, "label": PROVIDERS[p]} for p in manual_providers()],
         "eur_usd": eur_usd(),
     }

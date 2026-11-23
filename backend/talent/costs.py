@@ -334,9 +334,12 @@ def summary(today: dt.date | None = None, months: int = 6) -> dict:
     this = _month(today)
     first = _add_months(this, -(months - 1))
     month_keys = [_add_months(first, i) for i in range(months)]
+    # the chart reaches back a year even when the table shows half of it
+    hist_first = _add_months(this, -(max(months, 12) - 1))
+    hist_keys = [_add_months(hist_first, i) for i in range(max(months, 12))]
 
     with db.session() as s:
-        rows = s.scalars(select(ProviderCost).where(ProviderCost.day >= _add_months(first, -3))).all()
+        rows = s.scalars(select(ProviderCost).where(ProviderCost.day >= _add_months(hist_first, -3))).all()
         rows = [(r.provider, r.source, r.day, r.scope, r.amount_micro, r.currency, r.note, r.updated_at, r.updated_by)
                 for r in rows]
 
@@ -398,6 +401,7 @@ def summary(today: dt.date | None = None, months: int = 6) -> dict:
             "topup": topup,
             "configured": configured().get(p, True) if p in FETCHERS else True,
             "months": per_month, "projected_usd": round(projected, 2), "projection_basis": basis,
+            "history": {m.isoformat(): round(table.get(p, {}).get(m.isoformat(), 0.0), 2) for m in hist_keys},
             "estimate_this_month": round(estimates[p][this.isoformat()], 2) if this.isoformat() in estimates.get(p, {}) else None,
             "last_sync": last_api[p].isoformat() if p in last_api else None,
             "last_day": last_api_day[p].isoformat() if p in last_api_day else None,
@@ -418,6 +422,7 @@ def summary(today: dt.date | None = None, months: int = 6) -> dict:
         "months": [m.isoformat() for m in month_keys],
         "providers": providers,
         "totals": totals,
+        "history_months": [m.isoformat() for m in hist_keys],
         "projected_usd": round(sum(p["projected_usd"] for p in providers), 2),
         "days_elapsed": days_in,
         "days_in_month": month_len,

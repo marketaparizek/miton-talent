@@ -177,6 +177,15 @@ def test_summary_months_totals_and_projection(fresh_db, monkeypatch):
     assert by["anthropic"]["configured"] is False
     assert by["anthropic"]["kind"] == "manual" and by["anthropic"]["topup"] is True
 
+    # the chart's year: older than the table, same numbers where they overlap
+    costs.set_manual("hetzner", "2026-02", 10, "EUR", None, None)
+    out = costs.summary(today=d(2026, 11, 22))
+    by = {p["provider"]: p for p in out["providers"]}
+    assert len(out["history_months"]) == 12 and out["history_months"][0] == "2025-12-01"
+    assert by["hetzner"]["history"]["2026-02-01"] == pytest.approx(12.0)
+    assert "2026-02-01" not in by["hetzner"]["months"]
+    assert by["openai"]["history"]["2026-10-01"] == by["openai"]["months"]["2026-10-01"]
+
 
 def test_a_provider_without_admin_key_is_entered_by_hand_as_topups(fresh_db, monkeypatch):
     monkeypatch.delenv("ANTHROPIC_ADMIN_KEY", raising=False)
